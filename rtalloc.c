@@ -239,7 +239,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
 }
 
 static
-GPTR allocationGroup(void * metadata, SXint size,
+GPTR allocationGroup(void * metadata, int size,
 		     int *return_data_size, int *return_real_size, void *return_metadata) {
   int data_size, real_size;
   int group_index;
@@ -262,7 +262,7 @@ GPTR allocationGroup(void * metadata, SXint size,
 	  printf("Error - you may not allocate %d instances\n", size);
 	}
 	// deleted some proxy checks that were here
-	data_size = ((SXclass_o) metadata)->allocz;
+	//data_size = ((SXclass_o) metadata)->allocz;
 	real_size = data_size + sizeof(GC_HEADER);
       }
       break;
@@ -282,7 +282,7 @@ GPTR allocationGroup(void * metadata, SXint size,
   }
 }
 
-SXint SXstackAllocationSize(void * metadata, SXint size) {
+int SXstackAllocationSize(void * metadata, int size) {
   int data_size, real_size;
   GPTR group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
   return(real_size);
@@ -328,7 +328,7 @@ int SXlargestFreeHeapBlock() {
   return(largest);
 }
 
-int SXallocationTrueSize(void * metadata, SXint size) {
+int SXallocationTrueSize(void * metadata, int size) {
   int data_size, real_size;
 
   GPTR group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
@@ -383,7 +383,7 @@ LPTR SXInitializeObject(void *metadata, void *void_base,
   return(base);
 }
 
-void * SXallocate(void * metadata, SXint size) {
+void * SXallocate(void * metadata, int size) {
   int i, data_size, real_size, limit;
   GCPTR new;
   LPTR base;
@@ -406,7 +406,6 @@ void * SXallocate(void * metadata, SXint size) {
       out_of_memory("Heap", group->size);
     }
   }
-
   new = group->free;
   group->free = GET_LINK_POINTER(new->next);
   group->green_count = group->green_count - 1;
@@ -442,7 +441,7 @@ void * SXallocate(void * metadata, SXint size) {
   return(base);
 }
 
-void * SXstaticAllocate(void * metadata, SXint size) {
+void * SXstaticAllocate(void * metadata, int size) {
   int real_size, data_size;
   LPTR base;
   GPTR group;
@@ -482,8 +481,8 @@ void * SXstaticAllocate(void * metadata, SXint size) {
   return(base);
 }
 
-static void * copy_object(LPTR src, int storage_class, SXint current_size,
-			  SXint new_size, SXint group_size) {
+static void * copy_object(LPTR src, int storage_class, int current_size,
+			  int new_size, int group_size) {
   BPTR new; LPTR new_base; LPTR src_base; int i;
   int limit = current_size / sizeof(LPTR);
 
@@ -519,7 +518,7 @@ static void * copy_object(LPTR src, int storage_class, SXint current_size,
   return(new);
 }
 
-void * SXreallocate(void *ptr, SXint new_size) {
+void * SXreallocate(void *ptr, int new_size) {
   GCPTR current;
   GPTR group;
   int storage_class;
@@ -663,7 +662,25 @@ void verify_all_groups(void) {
   }
 }
 
-    
+int new_thread(void *(*start_func) (void *)) {
+  pthread_attr_t attr;
+  pthread_t thread;
+
+  if (total_threads < THREAD_LIMIT) {
+  // HEY! this isn't thread safe!
+  int index = total_threads;
+  total_threads = total_threads + 1;
+  pthread_attr_init(&attr);
+  pthread_create(&thread, &attr, start_func, 0);
+  // create saved_stack
+  threads[index].pthread = thread;
+  threads[index].saved_stack = 0;
+  return(index);
+  } else {
+    out_of_memory("Too many threads", THREAD_LIMIT);
+  }
+}
+
     
 
 	

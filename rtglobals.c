@@ -21,7 +21,6 @@ int total_segments;
 THREAD_INFO *threads;
 int total_threads;
 
-
 BPTR first_globals_ptr;
 BPTR last_globals_ptr;
 

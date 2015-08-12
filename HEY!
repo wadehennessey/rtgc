@@ -1,3 +1,14 @@
+
+
+m-x gud-gdb to switch *dedicated* window
+
+c-x c-a c-b to set breakpoint at point line. Who changed this and why?
+
+service sshd start
+// to enable sshd at boot time
+systemctl enable sshd.service
+
+
 git clone https://github.com/wadehennessey/rtgc
 
 git commit -m "blah"

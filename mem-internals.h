@@ -102,7 +102,9 @@ typedef struct page_info {
 typedef PAGE_INFO * PPTR;
 
 typedef struct thread_info {
-  SXobject thread;
+  pthread_t pthread;
+  char *saved_stack;
+  int saved_stack_size;
 } THREAD_INFO;
 
 typedef THREAD_INFO * TPTR;
@@ -124,13 +126,12 @@ void SXprint_group_info(GPTR group);
 void SXprint_memory_summary(void);
 void init_global_bounds();
 void full_gc();
-void K_MicroSeconds(tock_type *tr);
 
 BPTR SXgetStackBase(SXobject thread);
 BPTR SXgetStackTop(SXobject thread);
 BPTR SXthread_registers(SXobject thread, int *num_registers);
-SXint SXallocationTrueSize(void * metadata, SXint size);
-SXint SXtrueSize(void *ptr);
+int SXallocationTrueSize(void * metadata, int size);
+int SXtrueSize(void *ptr);
 void SXinit_heap(int default_heap_bytes, int static_size, BPTR first_partition_ptr, BPTR last_usable_ptr);
 void SXinit_realtime_gc(void);
 int SXmake_object_gray(GCPTR current, BPTR raw);
@@ -171,6 +172,4 @@ extern char *last_gc_state;
 extern double last_cycle_ms;
 extern double last_gc_ms;
 extern double last_write_barrier_ms;
-
-extern SXbool SXstartingScriptX;
 extern pthread_mutex_t flip_lock;

@@ -14,6 +14,8 @@
 extern BPTR main_stack_base;
 extern BPTR main_stack_top;
 
+// We don't want to scan main/gc stack at all
+// want to scan all thread stacks, signal handler will determine stack base on top at flip time
 BPTR SXgetStackBase(SXobject thread) {
   return(main_stack_base);
 }
@@ -22,6 +24,8 @@ BPTR SXgetStackTop(SXobject thread) {
   return(main_stack_top);
 }
 
+// Use getcontext() to get access to the registers?
+// /home/wade/glibc-2.22/sysdeps/unix/sysv/linux/x86_64/getcontext.S
 BPTR SXthread_registers(SXobject thread, int *num_registers) {
   *num_registers = 0;
   return(0);

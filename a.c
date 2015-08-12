@@ -1,3 +1,5 @@
+// Need this define to use/see pthread_getattr_np!
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -127,15 +129,18 @@ NODE *build_word_tree(char *filename) {
   }
 }
 
-int dump_word_tree(NODE *n) {
+// Walk word tree, print if verbose is not 0. Return total word count.
+int walk_word_tree(NODE *n, int verbose) {
   int count;
   if (NULL == n) {
     count = 0;
   } else {
     count = n->count;
-    count = count + dump_word_tree(n->lesser);
-    printf("%d %s\n", n->count, n->word);
-    count = count + dump_word_tree(n->greater);
+    count = count + walk_word_tree(n->lesser, verbose);
+    if (0 != verbose) {
+      printf("%d %s\n", n->count, n->word);
+    }
+    count = count + walk_word_tree(n->greater, verbose);
   }
   return(count);
 }
@@ -171,9 +176,21 @@ void copy_test() {
   printf("elapsed: %d\n", end_tv.tv_usec - start_tv.tv_usec);
 }  
 
+
+void check_spdir(int *x) {
+  int  buffer[1024];
+  printf("buffer addr is %p\n", buffer);
+  check_spdir(buffer);
+}
+
+
 void *start_thread(void *args) {
+  char buffer[1000];
   int *int_args = args;
-  printf("Thread %d started, stack %x\n", int_args[0], &int_args);
+  //printf("Thread %d started, stack %p\n", int_args[0], &int_args);
+  printf("Thread %d started, stack %p\n", int_args[0], buffer);
+  printf("Thread stack base is    %p\n", &int_args);
+  check_spdir(0);
   while (1) {
     printf("*");
     fflush(stdout);
@@ -183,12 +200,24 @@ void *start_thread(void *args) {
 
 void signal_action_func(int signum, siginfo_t *siginfo, void *context) {
   int x;
-  // if we are in the middle of an allocation (alloc mutex locked), how
-  // do we deal with it correctly? allocs must check if flip occurred
-  // while in the alloc and correct for it?
-  
+  pthread_t self;
+  pthread_attr_t attr;
+  void *stackaddr = (void *) 7;
+  size_t stacksize = 7;
+
+  // we cannot be in the middle of an allocation at this point because
+  // the gc holds all the group free_locks
   printf("Pausing on signal %d, stack %x\n",signum, &x);
-  // copy stack to where?
+
+  self = pthread_self();
+  pthread_getattr_np(self, &attr);
+  //pthread_getattr_np(self, &attr);
+
+  pthread_attr_getstack(&attr, &stackaddr, &stacksize);
+  printf("addr of stacksize is %p\n", &stacksize);
+  printf("stackaddr value is   %p\n", stackaddr);
+  printf("stacksize value is   %x\n", stacksize);
+  
   fflush(stdout);
   sleep(2);
   printf("Resuming after signal\n");
@@ -209,10 +238,11 @@ void create_threads() {
   sigaction(SIGINT, &signal_action, 0);
   pthread_attr_init(&t1_attr);
   t1_ret = pthread_create(&t1, &t1_attr, &start_thread, t1_arg);
+
   pthread_attr_init(&t2_attr);
-  t2_ret = pthread_create(&t2, &t2_attr, &start_thread, t2_arg);
+  //t2_ret = pthread_create(&t2, &t2_attr, &start_thread, t2_arg);
   pthread_attr_init(&t3_attr);
-  t3_ret = pthread_create(&t3, &t3_attr, &start_thread, t3_arg);
+  //t3_ret = pthread_create(&t3, &t3_attr, &start_thread, t3_arg);
 
   sleep(1);
   pthread_kill(t1, SIGINT);
@@ -230,7 +260,7 @@ int main(int argc, char *argv[]) {
   int i;
 
   //copy_test();
-  //  create_threads();
+  //create_threads();
   //exit(1);
   
   p = (BPTR) SXbig_malloc(10);
@@ -238,6 +268,7 @@ int main(int argc, char *argv[]) {
   SXinit_heap(HEAP_SIZE, STATIC_SIZE,
 	      p - HEAP_SIZE - STATIC_SIZE - 2000000, p);
   main_stack_base = do_nothing(&base);
+  printf("PID is %d\n", getpid());
   printf("LINK_INFO_BITS is 0x%x\n", LINK_INFO_BITS);
 
   printf("LINK_INFO_MASK is 0x%x\n", LINK_INFO_MASK);
@@ -250,10 +281,9 @@ int main(int argc, char *argv[]) {
   while (i < 500) {
     char top;
     build_word_tree("redhead.txt");
-    printf("Total words %d\n", dump_word_tree(root));
+    printf("Total words %d\n", walk_word_tree(root, 0));
     main_stack_top = do_nothing(&top);
     full_gc();
-    printf("Total words %d\n", dump_word_tree(root));
     i = i + 1;
   }
 
