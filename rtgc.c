@@ -2,13 +2,13 @@
 
 /* omitted .h files that don't exist */
 
-#define THREAD_CALLBACK
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
 #include <pthread.h>
+#include <sys/time.h>
 #include "compat.h"
 #include "mem-config.h"
 #include "infoBits.h"
@@ -27,7 +27,10 @@ int next_thread; 		/* HEY! get rid of this...  */
 double total_gc_time_in_cycle;
 double max_increment_in_cycle;
 double total_write_barrier_time_in_cycle;
-tock_type start_gc_cycle_tocks;
+struct timeval start_gc_cycle_time;
+double last_cycle_ms;
+double last_gc_ms;
+double last_write_barrier_ms;
 
 static
 void remove_object_from_free_list(GPTR group, GCPTR object) {
@@ -302,9 +305,9 @@ void *ptrset(void *p1, int data, int num_bytes) {
 }
 
 static
-void copyThreadInfo(SXobject thread) {
+void copyThreadInfo(int thread) {
   if (next_thread < THREAD_LIMIT) {
-    threads[next_thread].thread = thread;
+    threads[next_thread].pthread = thread;
     //setNeedSniff(thread);
     next_thread = next_thread + 1;
   } else {
@@ -344,7 +347,8 @@ static
 void scan_threads() {
   while (next_thread > 0) {
     next_thread = next_thread - 1;
-    SXscan_thread(threads[next_thread].thread);
+    // fix this to scan saved_stack
+    //SXscan_thread(threads[next_thread].thread);
     MAYBE_PAUSE_GC;
   }
 }
@@ -508,13 +512,14 @@ void flip() {
 
   pthread_mutex_lock(&flip_lock);
   SWAP(marked_color,unmarked_color);
+  save_thread_state();
   pthread_mutex_unlock(&flip_lock);
 
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     group = &groups[i];
     pthread_mutex_unlock(&(group->free_lock));
   }
-  save_thread_state();
+
 }
 
 /* WE need to change garbage color now so that conservative
@@ -542,7 +547,6 @@ GCPTR recycle_group_garbage(GPTR group) {
       // HEY! fix how we get finalize method
       int *finalize;
       if (finalize != NULL) {
-	/* printf("class = %s\n", (*(SXclass_o *) obj)->name);  */
 	/* UG! We're code that does SXgeneric dispatches, which may
 	   int turn try to allocate storage */
 	memory_mutex = 0;
@@ -612,7 +616,9 @@ void reset_gc_cycle_stats() {
   total_gc_time_in_cycle = 0.0;
   total_write_barrier_time_in_cycle = 0.0;
   max_increment_in_cycle = 0.0;
-  if (ENABLE_GC_TIMING) CPU_TOCKS(start_gc_cycle_tocks);
+  if (ENABLE_GC_TIMING) {
+    gettimeofday(&start_gc_cycle_time, 0);
+  }
 }
 
 static 
@@ -620,7 +626,7 @@ void summarize_gc_cycle_stats() {
   double total_cycle_time;
   
   if (ENABLE_GC_TIMING) {
-    ELAPSED_MILLISECONDS(start_gc_cycle_tocks, total_cycle_time);
+    ELAPSED_MILLISECONDS(start_gc_cycle_time, total_cycle_time);
     last_cycle_ms = total_cycle_time;
     last_gc_ms = total_gc_time_in_cycle;
     last_write_barrier_ms = total_write_barrier_time_in_cycle;
