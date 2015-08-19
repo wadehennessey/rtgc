@@ -103,7 +103,10 @@ typedef PAGE_INFO * PPTR;
 
 typedef struct thread_info {
   pthread_t pthread;
-  char *saved_stack;
+  char *stack_base; /* This is the LOWEST addressable byte of the stack */
+  int stack_size;
+  char *stack_bottom; 	/* HIGHEST address seen when thread started */
+  char *saved_stack_base;    /* This is the LOWEST addressable byte */
   int saved_stack_size;
 } THREAD_INFO;
 
@@ -132,7 +135,7 @@ BPTR SXgetStackTop(SXobject thread);
 BPTR SXthread_registers(SXobject thread, int *num_registers);
 int SXallocationTrueSize(void * metadata, int size);
 int SXtrueSize(void *ptr);
-void SXinit_heap(int default_heap_bytes, int static_size, BPTR first_partition_ptr, BPTR last_usable_ptr);
+void SXinit_heap(int default_heap_bytes, int static_size);
 void SXinit_realtime_gc(void);
 int SXmake_object_gray(GCPTR current, BPTR raw);
 void Debugger(void);

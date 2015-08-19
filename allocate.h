@@ -39,4 +39,4 @@ LPTR SXinitializeObject(void * metadata, void *base, int total_size, int real);
 
 void init_realtime_gc();
 
-
+int new_thread(void *(*start_func) (void *), void *args);

@@ -15,11 +15,6 @@ git commit -m "blah"
 
 git push
 
-
-Everytime we mmap, make sure the fist/last partition ptrs enclose all mmap memory, adjust if needed
-
 move thread stopping stuff from a.c into rtgc.c
-
-add make_thread wrapper around pthread_create to track threads
 
 

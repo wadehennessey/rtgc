@@ -31,6 +31,7 @@ BPTR SXthread_registers(SXobject thread, int *num_registers) {
   return(0);
 }
 
+// grows *DOWN*, not up
 void *SXbig_malloc(int bytes) {
   BPTR p = (mmap(0,
 		 bytes,
@@ -38,11 +39,7 @@ void *SXbig_malloc(int bytes) {
 		 MAP_PRIVATE | MAP_ANONYMOUS,
 		 0,
 		 0));
-  if ((main_stack_base != 0) && /* hack for booting */
-      ((p <= first_partition_ptr) || ((p + bytes) >= last_partition_ptr))) {
-    printf("resize partition!!!\n");
-    Debugger();
-  }
+  printf("big_malloc returning pointer %p\n", p);
   return(p);
 }
 
@@ -71,6 +68,10 @@ void SXvisual_runbar_on(void) {
 void SXvisual_runbar_off(void) {
 }
 
+static int zero = 1;
+static int debug;
+
 void Debugger() {
   printf("Hey! rtgc called the debugger - fix me!\n");
+  debug = 1 / zero;
 }

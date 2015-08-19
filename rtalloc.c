@@ -582,13 +582,18 @@ GCPTR interior_to_gcptr(BPTR ptr) {
   return(gcptr);
 }
 
-void SXinit_heap(int first_segment_bytes, int static_size,
-		 BPTR first_usable_ptr, BPTR last_usable_ptr) {
+void SXinit_heap(int first_segment_bytes, int static_size) {
+
   enable_write_barrier = 0;
   total_allocation = 0;
   total_requested_allocation = 0;
   total_requested_objects = 0;
   BPTR p;
+
+  // Have to mmap all space we might ever use at one time
+  BPTR first_usable_ptr = SXbig_malloc(PARTITION_SIZE);
+  BPTR last_usable_ptr = first_usable_ptr + PARTITION_SIZE - 1;
+  total_segments = 1;
   
   first_partition_ptr = ROUND_DOWN_TO_PAGE(first_usable_ptr);
   last_partition_ptr = ROUND_UP_TO_PAGE(last_usable_ptr);
@@ -603,12 +608,11 @@ void SXinit_heap(int first_segment_bytes, int static_size,
   segments = malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
   threads = malloc(sizeof(THREAD_INFO) * THREAD_LIMIT);
   if ((pages == 0) || (groups == 0) || (segments == 0) || (threads == 0)) {
-    out_of_memory("Heap Memory tables", first_segment_bytes/1024);
+    out_of_memory("Heap Memory tables", 0);
   }
 
   init_page_info();
   empty_pages = NULL;
-  total_segments = 0;
   total_threads = 0;
 
   if ((static_size > 0) &&
@@ -617,11 +621,13 @@ void SXinit_heap(int first_segment_bytes, int static_size,
   }
   last_static_ptr = segments[0].last_segment_ptr;
   first_static_ptr = last_static_ptr;
-  
+
+  /* we allocated the only heap segment at the start of this function
   if (allocate_segment(first_segment_bytes, HEAP_SEGMENT) == 0) {
     out_of_memory("Heap Memory allocation", first_segment_bytes/1024);
   }
-
+  */
+  
   marked_color = GENERATION0;
   unmarked_color = GENERATION1;
   init_group_info();
@@ -662,20 +668,24 @@ void verify_all_groups(void) {
   }
 }
 
-int new_thread(void *(*start_func) (void *)) {
-  pthread_attr_t attr;
+int new_thread(void *(*start_func) (void *), void *args) {
   pthread_t thread;
-
+  
   if (total_threads < THREAD_LIMIT) {
-  // HEY! this isn't thread safe!
-  int index = total_threads;
-  total_threads = total_threads + 1;
-  pthread_attr_init(&attr);
-  pthread_create(&thread, &attr, start_func, 0);
-  // create saved_stack
-  threads[index].pthread = thread;
-  threads[index].saved_stack = 0;
-  return(index);
+    // HEY! this isn't thread safe!
+    int index = total_threads;
+    total_threads = total_threads + 1;
+    if (0 != pthread_create(&thread, NULL, start_func, (void *) args)) {
+      printf("pthread_create failed!\n");
+      Debugger();
+    } else {
+      int saved_stack_size = 0x851000; // observed default size
+      threads[index].pthread = thread;
+      threads[index].stack_base = 0;
+      threads[index].saved_stack_size = saved_stack_size;
+      threads[index].saved_stack_base = SXbig_malloc(saved_stack_size);
+      return(index);
+    }
   } else {
     out_of_memory("Too many threads", THREAD_LIMIT);
   }
