@@ -1,3 +1,5 @@
+// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+
 /* Memory management configuration */
 
 // 128 meg default
@@ -14,7 +16,7 @@
 #define CHECK_BASH 0
 #define CHECK_SETFINIT 1
 #define GC_POINTER_ALIGNMENT (sizeof(long *))
-#define PAGE_POWER 10
+#define PAGE_POWER 12	       /* x86_64 page size is normally 4096 */
 #define THREAD_LIMIT 100
 #define INTERIOR_PTR_RETENTION_LIMIT 512
 

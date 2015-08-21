@@ -1,4 +1,4 @@
-/* infoBits.h */
+// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
 
 /* Links are divided into a pointer and some low order info bits.
    We could store object group indices in the info bits

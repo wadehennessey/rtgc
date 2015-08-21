@@ -1,4 +1,7 @@
+// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+
 /* Real time storage allocater */
+#define _GNU_SOURCE
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -6,6 +9,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <pthread.h>
+#include <signal.h>
 #include "compat.h"
 #include "mem-config.h"
 #include "infoBits.h"
@@ -582,6 +586,25 @@ GCPTR interior_to_gcptr(BPTR ptr) {
   return(gcptr);
 }
 
+// Thread 0 is considered the main stack that started this process.
+// The gc itself runs on Thread 0.
+void init_gc_thread() {
+  pthread_attr_t attr;
+  void *stackaddr;
+  size_t stacksize;
+  pthread_t self = pthread_self();
+  pthread_getattr_np(self, &attr);
+  pthread_attr_getstack(&attr, &stackaddr, &stacksize);
+  printf("Main Stackaddr is %p\n", stackaddr);
+  printf("Main Stacksize is 0x%x\n", stacksize);
+  threads[0].stack_base = stackaddr + stacksize;
+  threads[0].stack_size = stacksize;
+  threads[0].stack_bottom = (long long *) &stacksize;
+  threads[0].saved_stack_base = 0;
+  threads[0].saved_stack_size = 0;
+  total_threads = 1;
+}
+
 void SXinit_heap(int first_segment_bytes, int static_size) {
 
   enable_write_barrier = 0;
@@ -613,7 +636,7 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
 
   init_page_info();
   empty_pages = NULL;
-  total_threads = 0;
+  init_gc_thread();
 
   if ((static_size > 0) &&
       (allocate_segment(static_size, STATIC_SEGMENT) == 0)) {
@@ -668,6 +691,57 @@ void verify_all_groups(void) {
   }
 }
 
+typedef struct start_thread_args {
+  int thread_index;
+  void *(*real_start_func) (void *);
+  char *real_args;
+} START_THREAD_ARGS;
+
+
+void *rtalloc_start_thread(void *arg) {
+  START_THREAD_ARGS *start_args = (START_THREAD_ARGS *) arg;
+  void *(*real_start_func) (void *);
+
+  // unpack start args and then free arg
+  long thread_index = start_args->thread_index;
+  real_start_func = start_args->real_start_func;
+  char *real_args = start_args->real_args;
+  free(arg);
+
+  // setup code runs first
+  pthread_t self;
+  pthread_attr_t attr;
+  void *stackaddr;
+  size_t stacksize;
+  
+  printf("Thread %d started, live stack top is 0x%lx\n", 
+	 thread_index, &thread_index);
+  self = pthread_self();
+  threads[thread_index].pthread = self;
+  
+  pthread_getattr_np(self, &attr);
+  pthread_attr_getstack(&attr, &stackaddr, &stacksize);
+  // We don't really need this info, but it might be nice for debugging
+  // stackaddr is the LOWEST addressable byte of the stack
+  // The stack pointer starts at stackaddr + stacksize!
+  printf("Stackaddr is %p\n", stackaddr);
+  printf("Stacksize is %d\n", stacksize);
+  threads[thread_index].stack_base = stackaddr;
+  threads[thread_index].stack_size = stacksize;
+  threads[thread_index].stack_bottom = (long long *)  &stacksize;
+  fflush(stdout);
+
+  if (0 != pthread_setspecific(thread_index_key, (void *) thread_index)) {
+    printf("pthread_setspecific failed!\n"); 
+  } else {
+    // initializing saved_stack_base tells new_thread
+    // that stack setup is done and it can return
+    threads[thread_index].saved_stack_base = SXbig_malloc(stacksize);
+    // after setup, invoke the real start func with the real args
+    (real_start_func)(real_args);
+  }
+}
+
 int new_thread(void *(*start_func) (void *), void *args) {
   pthread_t thread;
   
@@ -675,15 +749,25 @@ int new_thread(void *(*start_func) (void *), void *args) {
     // HEY! this isn't thread safe!
     int index = total_threads;
     total_threads = total_threads + 1;
-    if (0 != pthread_create(&thread, NULL, start_func, (void *) args)) {
+
+    START_THREAD_ARGS *start_args = malloc(sizeof(START_THREAD_ARGS));
+    start_args->thread_index = index;
+    start_args->real_start_func = start_func;
+    start_args->real_args = args;
+
+    // this indicates that thread setup isn't complete
+    threads[index].saved_stack_base = 0;
+    if (0 != pthread_create(&thread, 
+			    NULL, 
+			    rtalloc_start_thread,
+			    (void *) start_args)) {
       printf("pthread_create failed!\n");
       Debugger();
     } else {
-      int saved_stack_size = 0x851000; // observed default size
-      threads[index].pthread = thread;
-      threads[index].stack_base = 0;
-      threads[index].saved_stack_size = saved_stack_size;
-      threads[index].saved_stack_base = SXbig_malloc(saved_stack_size);
+      while (0 == threads[index].saved_stack_base) {
+	// HEY! should do something smarter than busy wait
+	// rtalloc_start_thread to completion thread init
+      }
       return(index);
     }
   } else {

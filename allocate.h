@@ -1,3 +1,5 @@
+// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+
 /* Interface to the memory manager */
 
 /* Predefined Metadata */

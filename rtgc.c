@@ -1,6 +1,6 @@
-/* Real time storage garbage collector running on one or more threads/cores */
+// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
 
-/* omitted .h files that don't exist */
+/* Real time garbage collector running on one or more threads/cores */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <pthread.h>
+#include <signal.h>
 #include <sys/time.h>
 #include "compat.h"
 #include "mem-config.h"
@@ -305,51 +306,32 @@ void *ptrset(void *p1, int data, int num_bytes) {
 }
 
 static
-void copyThreadInfo(int thread) {
-  if (next_thread < THREAD_LIMIT) {
-    threads[next_thread].pthread = thread;
-    //setNeedSniff(thread);
-    next_thread = next_thread + 1;
-  } else {
-    /* HEY! Should allocate a bigger buffer */
-    printf("Too many threads!\n");
-    exit(1);
-  }
-}
-
-static
 void save_thread_state() {
-  /* SXforEach(SXallThreads, (SXfunction) copyThreadInfo, NULL) */
+  // need to use new signal based saving
 }
 
-void SXscan_thread(SXobject thread) {
-  BPTR bottom = SXgetStackBase(thread);
-  /* Only scan threads with a real stack and skip the gc thread */
-  if (bottom != 0) {
-    int num_registers;
-    BPTR top = SXgetStackTop(thread);
-    BPTR ptr_aligned_top = (BPTR) ((long) top & ~(GC_POINTER_ALIGNMENT - 1));
-    /* HEY! fix this - regs aren't special, just part of non run stack state */
-    BPTR regptr = SXthread_registers(thread, &num_registers);
-    
-    /* Scan thread state atomically!!! */
-    //pause_ok_flag = 0;
-    /* HEY! reg ptrs are aligned on 4 byte boundries... */
-    if (num_registers > 0) {
-      scan_memory_segment(regptr, regptr + (num_registers * 4));
-    }
-    scan_memory_segment(ptr_aligned_top, bottom);
-    //pause_ok_flag =1;
-  }
+void scan_thread_registers(int thread) {
+  // just scan saved regs that need it, not all 23 of them
+}
+
+void scan_thread_saved_stack(int thread) {
+  BPTR top = 0;
+  BPTR bottom = 0;
+  BPTR ptr_aligned_top = (BPTR) ((long) top & ~(GC_POINTER_ALIGNMENT - 1));
+  scan_memory_segment(ptr_aligned_top, bottom);
+}
+
+// HEY! fix this to work with new thread struct
+void scan_thread(int thread) {
+  scan_thread_registers(thread);
+  scan_thread_saved_stack(thread);
 }
 
 static
 void scan_threads() {
-  while (next_thread > 0) {
-    next_thread = next_thread - 1;
-    // fix this to scan saved_stack
-    //SXscan_thread(threads[next_thread].thread);
-    MAYBE_PAUSE_GC;
+  int next_thread = 1;
+  while (next_thread < total_threads) {
+    scan_thread(next_thread);
   }
 }
 
@@ -666,7 +648,12 @@ int SXgc(void) {
 }
 
 void init_realtime_gc() {
-  int thread_bytes;
+
+  // the gc_flip signal handler uses this to find the thread_index of 
+  // the mutator thread it is running on
+  if (0 != pthread_key_create(&thread_index_key, NULL)) {
+    printf("thread_index_key create failed!\n");
+  }
 
   gc_count = 0;
   visual_memory_on = 0;
@@ -693,5 +680,4 @@ void init_realtime_gc() {
       
     
   
-      
       

@@ -1,4 +1,10 @@
+// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+
 /* State shared by rtalloc, rtgc, and vizmem goes here */
+
+#define _USE_GNU
+#define _GNU_SOURCE
+
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -6,6 +12,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <pthread.h>
+#include <signal.h>
 #include "compat.h"
 #include "mem-config.h"
 #include "infoBits.h"
@@ -39,5 +46,7 @@ int memory_mutex;
 
 int visual_memory_on;
 char *last_gc_state;
+
+pthread_key_t thread_index_key;
 
 pthread_mutex_t flip_lock;

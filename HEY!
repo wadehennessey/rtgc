@@ -1,5 +1,3 @@
-
-
 m-x gud-gdb to switch *dedicated* window
 
 c-x c-a c-b to set breakpoint at point line. Who changed this and why?
@@ -17,4 +15,10 @@ git push
 
 move thread stopping stuff from a.c into rtgc.c
 
+use #define _GNU_SOURCE for weird compile problems not seeing decls
+
+gdb> handle 2 pass
+then continue lets me debug signal handler
+
+Try to use a diff signal
 

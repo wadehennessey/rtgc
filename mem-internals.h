@@ -1,3 +1,5 @@
+// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+
 /* Other parts of the system like to use IN_HEAP and IN_GLOBALS */
 #define EMPTY_PAGE     ((GPTR) 0)
 #define SYSTEM_PAGE    ((GPTR) 1)
@@ -103,10 +105,11 @@ typedef PAGE_INFO * PPTR;
 
 typedef struct thread_info {
   pthread_t pthread;
-  char *stack_base; /* This is the LOWEST addressable byte of the stack */
+  gregset_t registers;		/* NREG is 23 on x86_64 */
+  long long *stack_base; /* This is the LOWEST addressable byte of the stack */
   int stack_size;
-  char *stack_bottom; 	/* HIGHEST address seen when thread started */
-  char *saved_stack_base;    /* This is the LOWEST addressable byte */
+  long long *stack_bottom; 	/* HIGHEST address seen when thread started */
+  long long *saved_stack_base;    /* This is the LOWEST addressable byte */
   int saved_stack_size;
 } THREAD_INFO;
 
@@ -176,3 +179,4 @@ extern double last_cycle_ms;
 extern double last_gc_ms;
 extern double last_write_barrier_ms;
 extern pthread_mutex_t flip_lock;
+extern pthread_key_t thread_index_key;

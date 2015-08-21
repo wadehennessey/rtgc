@@ -1,3 +1,4 @@
+// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
 
 int SXupdate_visual_page(int page_number);
 void SXmaybe_update_visual_page(int page_number, int old_bytes_used, int new_bytes_used);
