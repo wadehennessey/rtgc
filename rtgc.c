@@ -335,6 +335,8 @@ void scan_threads() {
   }
 }
 
+// HEY! use global_roots pointer total_global_roots instead
+// get rid of first and last globals ptrs
 static
 void scan_globals() {
   scan_memory_segment(first_globals_ptr, last_globals_ptr);
@@ -655,29 +657,9 @@ void init_realtime_gc() {
     printf("thread_index_key create failed!\n");
   }
 
+  total_global_roots = 0;
   gc_count = 0;
   visual_memory_on = 0;
   last_gc_state = "<initial state>";
   pthread_mutex_init(&flip_lock, NULL);
 }
-  
-
-	    
-		      
-	
-  
-    
-
-
-    
-      
-		       
-  
-	      	       
-	       
-
-	    
-      
-    
-  
-      

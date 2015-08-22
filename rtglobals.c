@@ -28,6 +28,10 @@ int total_segments;
 THREAD_INFO *threads;
 int total_threads;
 
+char **global_roots;
+int total_global_roots;
+
+// get rid of this when explicit root registration works.
 BPTR first_globals_ptr;
 BPTR last_globals_ptr;
 

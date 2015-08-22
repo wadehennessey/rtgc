@@ -196,9 +196,21 @@ void *start_thread(void *arg) {
     //usleep(200000);
   }
 }
+/*
+  
+  end live    ->
+  start frame -> 
+                
+  end siginfo -> ...ebf0
 
+  siginfo     -> ...eb70
+
+  end context -> ...ede8
+
+  context     -> ...ea40
+ */
 void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
-  long long stack_top;
+  long stack_top;
   int thread_index;
 
   // we cannot be in the middle of an allocation at this point because
@@ -217,7 +229,8 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
     // HEY! correct for size of context, ucontent, and anything else
     // we know about
     printf("Addr of stack_top is %p\n", &stack_top);
-    long live_stack_size = threads[thread_index].stack_bottom - &stack_top;
+    long live_stack_size = threads[thread_index].stack_bottom - 
+                           (char *) &stack_top;
     printf("live stack size is 0x%lx\n", live_stack_size);
 
     // Be careful here, must copy from lowest to highest address
@@ -246,17 +259,25 @@ void create_threads() {
 
   struct sigaction signal_action;
   // HEY! do this signal and key create stuff in init funcs
+
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGUSR1);
+  // sigprocmask seems to do the same thing as this
+  if (0 != pthread_sigmask(SIG_UNBLOCK, 0, &set)) {
+    printf("mask failed!");
+  }
+  
   memset(&signal_action, 0, sizeof(signal_action));
   signal_action.sa_sigaction = gc_flip_action_func;
   signal_action.sa_flags = SA_SIGINFO;
-  // Why doesn't it work with SIGUSR1
-  sigaction(SIGINT, &signal_action, 0);
+  sigaction(SIGUSR1, &signal_action, 0);
   
   t1 = new_thread(&start_thread, (void *) 0);
   //t2 = new_thread(&start_thread, (void *) 1);
   //t3 = new_thread(&start_thread, (void *) 2);
   sleep(1);
-  pthread_kill(threads[t1].pthread, SIGINT);
+  pthread_kill(threads[t1].pthread, SIGUSR1);
   //pthread_kill(threads[t2].pthread, SIGINT);
   //pthread_kill(threads[t3].pthread, SIGINT);
   sleep(5000);

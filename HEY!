@@ -17,8 +17,13 @@ move thread stopping stuff from a.c into rtgc.c
 
 use #define _GNU_SOURCE for weird compile problems not seeing decls
 
+
+gdb> info signals
+
 gdb> handle 2 pass
 then continue lets me debug signal handler
 
-Try to use a diff signal
+Make stack bottom and top char * again so diff is in bytes, not longs?
 
+setup main to start build_word_tree thread,l
+then begin rtgc loop, no sleep/spin anymore

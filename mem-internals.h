@@ -108,7 +108,7 @@ typedef struct thread_info {
   gregset_t registers;		/* NREG is 23 on x86_64 */
   long long *stack_base; /* This is the LOWEST addressable byte of the stack */
   int stack_size;
-  long long *stack_bottom; 	/* HIGHEST address seen when thread started */
+  char *stack_bottom; 	/* HIGHEST address seen when thread started */
   long long *saved_stack_base;    /* This is the LOWEST addressable byte */
   int saved_stack_size;
 } THREAD_INFO;
@@ -180,3 +180,6 @@ extern double last_gc_ms;
 extern double last_write_barrier_ms;
 extern pthread_mutex_t flip_lock;
 extern pthread_key_t thread_index_key;
+extern char **global_roots;
+extern int total_global_roots;
+

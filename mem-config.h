@@ -9,6 +9,8 @@
 #define MAX_HEAP_SEGMENTS 1
 #define MAX_STATIC_SEGMENTS 0
 #define MAX_SEGMENTS MAX_HEAP_SEGMENTS + MAX_STATIC_SEGMENTS
+#define MAX_THREADS 100
+#define MAX_GLOBAL_ROOTS 1000
 
 /* The heap is divided into multiple segments */
 #define DEFAULT_HEAP_SEGMENT_SIZE 1 << 20
@@ -17,7 +19,6 @@
 #define CHECK_SETFINIT 1
 #define GC_POINTER_ALIGNMENT (sizeof(long *))
 #define PAGE_POWER 12	       /* x86_64 page size is normally 4096 */
-#define THREAD_LIMIT 100
 #define INTERIOR_PTR_RETENTION_LIMIT 512
 
 // HEY! use timersub instead and write timeval_to_double 

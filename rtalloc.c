@@ -599,10 +599,21 @@ void init_gc_thread() {
   printf("Main Stacksize is 0x%x\n", stacksize);
   threads[0].stack_base = stackaddr + stacksize;
   threads[0].stack_size = stacksize;
-  threads[0].stack_bottom = (long long *) &stacksize;
+  threads[0].stack_bottom = (char *) &stacksize;
   threads[0].saved_stack_base = 0;
   threads[0].saved_stack_size = 0;
   total_threads = 1;
+}
+
+
+void register_global_root(void *root) {
+  if (total_global_roots == MAX_GLOBAL_ROOTS) {
+    printf("global roots full!\n");
+    Debugger();
+  } else {
+    global_roots[total_global_roots] = (char *) root;
+    total_global_roots = total_global_roots + 1;
+  }
 }
 
 void SXinit_heap(int first_segment_bytes, int static_size) {
@@ -629,7 +640,8 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
   groups = malloc(sizeof(GROUP_INFO) * (MAX_GROUP_INDEX + 1));
   pages = malloc(sizeof(PAGE_INFO) * total_partition_pages);
   segments = malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
-  threads = malloc(sizeof(THREAD_INFO) * THREAD_LIMIT);
+  threads = malloc(sizeof(THREAD_INFO) * MAX_THREADS);
+  global_roots = malloc(sizeof(char **) * MAX_GLOBAL_ROOTS);
   if ((pages == 0) || (groups == 0) || (segments == 0) || (threads == 0)) {
     out_of_memory("Heap Memory tables", 0);
   }
@@ -728,7 +740,7 @@ void *rtalloc_start_thread(void *arg) {
   printf("Stacksize is %d\n", stacksize);
   threads[thread_index].stack_base = stackaddr;
   threads[thread_index].stack_size = stacksize;
-  threads[thread_index].stack_bottom = (long long *)  &stacksize;
+  threads[thread_index].stack_bottom = (char *)  &stacksize;
   fflush(stdout);
 
   if (0 != pthread_setspecific(thread_index_key, (void *) thread_index)) {
@@ -745,7 +757,7 @@ void *rtalloc_start_thread(void *arg) {
 int new_thread(void *(*start_func) (void *), void *args) {
   pthread_t thread;
   
-  if (total_threads < THREAD_LIMIT) {
+  if (total_threads < MAX_THREADS) {
     // HEY! this isn't thread safe!
     int index = total_threads;
     total_threads = total_threads + 1;
@@ -771,7 +783,7 @@ int new_thread(void *(*start_func) (void *), void *args) {
       return(index);
     }
   } else {
-    out_of_memory("Too many threads", THREAD_LIMIT);
+    out_of_memory("Too many threads", MAX_THREADS);
   }
 }
 
