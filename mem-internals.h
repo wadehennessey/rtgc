@@ -30,8 +30,6 @@ extern BPTR first_partition_ptr; /* First heap object will always be scanned!*/
 extern BPTR last_partition_ptr;
 extern BPTR first_static_ptr;
 extern BPTR last_static_ptr;
-extern BPTR first_globals_ptr;
-extern BPTR last_globals_ptr;
 
 #define MIN_GROUP_INDEX 4	/* yields min 16 byte objects */
 #define MAX_GROUP_INDEX 22	/* yields max 4 megabyte objects */
@@ -115,7 +113,12 @@ typedef struct thread_info {
 
 typedef THREAD_INFO * TPTR;
 
-/* ANSI C lossage... */
+typedef struct counter {
+  int count;
+  pthread_mutex_t lock;
+  pthread_cond_t cond;
+} COUNTER;
+
 void scan_memory_segment(BPTR low, BPTR high);
 void scan_object(GCPTR ptr, int total_size);
 void SXscan_thread(SXobject thread);
@@ -130,8 +133,10 @@ int SXprint_object_info(GCPTR ptr, int i);
 int SXprint_page_info(int page_index);
 void SXprint_group_info(GPTR group);
 void SXprint_memory_summary(void);
-void init_global_bounds();
 void full_gc();
+void init_signals_for_rtgc();
+int stop_all_mutators_and_save_state();
+
 
 BPTR SXgetStackBase(SXobject thread);
 BPTR SXgetStackTop(SXobject thread);
@@ -145,7 +150,10 @@ void Debugger(void);
 void * SXbig_malloc(int size);
 void SXcopy_regs_to_stack(BPTR regptr);
 void out_of_memory(char *space_name, int size);
-
+void register_global_root(void *root);
+void counter_init(COUNTER *c);
+void counter_increment(COUNTER *c);
+void counter_wait_threshold(COUNTER *c, int threshold);
 
 extern GROUP_INFO *groups;
 extern PAGE_INFO *pages;
@@ -182,4 +190,6 @@ extern pthread_mutex_t flip_lock;
 extern pthread_key_t thread_index_key;
 extern char **global_roots;
 extern int total_global_roots;
+extern COUNTER stacks_copied_counter;
+extern pthread_mutex_t total_threads_lock;
 

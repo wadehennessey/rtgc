@@ -330,16 +330,18 @@ void scan_thread(int thread) {
 static
 void scan_threads() {
   int next_thread = 1;
+  // HEY! need to pass along number of threads scanned
   while (next_thread < total_threads) {
     scan_thread(next_thread);
   }
 }
 
-// HEY! use global_roots pointer total_global_roots instead
-// get rid of first and last globals ptrs
+
 static
 void scan_globals() {
-  scan_memory_segment(first_globals_ptr, last_globals_ptr);
+  // HEY! fix this to
+  // HEY! use global_roots pointer total_global_roots instead
+  // scan_memory_segment(first_globals_ptr, last_globals_ptr);
 }
 
 static
@@ -662,4 +664,5 @@ void init_realtime_gc() {
   visual_memory_on = 0;
   last_gc_state = "<initial state>";
   pthread_mutex_init(&flip_lock, NULL);
+  pthread_mutex_init(&total_threads_lock, NULL);
 }

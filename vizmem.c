@@ -7,6 +7,7 @@
 #include <assert.h>
 #include "compat.h"
 #include "mem-config.h"
+#include <pthread.h>
 #include "infoBits.h"
 #include <signal.h>
 #include "mem-internals.h"
@@ -55,7 +56,31 @@ void copy_test() {
   printf("elapsed: %d\n", end_tv.tv_usec - start_tv.tv_usec);
 }  
 
+void counter_init(COUNTER *c) {
+  c->count = 0;
+  pthread_mutex_init(&(c->lock), NULL);
+  pthread_cond_init(&(c->cond), NULL);
+}
 
+void counter_increment(COUNTER *c) {
+  pthread_mutex_lock(&(c->lock));
+  // why can't we just say c->count = c->count + 1 ?
+  int val = c->count;
+  val = val + 1;
+  c->count = val;
+  pthread_cond_broadcast(&(c->cond));
+  pthread_mutex_unlock(&(c->lock));
+}
+
+void counter_wait_threshold(COUNTER *c, int threshold) {
+  pthread_mutex_lock(&(c->lock));
+  while (c->count < threshold) {
+    pthread_cond_wait(&(c->cond), &(c->lock));
+  }
+  // now c->count >= threshold
+  pthread_mutex_unlock(&(c->lock));
+}
+  
 void SXmaybe_update_visual_page(int page_number, int old_bytes_used,
 				int new_bytes_used) {
 }

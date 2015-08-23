@@ -31,10 +31,6 @@ int total_threads;
 char **global_roots;
 int total_global_roots;
 
-// get rid of this when explicit root registration works.
-BPTR first_globals_ptr;
-BPTR last_globals_ptr;
-
 /* HEY! only 1 static segment while these are global! */
 BPTR first_static_ptr;
 BPTR last_static_ptr;
@@ -53,4 +49,6 @@ char *last_gc_state;
 
 pthread_key_t thread_index_key;
 
+pthread_mutex_t total_threads_lock;
 pthread_mutex_t flip_lock;
+COUNTER stacks_copied_counter;

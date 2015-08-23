@@ -666,7 +666,6 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
   marked_color = GENERATION0;
   unmarked_color = GENERATION1;
   init_group_info();
-  init_global_bounds();
   init_realtime_gc();
 }
 
@@ -737,7 +736,7 @@ void *rtalloc_start_thread(void *arg) {
   // stackaddr is the LOWEST addressable byte of the stack
   // The stack pointer starts at stackaddr + stacksize!
   printf("Stackaddr is %p\n", stackaddr);
-  printf("Stacksize is %d\n", stacksize);
+  printf("Stacksize is %x\n", stacksize);
   threads[thread_index].stack_base = stackaddr;
   threads[thread_index].stack_size = stacksize;
   threads[thread_index].stack_bottom = (char *)  &stacksize;
@@ -756,11 +755,13 @@ void *rtalloc_start_thread(void *arg) {
 
 int new_thread(void *(*start_func) (void *), void *args) {
   pthread_t thread;
-  
+
+  pthread_mutex_lock(&total_threads_lock);
   if (total_threads < MAX_THREADS) {
-    // HEY! this isn't thread safe!
+    // HEY! this isn't thread safe! need a mutex for total_threads
     int index = total_threads;
     total_threads = total_threads + 1;
+    pthread_mutex_unlock(&total_threads_lock);
 
     START_THREAD_ARGS *start_args = malloc(sizeof(START_THREAD_ARGS));
     start_args->thread_index = index;
@@ -783,6 +784,7 @@ int new_thread(void *(*start_func) (void *), void *args) {
       return(index);
     }
   } else {
+    pthread_mutex_lock(&total_threads_lock);
     out_of_memory("Too many threads", MAX_THREADS);
   }
 }
