@@ -632,7 +632,7 @@ void full_gc() {
 
 void rtgc_loop() {
   while (1) {
-    while (0 == run_gc);
+    //while (0 == run_gc);
     printf("gc start...");
     fflush(stdout);
     full_gc();

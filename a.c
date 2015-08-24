@@ -157,8 +157,8 @@ void *start_word_count(void *arg) {
   int i = 0;
   while (i < 500) {
     char top;
-    //while(1);
-    usleep(10000);
+    while(1);
+    //usleep(10000);
     build_word_tree("redhead.txt");
     printf("Total words %d\n", walk_word_tree(root, 0));
     i = i + 1;
