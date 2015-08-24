@@ -26,6 +26,7 @@
 typedef unsigned long * LPTR;
 typedef unsigned char * BPTR;
 
+// HEY! why will first heap object always be scanned???
 extern BPTR first_partition_ptr; /* First heap object will always be scanned!*/
 extern BPTR last_partition_ptr;
 extern BPTR first_static_ptr;
@@ -107,7 +108,7 @@ typedef struct thread_info {
   long long *stack_base; /* This is the LOWEST addressable byte of the stack */
   int stack_size;
   char *stack_bottom; 	/* HIGHEST address seen when thread started */
-  long long *saved_stack_base;    /* This is the LOWEST addressable byte */
+  char *saved_stack_base;    /* This is the LOWEST addressable byte */
   int saved_stack_size;
 } THREAD_INFO;
 
@@ -134,6 +135,7 @@ int SXprint_page_info(int page_index);
 void SXprint_group_info(GPTR group);
 void SXprint_memory_summary(void);
 void full_gc();
+void rtgc_loop();
 void init_signals_for_rtgc();
 int stop_all_mutators_and_save_state();
 
@@ -192,4 +194,5 @@ extern char **global_roots;
 extern int total_global_roots;
 extern COUNTER stacks_copied_counter;
 extern pthread_mutex_t total_threads_lock;
-
+extern sem_t gc_semaphore;
+extern int run_gc;

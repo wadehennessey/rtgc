@@ -5,15 +5,17 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
-#include "compat.h"
-#include "mem-config.h"
-#include <pthread.h>
-#include "infoBits.h"
-#include <signal.h>
-#include "mem-internals.h"
-#include "allocate.h"
 #include <sys/mman.h>
 #include <sys/time.h>
+#include <semaphore.h>
+#include <signal.h>
+#include <pthread.h>
+#include "compat.h"
+#include "mem-config.h"
+#include "infoBits.h"
+#include "mem-internals.h"
+#include "allocate.h"
+
 
 // grows *DOWN*, not up
 void *SXbig_malloc(int bytes) {

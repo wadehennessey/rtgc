@@ -2,9 +2,6 @@
 
 /* Memory management configuration */
 
-// 128 meg default
-#define PARTITION_SIZE (1 << 27)
-
 // HEY! get rid of max_segments?
 #define MAX_HEAP_SEGMENTS 1
 #define MAX_STATIC_SEGMENTS 0

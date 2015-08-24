@@ -7,9 +7,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <semaphore.h>
 #include <pthread.h>
 #include <signal.h>
-#include <sys/time.h>
 #include "compat.h"
 #include "mem-config.h"
 #include "infoBits.h"
@@ -214,9 +216,6 @@ void scan_memory_segment(BPTR low, BPTR high) {
   }
 }
 
-/* Omitted inclusion of ObjStoreProtocol */
-/* Omitted all metadata walking and related code */
-
 static
 void scan_memory_segment_with_metadata(BPTR low, BPTR high, MetaData *md) {
   scan_memory_segment(low, high);
@@ -226,7 +225,7 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high, MetaData *md) {
    This is really just a specialized version of scan_memory_segment. */
 void * SXwrite_barrier(void *lhs_address, void *rhs) {
   if (memory_mutex == 1) {
-    printf("HEY! write_barrier called from withing GC!\n");
+    printf("HEY! write_barrier called from within GC!\n");
     Debugger();
   }
   if (enable_write_barrier) {
@@ -305,23 +304,19 @@ void *ptrset(void *p1, int data, int num_bytes) {
   return(p1);
 }
 
-static
-void save_thread_state() {
-  // need to use new signal based saving
-}
-
 void scan_thread_registers(int thread) {
-  // just scan saved regs that need it, not all 23 of them
+  // HEY! just scan saved regs that need it, not all 23 of them
+  BPTR registers = (BPTR) threads[thread].registers;
+  scan_memory_segment(registers, registers + (23 * sizeof(long)));
 }
 
 void scan_thread_saved_stack(int thread) {
-  BPTR top = 0;
-  BPTR bottom = 0;
+  BPTR top = (BPTR) threads[thread].saved_stack_base;
+  BPTR bottom = top + threads[thread].saved_stack_size;
   BPTR ptr_aligned_top = (BPTR) ((long) top & ~(GC_POINTER_ALIGNMENT - 1));
   scan_memory_segment(ptr_aligned_top, bottom);
 }
 
-// HEY! fix this to work with new thread struct
 void scan_thread(int thread) {
   scan_thread_registers(thread);
   scan_thread_saved_stack(thread);
@@ -329,16 +324,14 @@ void scan_thread(int thread) {
 
 static
 void scan_threads() {
-  int next_thread = 1;
   // HEY! need to pass along number of threads scanned
-  while (next_thread < total_threads) {
+  for (int next_thread = 1; next_thread < total_threads; next_thread++) {
     scan_thread(next_thread);
   }
 }
 
-
 static
-void scan_globals() {
+void scan_global_roots() {
   // HEY! fix this to
   // HEY! use global_roots pointer total_global_roots instead
   // scan_memory_segment(first_globals_ptr, last_globals_ptr);
@@ -373,7 +366,7 @@ void scan_root_set() {
   scan_threads();
   last_gc_state = "Scan Globals";
   UPDATE_VISUAL_STATE();
-  scan_globals();
+  scan_global_roots();
   last_gc_state = "Scan Statics";
   UPDATE_VISUAL_STATE();
   scan_static_space();
@@ -464,7 +457,7 @@ void flip() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     group = &groups[i];
     // No allocation allowed during a flip
-    pthread_mutex_lock(&(group->free_lock));
+    //pthread_mutex_lock(&(group->free_lock));
 		       
     group->gray = NULL;
     free = group->free;
@@ -496,14 +489,14 @@ void flip() {
     group->black_count = 0;
   }
 
-  pthread_mutex_lock(&flip_lock);
+  //pthread_mutex_lock(&flip_lock);
   SWAP(marked_color,unmarked_color);
-  save_thread_state();
-  pthread_mutex_unlock(&flip_lock);
+  stop_all_mutators_and_save_state();
+  //pthread_mutex_unlock(&flip_lock);
 
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     group = &groups[i];
-    pthread_mutex_unlock(&(group->free_lock));
+    //pthread_mutex_unlock(&(group->free_lock));
   }
 
 }
@@ -637,17 +630,19 @@ void full_gc() {
   UPDATE_VISUAL_STATE();
 }
 
-static 
-void gc_loop() {
+void rtgc_loop() {
   while (1) {
+    while (0 == run_gc);
+    printf("gc start...");
+    fflush(stdout);
     full_gc();
+    printf("gc end\n");
+    fflush(stdout);
+    run_gc = 0;
   }
 }
 
-
 int SXgc(void) {
-  //run_gc_to_completion();
-  //run_gc_to_completion();
   return(gc_count);
 }
 
@@ -665,4 +660,6 @@ void init_realtime_gc() {
   last_gc_state = "<initial state>";
   pthread_mutex_init(&flip_lock, NULL);
   pthread_mutex_init(&total_threads_lock, NULL);
+  sem_init(&gc_semaphore, 0, 0);
+  init_signals_for_rtgc();
 }

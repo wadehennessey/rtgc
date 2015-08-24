@@ -8,6 +8,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <semaphore.h>
 #include <pthread.h>
 #include <signal.h>
 #include "compat.h"
@@ -100,25 +101,38 @@ void SXinit_empty_pages(int first_page, int page_count, int type) {
 static
 int allocate_segment(int desired_bytes, int type) {
   int actual_bytes = 0;
-  BPTR first_segment_ptr;
+  BPTR first_segment_ptr, last_segment_ptr;
   int segment_page_count, first_segment_page;
   int segment = total_segments;
 
-  if ((desired_bytes > 0) && (total_segments < MAX_SEGMENTS)) {
+
+  if ((desired_bytes > 0) &&
+      (desired_bytes == (desired_bytes & ~PAGE_ALIGNMENT_MASK)) &&
+      (total_segments < MAX_SEGMENTS)) {
     first_segment_ptr = SXbig_malloc(desired_bytes);
 
     if (NULL != first_segment_ptr) {
       total_segments = total_segments + 1;
-      actual_bytes = desired_bytes - BYTES_PER_PAGE;
+      actual_bytes = desired_bytes;
       segment_page_count = actual_bytes / BYTES_PER_PAGE;
-      first_segment_ptr = ROUND_UP_TO_PAGE(first_segment_ptr);
-	    
       segments[segment].first_segment_ptr = first_segment_ptr;
-      segments[segment].last_segment_ptr = first_segment_ptr +
-	(segment_page_count * BYTES_PER_PAGE);
+      last_segment_ptr = first_segment_ptr +
+	                 (segment_page_count * BYTES_PER_PAGE);
+      segments[segment].last_segment_ptr = last_segment_ptr;
       segments[segment].segment_page_count = segment_page_count;
       segments[segment].type = type;
 
+      // for now we only support a single segment
+      if (0 == segment) {
+	first_partition_ptr = first_segment_ptr;
+	last_partition_ptr = last_segment_ptr;
+	total_partition_pages = ((last_partition_ptr - first_partition_ptr) /
+				 BYTES_PER_PAGE);
+      } else {
+	printf("Need code to adjust partition ptrs!\n");
+	Debugger();
+      }
+      
       first_segment_page = PTR_TO_PAGE_INDEX(first_segment_ptr);
       SXinit_empty_pages(first_segment_page, segment_page_count, type);
     }
@@ -208,9 +222,12 @@ void init_pages_for_group(GPTR group, int min_pages) {
 					    page_count * BYTES_PER_PAGE),
 					HEAP_SEGMENT);
     if (actual_bytes < byte_count) {
-      memory_mutex = 0; /* allow SXgc() to thread switch */
-      // HEY! need to fix this to wait for 2 full gc's to occur
-      SXgc();
+      memory_mutex = 0;
+      // gc can't flip without locking all group free locks
+      //pthread_mutex_unlock(&(group->free_lock));
+      run_gc = 1;
+      while (1 == run_gc);
+      //pthread_mutex_lock(&(group->free_lock));
       memory_mutex = 1;
     }
     base = allocate_empty_pages(page_count, min_page_count, group);
@@ -402,7 +419,7 @@ void * SXallocate(void * metadata, int size) {
 
   memory_mutex = 1;
 
-  pthread_mutex_lock(&(group->free_lock));
+  //pthread_mutex_lock(&(group->free_lock));
   if (group->free == NULL) {
     /* HEY! could unlock here and then lock again */
     init_pages_for_group(group,1);
@@ -413,11 +430,11 @@ void * SXallocate(void * metadata, int size) {
   new = group->free;
   group->free = GET_LINK_POINTER(new->next);
   group->green_count = group->green_count - 1;
-  pthread_mutex_unlock(&(group->free_lock));
+  //pthread_mutex_unlock(&(group->free_lock));
 
-  pthread_mutex_lock(&flip_lock);  
+  //pthread_mutex_lock(&flip_lock);  
   SET_COLOR(new,marked_color);	/* Must allocate black! */
-  pthread_mutex_unlock(&flip_lock);
+  //pthread_mutex_unlock(&flip_lock);
 
   // HEY! need a lock for this
   group->black_count = group->black_count + 1;
@@ -624,19 +641,9 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
   total_requested_objects = 0;
   BPTR p;
 
-  // Have to mmap all space we might ever use at one time
-  BPTR first_usable_ptr = SXbig_malloc(PARTITION_SIZE);
-  BPTR last_usable_ptr = first_usable_ptr + PARTITION_SIZE - 1;
-  total_segments = 1;
-  
-  first_partition_ptr = ROUND_DOWN_TO_PAGE(first_usable_ptr);
-  last_partition_ptr = ROUND_UP_TO_PAGE(last_usable_ptr);
-  total_partition_pages = ((last_partition_ptr - first_partition_ptr) /
-			   BYTES_PER_PAGE);
-  
   /* We malloc vectors here so that they are NOT part of the global
-     data segment, and thus will not be scanned. We don't want
-     the GC looking at itself! */
+     data segment, and thus will not be scanned if we decide to 
+     scan it. We don't want the GC looking at itself! */
   groups = malloc(sizeof(GROUP_INFO) * (MAX_GROUP_INDEX + 1));
   pages = malloc(sizeof(PAGE_INFO) * total_partition_pages);
   segments = malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
@@ -649,7 +656,8 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
   init_page_info();
   empty_pages = NULL;
   init_gc_thread();
-
+  total_segments = 0;
+  
   if ((static_size > 0) &&
       (allocate_segment(static_size, STATIC_SEGMENT) == 0)) {
     out_of_memory("Heap Memory Initialization", static_size/1024);
@@ -657,11 +665,9 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
   last_static_ptr = segments[0].last_segment_ptr;
   first_static_ptr = last_static_ptr;
 
-  /* we allocated the only heap segment at the start of this function
   if (allocate_segment(first_segment_bytes, HEAP_SEGMENT) == 0) {
     out_of_memory("Heap Memory allocation", first_segment_bytes/1024);
   }
-  */
   
   marked_color = GENERATION0;
   unmarked_color = GENERATION1;
@@ -729,7 +735,6 @@ void *rtalloc_start_thread(void *arg) {
 	 thread_index, &thread_index);
   self = pthread_self();
   threads[thread_index].pthread = self;
-  
   pthread_getattr_np(self, &attr);
   pthread_attr_getstack(&attr, &stackaddr, &stacksize);
   // We don't really need this info, but it might be nice for debugging
@@ -756,12 +761,12 @@ void *rtalloc_start_thread(void *arg) {
 int new_thread(void *(*start_func) (void *), void *args) {
   pthread_t thread;
 
-  pthread_mutex_lock(&total_threads_lock);
+  //pthread_mutex_lock(&total_threads_lock);
   if (total_threads < MAX_THREADS) {
     // HEY! this isn't thread safe! need a mutex for total_threads
     int index = total_threads;
     total_threads = total_threads + 1;
-    pthread_mutex_unlock(&total_threads_lock);
+    //pthread_mutex_unlock(&total_threads_lock);
 
     START_THREAD_ARGS *start_args = malloc(sizeof(START_THREAD_ARGS));
     start_args->thread_index = index;
@@ -784,7 +789,7 @@ int new_thread(void *(*start_func) (void *), void *args) {
       return(index);
     }
   } else {
-    pthread_mutex_lock(&total_threads_lock);
+    //pthread_mutex_lock(&total_threads_lock);
     out_of_memory("Too many threads", MAX_THREADS);
   }
 }

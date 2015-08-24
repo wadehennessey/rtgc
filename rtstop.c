@@ -7,16 +7,15 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/time.h>
+#include <semaphore.h>
+#include <signal.h>
 #include <pthread.h>
 #include "compat.h"
 #include "infoBits.h"
-#include <signal.h>
 #include "mem-config.h"
 #include "mem-internals.h"
 #include "allocate.h"
-#include <sys/time.h>
-#include <pthread.h>
-
 
 // see /usr/include/sys/ucontext.h for more details
 void print_registers(gregset_t *gregs) {
@@ -137,6 +136,7 @@ int stop_all_mutators_and_save_state() {
     pthread_kill(threads[thread].pthread,SIGUSR1);
   }
   counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
+  
   // all stacks should be copied at this point
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;

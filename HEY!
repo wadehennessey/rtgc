@@ -23,7 +23,16 @@ gdb> info signals
 gdb> handle 2 pass
 then continue lets me debug signal handler
 
-Make stack bottom and top char * again so diff is in bytes, not longs?
+use next instead of continue to switch to diff thread break points
 
-setup main to start build_word_tree thread,l
-then begin rtgc loop, no sleep/spin anymore
+Semaphores
+------------
+in alloc when out of memory:
+sem_post(&gc_semaphore);
+sem_wait(&gc_semaphore);	
+
+in rtgc_loop:
+sem_wait(&gc_semaphore);
+full_gc();
+sem_post(&gc_semaphore);
+------------

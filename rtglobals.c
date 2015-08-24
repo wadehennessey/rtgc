@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <signal.h>
+#include <semaphore.h>
 #include "compat.h"
 #include "mem-config.h"
 #include "infoBits.h"
@@ -52,3 +53,5 @@ pthread_key_t thread_index_key;
 pthread_mutex_t total_threads_lock;
 pthread_mutex_t flip_lock;
 COUNTER stacks_copied_counter;
+sem_t gc_semaphore;
+int run_gc = 0;

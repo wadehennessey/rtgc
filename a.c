@@ -8,14 +8,16 @@
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <semaphore.h>
+#include <sys/time.h>
+#include <signal.h>
+#include <pthread.h>
 #include "compat.h"
 #include "infoBits.h"
-#include <signal.h>
+
 #include "mem-config.h"
 #include "mem-internals.h"
 #include "allocate.h"
-#include <sys/time.h>
-#include <pthread.h>
 
 
 /* http://www.textfiles.com/etext/AUTHORS/DOYLE/ for text files */
@@ -155,9 +157,10 @@ void *start_word_count(void *arg) {
   int i = 0;
   while (i < 500) {
     char top;
+    //while(1);
+    usleep(10000);
     build_word_tree("redhead.txt");
     printf("Total words %d\n", walk_word_tree(root, 0));
-    //full_gc();
     i = i + 1;
   }
 }
@@ -166,7 +169,6 @@ int main(int argc, char *argv[]) {
   SXinit_heap(1 << 19, 0);
   register_global_root(&root);
   new_thread(&start_word_count, (void *) 0);
-  // replace with jump into gc loop
-  sleep(5000);
+  rtgc_loop();
 }
 
