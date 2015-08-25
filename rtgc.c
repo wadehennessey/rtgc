@@ -632,11 +632,11 @@ void full_gc() {
 
 void rtgc_loop() {
   while (1) {
-    //while (0 == run_gc);
+    while (0 == run_gc);
     printf("gc start...");
     fflush(stdout);
     full_gc();
-    printf("gc end\n");
+    printf("gc end - count %d\n", gc_count);
     fflush(stdout);
     run_gc = 0;
   }
@@ -662,4 +662,5 @@ void init_realtime_gc() {
   pthread_mutex_init(&total_threads_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);
   init_signals_for_rtgc();
+  counter_init(&stacks_copied_counter);
 }

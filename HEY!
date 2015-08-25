@@ -20,8 +20,8 @@ use #define _GNU_SOURCE for weird compile problems not seeing decls
 
 gdb> info signals
 
-gdb> handle 2 pass
-then continue lets me debug signal handler
+gdb> handle SIGUSR1 nostop
+causes gdb to no top on SIGUSR1
 
 use next instead of continue to switch to diff thread break points
 
@@ -36,3 +36,5 @@ sem_wait(&gc_semaphore);
 full_gc();
 sem_post(&gc_semaphore);
 ------------
+
+try gdb non-stop mode. Default is all-stop mode.

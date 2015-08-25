@@ -154,6 +154,7 @@ void SXcopy_regs_to_stack(BPTR regptr);
 void out_of_memory(char *space_name, int size);
 void register_global_root(void *root);
 void counter_init(COUNTER *c);
+void counter_zero(COUNTER *c);
 void counter_increment(COUNTER *c);
 void counter_wait_threshold(COUNTER *c, int threshold);
 

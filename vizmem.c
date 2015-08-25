@@ -64,6 +64,13 @@ void counter_init(COUNTER *c) {
   pthread_cond_init(&(c->cond), NULL);
 }
 
+void counter_zero(COUNTER *c) {
+  pthread_mutex_lock(&(c->lock));
+  c->count = 0;
+  pthread_cond_broadcast(&(c->cond));
+  pthread_mutex_unlock(&(c->lock));
+}
+ 
 void counter_increment(COUNTER *c) {
   pthread_mutex_lock(&(c->lock));
   // why can't we just say c->count = c->count + 1 ?

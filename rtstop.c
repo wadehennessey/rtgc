@@ -61,7 +61,6 @@ void print_registers(gregset_t *gregs) {
   context     -> ...ea40
  */
 void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
-  long stack_top;
   int thread_index;
 
   // we cannot be in the middle of an allocation at this point because
@@ -69,40 +68,31 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
   if (0 == (thread_index =  (long) pthread_getspecific(thread_index_key))) {
     printf("pthread_getspecific failed!\n");
   } else {
-    printf("Pausing thread %d on signal %d\n", thread_index, signum);
-    printf("stack is %p\n", &stack_top);
-    printf("siginfo is 0x%lx\n", siginfo);
-    printf("context is 0x%lx\n", context);
-    printf("sizeof(siginfo_t) is %x\n", sizeof(siginfo_t));
-    printf("sizeof(ucontext_t) is %x\n", sizeof(ucontext_t));
-    fflush(stdout);
+    //printf("Pausing thread %d on signal %d\n", thread_index, signum);
 
-    // HEY! correct for size of context, ucontent, and anything else
-    // we know about
-    printf("Addr of stack_top is %p\n", &stack_top);
-    long live_stack_size = threads[thread_index].stack_bottom - 
-                           (char *) &stack_top;
-    printf("live stack size is 0x%lx\n", live_stack_size);
-
-    // Be careful here, must copy from lowest to highest address
-    // in both real stack and saved stack
-    // This ends up inverting the stack so we can start scanning from
-    // lowest to highest address
-    memcpy(threads[thread_index].saved_stack_base,
-	   &stack_top,
-	   live_stack_size);
-    threads[thread_index].saved_stack_size = live_stack_size;
-
-    
     // Copy registers - NREGS is 23 on x86_64
     ucontext_t *ucontext = (ucontext_t *) context;
     mcontext_t *mcontext = &(ucontext->uc_mcontext);
     gregset_t *gregs = &(mcontext->gregs);
     memcpy(&(threads[thread_index].registers), gregs, sizeof(gregset_t));
-    //print_registers(&(threads[thread_index].registers));
 
+    // real interrupted stack pointer is saved in the RSP register
+    char *stack_top = (char *) (*gregs)[REG_RSP];
+    //printf("Saved stack bottom is %p\n", threads[thread_index].stack_bottom);
+    //printf("Interrupted stack_top is %p\n", stack_top);
+    long live_stack_size = threads[thread_index].stack_bottom - 
+                           stack_top;
+    //printf("live stack size is 0x%lx\n", live_stack_size);
+
+    // Be careful here, must copy from lowest to highest address
+    // in both real stack and saved stack
+    memcpy(threads[thread_index].saved_stack_base,
+	   &stack_top,
+	   live_stack_size);
+    threads[thread_index].saved_stack_size = live_stack_size;
+    
     counter_increment(&stacks_copied_counter);
-    printf("Resuming after signal\n");
+    //printf("Resuming after signal\n");
   }
 }
 
@@ -126,10 +116,10 @@ void init_signals_for_rtgc() {
 // Return total number of mutators stopped
 int stop_all_mutators_and_save_state() {  
   // stop the world and copy all stack and register state in each live thread
-  counter_init(&stacks_copied_counter);
   pthread_mutex_lock(&total_threads_lock);
   int total_threads_to_halt = total_threads - 1; /* omit gc thread */
   pthread_mutex_unlock(&total_threads_lock);
+  counter_zero(&stacks_copied_counter);
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;		// skip 0 - gc thread
     threads[thread].saved_stack_size = 0;
