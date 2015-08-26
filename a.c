@@ -150,19 +150,27 @@ int walk_word_tree(NODE *n, int verbose) {
   return(count);
 }
 
-#define HEAP_SIZE (1 << 19)
-#define STATIC_SIZE 0
+
+
+
 
 void *start_word_count(void *arg) {
   int i = 0;
   while (i < 500) {
     char top;
     while (0 == run_gc) {
+      // 1535 works at least 37k times
+      // 1536 runs a few 100 to a few 1000 times, then breaks
+      // 1537 breaks immed
+      for (int j = 0; j < 1536; j++)  {
+	char *word = SXallocate(SXnopointers, 7);
+      }
       run_gc = 1;
       printf("start_word set run_gc to 1\n");
       while(1 == run_gc);
     }
-    //usleep(10000);
+    usleep(10000);
+
     build_word_tree("redhead.txt");
     printf("Total words %d\n", walk_word_tree(root, 0));
     i = i + 1;

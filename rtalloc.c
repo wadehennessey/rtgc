@@ -126,10 +126,10 @@ int allocate_segment(int desired_bytes, int type) {
       if (0 == segment) {
 	first_partition_ptr = first_segment_ptr;
 	last_partition_ptr = last_segment_ptr;
+      } else {
 	total_partition_pages = ((last_partition_ptr - first_partition_ptr) /
 				 BYTES_PER_PAGE);
-      } else {
-	printf("Need code to adjust partition ptrs!\n");
+	printf("Need code to adjust partition ptrs and size!\n");
 	Debugger();
       }
       
