@@ -27,8 +27,6 @@ void * ptrcpy(void * p1, void * p2, int num_bytes);
 
 void * ptrset(void * p1, int data, int num_bytes);
 
-int SXgc(void);
-
 int SXlargestFreeHeapBlock(void);
 
 int SXstackAllocationSize(void * metadata, int size);
@@ -42,3 +40,6 @@ LPTR SXinitializeObject(void * metadata, void *base, int total_size, int real);
 void init_realtime_gc();
 
 int new_thread(void *(*start_func) (void *), void *args);
+
+int rtgc_count(void);
+

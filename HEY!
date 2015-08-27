@@ -36,36 +36,14 @@ full_gc();
 sem_post(&gc_semaphore);
 ------------
 
+# these go in .gdbinit
 handle SIGUSR1 nostop
 set non-stop on
 
 >set non-stop on
 >set non-stop off
 >show non-stop
-
 >interrupt     will stop the running thread
+>break a.c:166 if (j == 1535)
 
-cond break: >break a.c:166 if (j == 1535)
-
-thread[0] overwrite. to reproduce:
-
-PROBLEM:
---------
-break on j loop
-thread 2
-disp/x threads[0]
-disp j
-next 512
-when j == 256, step into allocate, watch overwrite before SXInitializeObject
-
-this overwrites begin of threads
-    page->bytes_used = page->bytes_used + group->size;
-
-total_partition_pages isn't known when we do this:
-  pages = malloc(sizeof(PAGE_INFO) * total_partition_pages)
-
-FIX:total_partition_pages = first_segment_bytes / 4096
-
-REMOVE in allocate_segment:
-	total_partition_pages = ((last_partition_ptr - first_partition_ptr) /
-				 BYTES_PER_PAGE);
+need empty_pages 

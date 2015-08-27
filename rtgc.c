@@ -181,29 +181,39 @@ int SXmake_object_gray(GCPTR current, BPTR raw) {
   return(group->size);
 }
 
+// HEY! this is manually inlined in several places
+// Should we just use this instead
+static inline
+void examine_pointer(BPTR ptr) {
+  if (IN_PARTITION(ptr)) {
+    int page_index = PTR_TO_PAGE_INDEX(ptr);
+    GPTR group = pages[page_index].group;
+    if (group > EXTERNAL_PAGE) {
+      GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
+      if WHITEP(gcptr) {
+	  SXmake_object_gray(gcptr, ptr); /* Pass in group info! */
+	}
+    } else {
+      if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
+	SXupdate_visual_fake_ptr_page(page_index);
+      }
+    }
+  }
+}
+
 /* Scan memory looking for *possible* pointers */
 void scan_memory_segment(BPTR low, BPTR high) {
-  BPTR next;
-  BPTR ptr;
-  GCPTR gcptr;
-  int page_index;
-  GPTR group;
-  int len;
-
-  len = high - low;
   /* if GC_POINTER_ALIGNMENT is < 4, avoid scanning potential pointers that
      extend past the end of this object */
   high = high - sizeof(LPTR) + 1;
-  /* Why is next initialized twice??? delete first one */
-  next = low;
-  for (next = low; next < high; next = next + GC_POINTER_ALIGNMENT) {
+  for (BPTR next = low; next < high; next = next + GC_POINTER_ALIGNMENT) {
     MAYBE_PAUSE_GC;
-    ptr = *((BPTR *) next);
+    BPTR ptr = *((BPTR *) next);
     if (IN_PARTITION(ptr)) {
-      page_index = PTR_TO_PAGE_INDEX(ptr);
-      group = pages[page_index].group;
+      int page_index = PTR_TO_PAGE_INDEX(ptr);
+      GPTR group = pages[page_index].group;
       if (group > EXTERNAL_PAGE) {
-	gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
+	GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
 	if WHITEP(gcptr) {
 	  SXmake_object_gray(gcptr, ptr); /* Pass in group info! */
 	}
@@ -225,23 +235,19 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high, MetaData *md) {
    This is really just a specialized version of scan_memory_segment. */
 void * SXwrite_barrier(void *lhs_address, void *rhs) {
   if (memory_mutex == 1) {
-    printf("HEY! write_barrier called from within GC!\n");
-    Debugger();
+    Debugger("HEY! write_barrier called from within GC!\n");
   }
   if (enable_write_barrier) {
-    BPTR object;
-    GCPTR gcptr;
-
-    if (ENABLE_VISUAL_MEMORY) START_CODE_TIMING;
-    object = *((BPTR *) lhs_address);
+    //if (ENABLE_VISUAL_MEMORY) START_CODE_TIMING;
+    BPTR object = *((BPTR *) lhs_address);
     if (IN_HEAP(object)) {
-      gcptr = interior_to_gcptr(object); 
+      GCPTR gcptr = interior_to_gcptr(object); 
       if WHITEP(gcptr) {
-	SXmake_object_gray(gcptr, (BPTR) -1);
-      }
+	  SXmake_object_gray(gcptr, (BPTR) -1);
+	}
     }
-    if (ENABLE_VISUAL_MEMORY)
-      END_CODE_TIMING(total_write_barrier_time_in_cycle);
+    //if (ENABLE_VISUAL_MEMORY) 
+    //END_CODE_TIMING(total_write_barrier_time_in_cycle);
   }
   return((void *) (*(LPTR)lhs_address = (long) rhs));
 }
@@ -276,7 +282,7 @@ void *  SXsafe_setfInit(void * lhs_address, void * rhs) {
     object = *((BPTR *) lhs_address);
     if (object != NULL) {
       /* if ((int) object != rhs) */
-      Debugger();
+      Debugger("SXsafe_setfInit problem\n");
     }
   }
   return((void *) (* (LPTR) lhs_address = (long) rhs));
@@ -329,12 +335,26 @@ void scan_threads() {
     scan_thread(next_thread);
   }
 }
-
+  
 static
 void scan_global_roots() {
-  // HEY! fix this to
-  // HEY! use global_roots pointer total_global_roots instead
-  // scan_memory_segment(first_globals_ptr, last_globals_ptr);
+  for (int i = 0; i < total_global_roots; i++) {
+    BPTR ptr =  *((BPTR *) *(global_roots + i));
+    if (IN_PARTITION(ptr)) {
+      int page_index = PTR_TO_PAGE_INDEX(ptr);
+      GPTR group = pages[page_index].group;
+      if (group > EXTERNAL_PAGE) {
+	GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
+	if WHITEP(gcptr) {
+	    SXmake_object_gray(gcptr, ptr); /* Pass in group info! */
+	  }
+      } else {
+	if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
+	  SXupdate_visual_fake_ptr_page(page_index);
+	}
+      }
+    }
+  }
 }
 
 static
@@ -390,7 +410,7 @@ void scan_object(GCPTR ptr, int total_size) {
     /* instance_metadata((SXobject) low); */
     scan_memory_segment_with_metadata(low,high,0);
     break;
-  default: Debugger();
+  default: Debugger(0);
   }
 }
 
@@ -457,7 +477,7 @@ void flip() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     group = &groups[i];
     // No allocation allowed during a flip
-    //pthread_mutex_lock(&(group->free_lock));
+    pthread_mutex_lock(&(group->free_lock));
 		       
     group->gray = NULL;
     free = group->free;
@@ -489,19 +509,19 @@ void flip() {
     group->black_count = 0;
   }
 
-  //pthread_mutex_lock(&flip_lock);
+  pthread_mutex_lock(&flip_lock);
   SWAP(marked_color,unmarked_color);
   stop_all_mutators_and_save_state();
-  //pthread_mutex_unlock(&flip_lock);
+  pthread_mutex_unlock(&flip_lock);
 
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     group = &groups[i];
-    //pthread_mutex_unlock(&(group->free_lock));
+    pthread_mutex_unlock(&(group->free_lock));
   }
 
 }
 
-/* WE need to change garbage color now so that conservative
+/* We need to change garbage color now so that conservative
    scanning doesn't start making free objects that look white turn gray! */
 static
 GCPTR recycle_group_garbage(GPTR group) {
@@ -521,7 +541,7 @@ GCPTR recycle_group_garbage(GPTR group) {
     }
     
     if (GET_STORAGE_CLASS(next) == SC_INSTANCE) {
-      SXobject obj = (SXobject) ((BPTR) next + 8);
+      //SXobject obj = (SXobject) ((BPTR) next + 8);
       //void (*finalize)(SXobject) = (*obj)->finalize;
       // HEY! fix how we get finalize method
       int *finalize;
@@ -552,7 +572,7 @@ GCPTR recycle_group_garbage(GPTR group) {
      frag free onto free list and coalesce 0 pages */
   if (count != group->white_count) {
     verify_all_groups();
-    Debugger();
+    Debugger(0);
   }
   /* Append garbage to free list. Not great for a VM system, but it's easier */
   if (last != NULL) {
@@ -619,7 +639,6 @@ void full_gc() {
   scan_root_set();
   scan_gray_set();
   
-  printf("*****HEY! doing full_gc********\n");
   enable_write_barrier = 0;
   recycle_all_garbage(0);
   enable_write_barrier = 1;
@@ -642,7 +661,7 @@ void rtgc_loop() {
   }
 }
 
-int SXgc(void) {
+int rtgc_count(void) {
   return(gc_count);
 }
 
@@ -660,6 +679,7 @@ void init_realtime_gc() {
   last_gc_state = "<initial state>";
   pthread_mutex_init(&flip_lock, NULL);
   pthread_mutex_init(&total_threads_lock, NULL);
+  pthread_mutex_init(&empty_pages_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);
   init_signals_for_rtgc();
   counter_init(&stacks_copied_counter);

@@ -31,13 +31,16 @@ void *SXbig_malloc(int bytes) {
 
 void out_of_memory(char *msg, int bytes_needed) {
   printf("out of memory %s %d\n", msg, bytes_needed);
-  Debugger();
+  Debugger(0);
 }
 
-static int zero = 1;
+static int zero = 0;
 static int debug;
 
-void Debugger() {
+void Debugger(char *msg) {
+  if (0 != msg) {
+    printf(msg);
+  }
   printf("Hey! rtgc called the debugger - fix me!\n");
   debug = 1 / zero;
 }

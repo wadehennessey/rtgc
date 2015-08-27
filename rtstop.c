@@ -131,8 +131,7 @@ int stop_all_mutators_and_save_state() {
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;
     if (0 == threads[thread].saved_stack_size) {
-      printf("Stack copy problem!");
-      Debugger();
+      Debugger("Stack copy problem!");
     }
   }
   printf("***All stacks copied!*****\n");

@@ -51,7 +51,9 @@ char *last_gc_state;
 pthread_key_t thread_index_key;
 
 pthread_mutex_t total_threads_lock;
-pthread_mutex_t flip_lock;
+pthread_mutex_t empty_pages_lock;
+
+pthread_mutex_t flip_lock;	/*  don't think we really need this */
 COUNTER stacks_copied_counter;
 sem_t gc_semaphore;
 int run_gc = 0;

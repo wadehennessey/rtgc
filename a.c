@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
@@ -23,17 +24,26 @@
 /* http://www.textfiles.com/etext/AUTHORS/DOYLE/ for text files */
 
 typedef struct node {
+  int *md;
   char *word;
   int count;
   struct node *lesser;
   struct node *greater;
 } NODE;
 
+NODE sample_node;
+
+int NODE_md[] = {offsetof(NODE, word),
+		 offsetof(NODE, lesser),
+		 offsetof(NODE, greater),
+		 -1};
+
 NODE *root;
 
 int node_count = 0;
 NODE *new_node(char *word, NODE *lesser, NODE *greater) {
   NODE *node = (NODE *) SXallocate(SXpointers, sizeof(NODE));
+  //NODE *node = (NODE *) SXallocate(NODE_md, sizeof(NODE));
   node->word = word;
   node->count = 1;
   setf_init(node->lesser, lesser);
@@ -131,6 +141,7 @@ NODE *build_word_tree(char *filename) {
     while (NULL != (word = read_word(f))) {
       insert_node(root, word);
     }
+    fclose(f);
   }
 }
 
@@ -156,21 +167,9 @@ int walk_word_tree(NODE *n, int verbose) {
 
 void *start_word_count(void *arg) {
   int i = 0;
-  while (i < 500) {
+  while (i < 5000) {
     char top;
-    while (0 == run_gc) {
-      // 1535 works at least 37k times
-      // 1536 runs a few 100 to a few 1000 times, then breaks
-      // 1537 breaks immed
-      for (int j = 0; j < 1536; j++)  {
-	char *word = SXallocate(SXnopointers, 7);
-      }
-      run_gc = 1;
-      printf("start_word set run_gc to 1\n");
-      while(1 == run_gc);
-    }
-    usleep(10000);
-
+    //usleep(10000);
     build_word_tree("redhead.txt");
     printf("Total words %d\n", walk_word_tree(root, 0));
     i = i + 1;

@@ -130,7 +130,7 @@ int allocate_segment(int desired_bytes, int type) {
 	total_partition_pages = ((last_partition_ptr - first_partition_ptr) /
 				 BYTES_PER_PAGE);
 	printf("Need code to adjust partition ptrs and size!\n");
-	Debugger();
+	Debugger(0);
       }
       
       first_segment_page = PTR_TO_PAGE_INDEX(first_segment_ptr);
@@ -144,16 +144,14 @@ static
 GCPTR allocate_empty_pages(int required_page_count,
 			   int min_page_count,
 			   GPTR group) {
-  HOLE_PTR next, prev, rest, best, best_prev;
-  GCPTR base;
   int remaining_page_count, best_remaining_page_count, next_page_index;
+  GCPTR base = NULL;
+  HOLE_PTR prev = NULL;
+  HOLE_PTR best = NULL;
+  HOLE_PTR best_prev = NULL;
 
-  next = empty_pages;
-  base = NULL;
-  prev = NULL;
-  best = NULL;
-  best_prev = NULL;
-
+  pthread_mutex_lock(&empty_pages_lock);
+  HOLE_PTR next = empty_pages;
   /* Search for a best fit hole */
   best_remaining_page_count = total_partition_pages + 1;
   while ((best_remaining_page_count > 0) && (next != NULL)) {
@@ -170,6 +168,7 @@ GCPTR allocate_empty_pages(int required_page_count,
   }
 
   if (best != NULL) {
+    HOLE_PTR rest;
     if (best_remaining_page_count == 0) {
       rest = best->next;
     } else {
@@ -197,6 +196,9 @@ GCPTR allocate_empty_pages(int required_page_count,
       /* commented out code omitted */
     }
   }
+  // HEY! should be able to move this to before page table init above
+  // just being safe/simple right now
+  pthread_mutex_unlock(&empty_pages_lock);
   return(base);
 }
 
@@ -223,11 +225,20 @@ void init_pages_for_group(GPTR group, int min_pages) {
 					HEAP_SEGMENT);
     if (actual_bytes < byte_count) {
       memory_mutex = 0;
-      // gc can't flip without locking all group free locks
-      //pthread_mutex_unlock(&(group->free_lock));
-      run_gc = 1;
-      while (1 == run_gc);
-      //pthread_mutex_lock(&(group->free_lock));
+      // atomic and concurrent gc can't flip without
+      // unlocking all group free locks	
+      pthread_mutex_unlock(&(group->free_lock));
+      if (1) {
+	// atomic gc
+	run_gc = 1;
+	while (1 == run_gc);
+      } else {
+	// concurrent gc
+	// need to wait until gc count increases by 2
+	// need to make gc_count a COUNTER counter instead of a lone int
+	Debugger(0);
+      }
+      pthread_mutex_lock(&(group->free_lock));
       memory_mutex = 1;
     }
     base = allocate_empty_pages(page_count, min_page_count, group);
@@ -278,16 +289,11 @@ GPTR allocationGroup(void * metadata, int size,
 	data_size = (size * (((MetaData *) metadata)->nBytes)) + sizeof(void *);
 	real_size = data_size + sizeof(GC_HEADER);
       } else {
-	if (size != 1) {
-	  printf("foo");
-	  printf("Error - you may not allocate %d instances\n", size);
-	}
-	// deleted some proxy checks that were here
-	//data_size = ((SXclass_o) metadata)->allocz;
-	real_size = data_size + sizeof(GC_HEADER);
+	Debugger("Error - you may not allocate instances\n");
       }
       break;
     }
+    
     group_index = size_to_group_index(real_size);
     if (group_index > MAX_GROUP_INDEX) {
       printf("%d exceeds the maximum object size\n", real_size);
@@ -313,7 +319,8 @@ int SXtotalFreeHeapSpace() {
   int free = 0;
   int index;
   HOLE_PTR next;
-  
+
+  pthread_mutex_lock(&empty_pages_lock);
   next = empty_pages;
   while (next != NULL) {
     free = free + (next->page_count * BYTES_PER_PAGE);
@@ -323,6 +330,7 @@ int SXtotalFreeHeapSpace() {
     int group_free = groups[index].green_count * groups[index].size;
     free = free + group_free;
   }
+  pthread_mutex_unlock(&empty_pages_lock);
   return(free);
 }
 
@@ -330,7 +338,8 @@ int SXlargestFreeHeapBlock() {
   int largest = 0;
   int index;
   HOLE_PTR next;
-  
+
+  pthread_mutex_lock(&empty_pages_lock);
   next = empty_pages;
   while (next != NULL) {
     largest = MAX(largest, next->page_count * BYTES_PER_PAGE);
@@ -346,6 +355,7 @@ int SXlargestFreeHeapBlock() {
       index = index - 1;
     }
   }
+  pthread_mutex_lock(&empty_pages_lock);
   return(largest);
 }
 
@@ -365,7 +375,7 @@ int SXtrueSize(void *ptr) {
 }
 
 LPTR SXInitializeObject(void *metadata, void *void_base,
-			 int total_size, int real_size) {
+			int total_size, int real_size) {
   LPTR base = void_base;
   int limit, i;
   GCPTR gcptr = (GCPTR) base;
@@ -411,15 +421,14 @@ void * SXallocate(void * metadata, int size) {
   GPTR group;
 
   if (memory_mutex) {
-    printf("ERROR! alloc within GC!\n");
-    Debugger();
+    Debugger("ERROR! alloc within GC!\n");
   }
 
   group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
 
   memory_mutex = 1;
 
-  //pthread_mutex_lock(&(group->free_lock));
+  pthread_mutex_lock(&(group->free_lock));
   if (group->free == NULL) {
     /* HEY! could unlock here and then lock again */
     init_pages_for_group(group,1);
@@ -430,7 +439,7 @@ void * SXallocate(void * metadata, int size) {
   new = group->free;
   group->free = GET_LINK_POINTER(new->next);
   group->green_count = group->green_count - 1;
-  //pthread_mutex_unlock(&(group->free_lock));
+  pthread_mutex_unlock(&(group->free_lock));
 
   //pthread_mutex_lock(&flip_lock);  
   SET_COLOR(new,marked_color);	/* Must allocate black! */
@@ -625,8 +634,7 @@ void init_gc_thread() {
 
 void register_global_root(void *root) {
   if (total_global_roots == MAX_GLOBAL_ROOTS) {
-    printf("global roots full!\n");
-    Debugger();
+    Debugger("global roots full!\n");
   } else {
     global_roots[total_global_roots] = (char *) root;
     total_global_roots = total_global_roots + 1;
@@ -644,6 +652,7 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
   /* We malloc vectors here so that they are NOT part of the global
      data segment, and thus will not be scanned if we decide to 
      scan it. We don't want the GC looking at itself! */
+  total_partition_pages = first_segment_bytes / BYTES_PER_PAGE;
   groups = malloc(sizeof(GROUP_INFO) * (MAX_GROUP_INDEX + 1));
   pages = malloc(sizeof(PAGE_INFO) * total_partition_pages);
   segments = malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
@@ -696,8 +705,7 @@ void verify_group(GPTR group) {
   if (black_count == group->black_count) {
     //printf("G %d, black count matches: %d\n", group->size, black_count);
   } else {
-    printf("Group black counts do not match!!!\n");
-    Debugger();
+    Debugger("Group black counts do not match!!!\n");
   }
 }
 
@@ -761,12 +769,12 @@ void *rtalloc_start_thread(void *arg) {
 int new_thread(void *(*start_func) (void *), void *args) {
   pthread_t thread;
 
-  //pthread_mutex_lock(&total_threads_lock);
+  pthread_mutex_lock(&total_threads_lock);
   if (total_threads < MAX_THREADS) {
     // HEY! this isn't thread safe! need a mutex for total_threads
     int index = total_threads;
     total_threads = total_threads + 1;
-    //pthread_mutex_unlock(&total_threads_lock);
+    pthread_mutex_unlock(&total_threads_lock);
 
     START_THREAD_ARGS *start_args = malloc(sizeof(START_THREAD_ARGS));
     start_args->thread_index = index;
@@ -779,8 +787,7 @@ int new_thread(void *(*start_func) (void *), void *args) {
 			    NULL, 
 			    rtalloc_start_thread,
 			    (void *) start_args)) {
-      printf("pthread_create failed!\n");
-      Debugger();
+      Debugger("pthread_create failed!\n");
     } else {
       while (0 == threads[index].saved_stack_base) {
 	// HEY! should do something smarter than busy wait
@@ -789,7 +796,7 @@ int new_thread(void *(*start_func) (void *), void *args) {
       return(index);
     }
   } else {
-    //pthread_mutex_lock(&total_threads_lock);
+    pthread_mutex_lock(&total_threads_lock);
     out_of_memory("Too many threads", MAX_THREADS);
   }
 }
