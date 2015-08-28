@@ -18,6 +18,8 @@
 #define PAGE_POWER 12	       /* x86_64 page size is normally 4096 */
 #define INTERIOR_PTR_RETENTION_LIMIT 512
 
+#define FLIP_SIGNAL SIGUSR1
+
 // HEY! use timersub instead and write timeval_to_double 
 #define ELAPSED_MILLISECONDS(start, delta) {struct timeval end; \
     gettimeofday(&end, 0); \

@@ -40,10 +40,9 @@ int size_to_group_index(int size) {
 
 static
 void init_group_info() {
-  int size, index;
-
+  int index;
   for (index = MIN_GROUP_INDEX; index <= MAX_GROUP_INDEX; index = index + 1) {
-    size = 1 << index;
+    int size = 1 << index;
     groups[index].size = size;
     groups[index].index = index;
     groups[index].free = NULL;
@@ -62,9 +61,7 @@ void init_group_info() {
 
 static 
 void init_page_info() {
-  int i;
-
-  for (i = 0; i < total_partition_pages; i++) {
+  for (int i = 0; i < total_partition_pages; i++) {
     /* Could put the next two in a per segment table to save memory */
     pages[i].base = NULL;
     pages[i].bytes_used = 0;
@@ -74,10 +71,7 @@ void init_page_info() {
 
 void SXinit_empty_pages(int first_page, int page_count, int type) {
   int last_page = first_page + page_count;
-  int i;
-  HOLE_PTR new_hole;
-
-  for (i = first_page; i < last_page; i++) {
+  for (int i = first_page; i < last_page; i++) {
     /* Could put the next two in a per segment table to save memory */
     pages[i].base = NULL;
     pages[i].bytes_used = 0;
@@ -87,7 +81,7 @@ void SXinit_empty_pages(int first_page, int page_count, int type) {
 
   if (type == HEAP_SEGMENT) {
     /* Add the pages to the front of the empty page list */
-    new_hole = (HOLE_PTR) PAGE_INDEX_TO_PTR(first_page);
+    HOLE_PTR new_hole = (HOLE_PTR) PAGE_INDEX_TO_PTR(first_page);
     new_hole->page_count = page_count;
     new_hole->next = empty_pages;
     empty_pages = new_hole;
@@ -104,7 +98,6 @@ int allocate_segment(int desired_bytes, int type) {
   BPTR first_segment_ptr, last_segment_ptr;
   int segment_page_count, first_segment_page;
   int segment = total_segments;
-
 
   if ((desired_bytes > 0) &&
       (desired_bytes == (desired_bytes & ~PAGE_ALIGNMENT_MASK)) &&
@@ -439,14 +432,15 @@ void * SXallocate(void * metadata, int size) {
   new = group->free;
   group->free = GET_LINK_POINTER(new->next);
   group->green_count = group->green_count - 1;
+  group->black_count = group->black_count + 1;
   pthread_mutex_unlock(&(group->free_lock));
 
-  //pthread_mutex_lock(&flip_lock);  
+  // No need for an explicit flip lock here. During a flip the gc will
+  // hold the green lock for each group, so no allocator can get here
+  // when marked_color is being changed.
   SET_COLOR(new,marked_color);	/* Must allocate black! */
-  //pthread_mutex_unlock(&flip_lock);
 
   // HEY! need a lock for this
-  group->black_count = group->black_count + 1;
   //verify_group(group);
   {
     int page_index = PTR_TO_PAGE_INDEX(new);

@@ -122,7 +122,6 @@ typedef struct counter {
 
 void scan_memory_segment(BPTR low, BPTR high);
 void scan_object(GCPTR ptr, int total_size);
-void SXscan_thread(SXobject thread);
 void *big_malloc(int size);
 GCPTR interior_to_gcptr(BPTR ptr);
 void SXinit_empty_pages(int first_page, int page_count, int type);
@@ -134,20 +133,14 @@ int SXprint_object_info(GCPTR ptr, int i);
 int SXprint_page_info(int page_index);
 void SXprint_group_info(GPTR group);
 void SXprint_memory_summary(void);
-void full_gc();
 void rtgc_loop();
 void init_signals_for_rtgc();
 int stop_all_mutators_and_save_state();
 
 
-BPTR SXgetStackBase(SXobject thread);
-BPTR SXgetStackTop(SXobject thread);
-BPTR SXthread_registers(SXobject thread, int *num_registers);
 int SXallocationTrueSize(void * metadata, int size);
-int SXtrueSize(void *ptr);
 void SXinit_heap(int default_heap_bytes, int static_size);
 void SXinit_realtime_gc(void);
-int SXmake_object_gray(GCPTR current, BPTR raw);
 void Debugger(char *msg);
 void * SXbig_malloc(int size);
 void SXcopy_regs_to_stack(BPTR regptr);
@@ -189,7 +182,6 @@ extern char *last_gc_state;
 extern double last_cycle_ms;
 extern double last_gc_ms;
 extern double last_write_barrier_ms;
-extern pthread_mutex_t flip_lock;
 extern pthread_key_t thread_index_key;
 extern char **global_roots;
 extern int total_global_roots;

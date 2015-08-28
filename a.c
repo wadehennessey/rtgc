@@ -169,11 +169,12 @@ void *start_word_count(void *arg) {
   int i = 0;
   while (i < 5000) {
     char top;
-    //usleep(10000);
+    //usleep(1000);
     build_word_tree("redhead.txt");
     printf("Total words %d\n", walk_word_tree(root, 0));
     i = i + 1;
   }
+  exit(1);
 }
 
 int main(int argc, char *argv[]) {

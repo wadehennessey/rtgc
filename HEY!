@@ -46,4 +46,13 @@ set non-stop on
 >interrupt     will stop the running thread
 >break a.c:166 if (j == 1535)
 
-need empty_pages 
+
+other profilers
+----------------
+perf ./a
+perf report
+
+
+Should free_lock cover free and free_last?
+
+

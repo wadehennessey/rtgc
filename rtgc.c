@@ -25,8 +25,6 @@
    malloc some structures */
 
 int gc_count;
-int next_thread; 		/* HEY! get rid of this...  */
-
 double total_gc_time_in_cycle;
 double max_increment_in_cycle;
 double total_write_barrier_time_in_cycle;
@@ -37,16 +35,16 @@ double last_write_barrier_ms;
 
 static
 void remove_object_from_free_list(GPTR group, GCPTR object) {
-  GCPTR prev, next;
-  
-  prev = GET_LINK_POINTER(object->prev);
-  next = GET_LINK_POINTER(object->next);
+  GCPTR prev = GET_LINK_POINTER(object->prev);
+  GCPTR next = GET_LINK_POINTER(object->next);
 
   if (object == group->free) {
-    group->free = next;
+    // caller must hold green lock from group to save
+    // us from repeatedly locking and unlocking for a page of objects
+    group->free = next;	       // must be locked
   }
   if (object == group->black) {
-    group->black = next;
+    group->black = next;       // safe to not lock
   }
 
   if (object == group->free_last) {
@@ -60,6 +58,7 @@ void remove_object_from_free_list(GPTR group, GCPTR object) {
     SET_LINK_POINTER(next->prev, prev);
   }
 
+  // must lock these
   group->green_count = group->green_count - 1;
   group->total_object_count = group->total_object_count - 1;
 }
@@ -88,21 +87,22 @@ void convert_free_to_empty_pages(int first_page, int page_count) {
   SXinit_empty_pages(first_page, page_count, HEAP_SEGMENT);
 }
 
+// should be no locking needed here - we're only identifying potentially
+// free pages that the allocator can't use yet because we haven't converted
+// them from free objects to a hole in the empty pages list.
 static
 void coalesce_segment_free_pages(int segment) {
-  int next_page_index, first_page_index, last_page_index, contig_count;
-
-  first_page_index = -1;
-  contig_count = 0;
-  next_page_index = PTR_TO_PAGE_INDEX(segments[segment].first_segment_ptr);
-  last_page_index = PTR_TO_PAGE_INDEX(segments[segment].last_segment_ptr);
+  int first_page_index = -1;
+  int contig_count = 0;
+  int next_page_index = PTR_TO_PAGE_INDEX(segments[segment].first_segment_ptr);
+  int last_page_index = PTR_TO_PAGE_INDEX(segments[segment].last_segment_ptr);
   while (next_page_index < last_page_index) {
     GPTR group = pages[next_page_index].group;
-    int total_pages = (group > (GPTR) 0) ?
+    int total_pages = (group > 0) ?
                       MAX(1, group->size / BYTES_PER_PAGE) :
                       1;
     int count_free_page = (group != EMPTY_PAGE) &&
-      (pages[next_page_index].bytes_used == 0);
+                          (pages[next_page_index].bytes_used == 0);
     if (count_free_page) {
       if (first_page_index == -1) {
 	first_page_index = next_page_index;
@@ -121,10 +121,7 @@ void coalesce_segment_free_pages(int segment) {
 
 static
 void coalesce_all_free_pages() {
-  int segment;
-
-  for (segment = 0; segment < total_segments; segment++) {
-    /* HEY! Put a MAYBE_PAUSE here */
+  for (int segment = 0; segment < total_segments; segment++) {
     if (segments[segment].type == HEAP_SEGMENT) {
       coalesce_segment_free_pages(segment);
     }
@@ -132,20 +129,16 @@ void coalesce_all_free_pages() {
 }
 
 /* HEY! pass in group info! */
-//static
+static
 int SXmake_object_gray(GCPTR current, BPTR raw) {
-  GCPTR prev;
-  GCPTR next;
-  GCPTR black;
-  GCPTR gray;
   GPTR group = PTR_TO_GROUP(current);
   BPTR header = (BPTR) current + sizeof(GC_HEADER);
   
   /* Only allow interior pointers to retain objects <= 1 page in size */
   if ((group->size <= INTERIOR_PTR_RETENTION_LIMIT) ||
       (((long) raw) == -1) || (raw == header)) {
-    prev = GET_LINK_POINTER(current->prev);
-    next = GET_LINK_POINTER(current->next);
+    GCPTR prev = GET_LINK_POINTER(current->prev);
+    GCPTR next = GET_LINK_POINTER(current->next);
 
     /* Remove current from WHITE space */
     if (current == group->white) {
@@ -161,7 +154,7 @@ int SXmake_object_gray(GCPTR current, BPTR raw) {
     /* Link current onto the end of the gray set. This give us a breadth
        first search when scanning the gray set (not that it matters) */
     SET_LINK_POINTER(current->prev, NULL);
-    gray = group->gray;
+    GCPTR gray = group->gray;
     if (gray == NULL) {
       SET_LINK_POINTER(current->next, group->black);
       if (group->black == NULL) {
@@ -179,26 +172,6 @@ int SXmake_object_gray(GCPTR current, BPTR raw) {
     group->white_count = group->white_count - 1;
   }
   return(group->size);
-}
-
-// HEY! this is manually inlined in several places
-// Should we just use this instead
-static inline
-void examine_pointer(BPTR ptr) {
-  if (IN_PARTITION(ptr)) {
-    int page_index = PTR_TO_PAGE_INDEX(ptr);
-    GPTR group = pages[page_index].group;
-    if (group > EXTERNAL_PAGE) {
-      GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
-      if WHITEP(gcptr) {
-	  SXmake_object_gray(gcptr, ptr); /* Pass in group info! */
-	}
-    } else {
-      if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
-	SXupdate_visual_fake_ptr_page(page_index);
-      }
-    }
-  }
 }
 
 /* Scan memory looking for *possible* pointers */
@@ -276,10 +249,8 @@ void * SXsafe_bash(void * lhs_address, void * rhs) {
 }
 
 void *  SXsafe_setfInit(void * lhs_address, void * rhs) {
-  BPTR object;
-
   if (CHECK_SETFINIT) {
-    object = *((BPTR *) lhs_address);
+    BPTR object = *((BPTR *) lhs_address);
     if (object != NULL) {
       /* if ((int) object != rhs) */
       Debugger("SXsafe_setfInit problem\n");
@@ -310,12 +281,14 @@ void *ptrset(void *p1, int data, int num_bytes) {
   return(p1);
 }
 
+static
 void scan_thread_registers(int thread) {
   // HEY! just scan saved regs that need it, not all 23 of them
   BPTR registers = (BPTR) threads[thread].registers;
   scan_memory_segment(registers, registers + (23 * sizeof(long)));
 }
 
+static
 void scan_thread_saved_stack(int thread) {
   BPTR top = (BPTR) threads[thread].saved_stack_base;
   BPTR bottom = top + threads[thread].saved_stack_size;
@@ -323,6 +296,7 @@ void scan_thread_saved_stack(int thread) {
   scan_memory_segment(ptr_aligned_top, bottom);
 }
 
+static
 void scan_thread(int thread) {
   scan_thread_registers(thread);
   scan_thread_saved_stack(thread);
@@ -359,18 +333,18 @@ void scan_global_roots() {
 
 static
 void scan_static_space() {
-  BPTR next, low, end;
-  GCPTR gcptr;
-  int size;
+  //  BPTR next, low, end;
+  //  GCPTR gcptr;
+  // int size;
 
-  next = first_static_ptr;
-  end = last_static_ptr;
+  BPTR next = first_static_ptr;
+  BPTR end = last_static_ptr;
   while (next < end) {
-    size = *((int *) next);
+    int size = *((int *) next);
+    BPTR low = next + sizeof(GCPTR);
     size = size >> LINK_INFO_BITS;
-    low = next + sizeof(GCPTR);
     next = low + size;
-    gcptr = (GCPTR) (low - sizeof(GC_HEADER));
+    GCPTR gcptr = (GCPTR) (low - sizeof(GC_HEADER));
     scan_object(gcptr, size + sizeof(GC_HEADER));
     /* Delete ME! HEY! Convert to common scanner with scan_object 
        if (GET_STORAGE_CLASS(gcptr) != SC_NOPOINTERS) {
@@ -461,9 +435,6 @@ void scan_gray_set() {
 
 static
 void flip() {
-  GPTR group;
-  GCPTR free, prev, free_last, black;
-
   MAYBE_PAUSE_GC;
   // Originally, at this point all mutator threads are stopped, and none of
   // them is in the middle of an SXallocate. We got this for free by being
@@ -472,30 +443,29 @@ void flip() {
   // Now, we have to acquire all group allocation locks to be sure no mutator
   // is allocating. Then we have to interrupt all mutators to stop them.
   // Then we can proceed to flip and then resume when the flip is done.
-  
   last_gc_state = "Flip";
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    group = &groups[i];
+    GPTR group = &groups[i];
     // No allocation allowed during a flip
     pthread_mutex_lock(&(group->free_lock));
 		       
     group->gray = NULL;
-    free = group->free;
+    GCPTR free = group->free;
     if (free != NULL) {
-      prev = GET_LINK_POINTER(free->prev);
+      GCPTR prev = GET_LINK_POINTER(free->prev);
       if (prev != NULL) {
 	SET_LINK_POINTER(prev->next,NULL); /* end black set */
       }
       SET_LINK_POINTER(free->prev,NULL);
     } else {
-      free_last = group->free_last;
+      GCPTR free_last = group->free_last;
       if (free_last != NULL) {
 	SET_LINK_POINTER(free_last->next,NULL); /* end black set */
       }
       group->free_last = NULL;
     }
     
-    black = group->black;
+    GCPTR black = group->black;
     if (black == NULL) {
       // HEY! Why can't black be null?
       //printf("YOW! black is NULL\n");
@@ -509,13 +479,13 @@ void flip() {
     group->black_count = 0;
   }
 
-  pthread_mutex_lock(&flip_lock);
+  // we can safely do this without an explicit lock because we're holding
+  // all the green_locks right now
   SWAP(marked_color,unmarked_color);
   stop_all_mutators_and_save_state();
-  pthread_mutex_unlock(&flip_lock);
 
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    group = &groups[i];
+    GPTR group = &groups[i];
     pthread_mutex_unlock(&(group->free_lock));
   }
 
@@ -525,12 +495,10 @@ void flip() {
    scanning doesn't start making free objects that look white turn gray! */
 static
 GCPTR recycle_group_garbage(GPTR group) {
-  GCPTR next;
-  GCPTR last;
   int count = 0;
+  GCPTR last = NULL;
+  GCPTR next = group->white;
 
-  last = NULL;
-  next = group->white;
   while (next != NULL) {
     int page_index = PTR_TO_PAGE_INDEX(next);
     PPTR page = &pages[page_index];
@@ -539,25 +507,8 @@ GCPTR recycle_group_garbage(GPTR group) {
     if (VISUAL_MEMORY_ON) {
       SXmaybe_update_visual_page(page_index,old_bytes_used,page->bytes_used);
     }
-    
-    if (GET_STORAGE_CLASS(next) == SC_INSTANCE) {
-      //SXobject obj = (SXobject) ((BPTR) next + 8);
-      //void (*finalize)(SXobject) = (*obj)->finalize;
-      // HEY! fix how we get finalize method
-      int *finalize;
-      if (finalize != NULL) {
-	/* UG! We're code that does SXgeneric dispatches, which may
-	   int turn try to allocate storage */
-	memory_mutex = 0;
-	if ((long) finalize != 1) {
-	  //finalize(obj);	/* Single-inheritance speed optimization */
-	} else {
-	  //SXfinalize(obj);	/* Mulitple-inheritance */
-	}
-	/* SXfinalize(obj); */
-	memory_mutex = 1;
-      }
-    }
+    /* Finalize code was here. Maybe add new finalize code some day */
+
     SET_COLOR(next,GREEN);
     if (DETECT_INVALID_REFS) {
       memset((BPTR) next + 8, INVALID_ADDRESS, group->size);
@@ -574,13 +525,15 @@ GCPTR recycle_group_garbage(GPTR group) {
     verify_all_groups();
     Debugger(0);
   }
-  /* Append garbage to free list. Not great for a VM system, but it's easier */
+  // Append garbage to free list. Not great for a VM system, but it's easier
   if (last != NULL) {
     SET_LINK_POINTER(last->next, NULL);
-    
+
+    // HEY! need free_lock for this
     if (group->free == NULL) {
       group->free = group->white;
     }
+    // HEY! need lock for this unless free_lock covers black too
     if (group->black == NULL) {
       group->black = group->white;
     }
@@ -599,10 +552,9 @@ GCPTR recycle_group_garbage(GPTR group) {
 
 static 
 void recycle_all_garbage() {
-  int i;
   last_gc_state = "Recycle Garbage";
   UPDATE_VISUAL_STATE();
-  for (i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     recycle_group_garbage(&groups[i]);
   }
   coalesce_all_free_pages();
@@ -633,6 +585,7 @@ void summarize_gc_cycle_stats() {
   if (VISUAL_MEMORY_ON) SXdraw_visual_gc_stats();
 }
 
+static
 void full_gc() {
   reset_gc_cycle_stats();
   flip();
@@ -666,7 +619,6 @@ int rtgc_count(void) {
 }
 
 void init_realtime_gc() {
-
   // the gc_flip signal handler uses this to find the thread_index of 
   // the mutator thread it is running on
   if (0 != pthread_key_create(&thread_index_key, NULL)) {
@@ -677,7 +629,6 @@ void init_realtime_gc() {
   gc_count = 0;
   visual_memory_on = 0;
   last_gc_state = "<initial state>";
-  pthread_mutex_init(&flip_lock, NULL);
   pthread_mutex_init(&total_threads_lock, NULL);
   pthread_mutex_init(&empty_pages_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);

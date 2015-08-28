@@ -101,7 +101,7 @@ void init_signals_for_rtgc() {
 
   sigset_t set;
   sigemptyset(&set);
-  sigaddset(&set, SIGUSR1);
+  sigaddset(&set, FLIP_SIGNAL);
   // sigprocmask seems to do the same thing as this
   if (0 != pthread_sigmask(SIG_UNBLOCK, 0, &set)) {
     printf("mask failed!");
@@ -110,7 +110,7 @@ void init_signals_for_rtgc() {
   memset(&signal_action, 0, sizeof(signal_action));
   signal_action.sa_sigaction = gc_flip_action_func;
   signal_action.sa_flags = SA_SIGINFO;
-  sigaction(SIGUSR1, &signal_action, 0);
+  sigaction(FLIP_SIGNAL, &signal_action, 0);
 }
 
 // Return total number of mutators stopped
@@ -123,7 +123,7 @@ int stop_all_mutators_and_save_state() {
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;		// skip 0 - gc thread
     threads[thread].saved_stack_size = 0;
-    pthread_kill(threads[thread].pthread,SIGUSR1);
+    pthread_kill(threads[thread].pthread, FLIP_SIGNAL);
   }
   counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
   
