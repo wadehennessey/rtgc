@@ -17,6 +17,8 @@
 #include "mem-internals.h"
 #include "allocate.h"
 
+static int mutators_may_proceed = 0;
+
 // see /usr/include/sys/ucontext.h for more details
 void print_registers(gregset_t *gregs) {
   printf("REG_R8 %llx\n", (*gregs)[REG_R8]);
@@ -92,6 +94,10 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
     threads[thread_index].saved_stack_size = live_stack_size;
     
     counter_increment(&stacks_copied_counter);
+
+    // Wait until all threads have stopped, and the write barrier
+    // has been turned back on
+    while (0 == mutators_may_proceed);
     //printf("Resuming after signal\n");
   }
 }
@@ -120,14 +126,17 @@ int stop_all_mutators_and_save_state() {
   int total_threads_to_halt = total_threads - 1; /* omit gc thread */
   pthread_mutex_unlock(&total_threads_lock);
   counter_zero(&stacks_copied_counter);
+  mutators_may_proceed = 0;
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;		// skip 0 - gc thread
     threads[thread].saved_stack_size = 0;
     pthread_kill(threads[thread].pthread, FLIP_SIGNAL);
   }
+  enable_write_barrier = 1;
+  mutators_may_proceed = 1;
   counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
   
-  // all stacks should be copied at this point
+  // all stacks and registers should be copied at this point
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;
     if (0 == threads[thread].saved_stack_size) {

@@ -53,6 +53,34 @@ perf ./a
 perf report
 
 
-Should free_lock cover free and free_last?
+NEXT:
+-----
+don't coalesce_all_free_pages
+
+Just put locking needed by SXallocate and SXwrite_barrier call chain in
+
+Then try concurrent mutate and rtgc
 
 
+
+
+Ideas
+-------
+try  partition bit vector for write barrier record?
+each bit reperesents the start of a 32 byte segment of the partition
+each 8 bytes (word) represents 64*32bytes = 2048 bytes of the partition
+so bit vector is 1/256 the size of the entire partition, which
+is about .4% overhead.
+
+clear bit vector or recyling memory and write barrier is off
+scan vector each time scan_gray_set runs out of gray object.
+when gray runs out and scan vector produces no more gray, we're done
+and can turn write barrier off recycle garbage, and clear bit vector.
+
+will need a lock to set bit, there is no test and set BIT.
+If we use a byte vector instead, then don't need a lock. Just test-and-set
+a byte. However, then we'll need a byte vector that's 1/32 the size
+of the partition. That's still only 3% overhead though.
+
+Could try copy on write stacks on flip? no memcpy that way
+would involve MAP_PRIVATE each stack to a file?

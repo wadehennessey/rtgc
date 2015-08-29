@@ -105,7 +105,7 @@ void insert_node(NODE *next, char *word) {
 	  } else {
 	    /* Insert new node between next and lesser */
 	    NODE *new = new_node(word, next->lesser, 0);
-	     SXwrite_barrier(&(next->lesser), new);
+	    SXwrite_barrier(&(next->lesser), new);
 	  }
 	}
       }
@@ -161,17 +161,13 @@ int walk_word_tree(NODE *n, int verbose) {
   return(count);
 }
 
-
-
-
-
 void *start_word_count(void *arg) {
   int i = 0;
-  while (i < 5000) {
+  while (i < 500) {
     char top;
     //usleep(1000);
     build_word_tree("redhead.txt");
-    printf("Total words %d\n", walk_word_tree(root, 0));
+    printf("%d: Total words %d\n", i, walk_word_tree(root, 0));
     i = i + 1;
   }
   exit(1);

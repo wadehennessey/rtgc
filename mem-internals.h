@@ -188,5 +188,20 @@ extern int total_global_roots;
 extern COUNTER stacks_copied_counter;
 extern pthread_mutex_t total_threads_lock;
 extern pthread_mutex_t empty_pages_lock;
+extern pthread_mutex_t make_object_gray_lock;
 extern sem_t gc_semaphore;
 extern int run_gc;
+
+#define ENABLE_LOCKING 1
+
+#if ENABLE_LOCKING
+#define LOCK(lock)  pthread_mutex_lock(&lock)
+#define UNLOCK(lock) pthread_mutex_unlock(&lock)
+#else
+#define LOCK(lock)  
+#define UNLOCK(lock)
+#endif
+
+#define WITH_LOCK(lock, code) LOCK(lock); \
+			      code \
+			      UNLOCK(lock);

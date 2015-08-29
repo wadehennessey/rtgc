@@ -188,7 +188,8 @@ void scan_memory_segment(BPTR low, BPTR high) {
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
 	if WHITEP(gcptr) {
-	  SXmake_object_gray(gcptr, ptr); /* Pass in group info! */
+	    WITH_LOCK(make_object_gray_lock,
+		      SXmake_object_gray(gcptr, ptr););
 	}
       } else {
 	if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
@@ -216,7 +217,8 @@ void * SXwrite_barrier(void *lhs_address, void *rhs) {
     if (IN_HEAP(object)) {
       GCPTR gcptr = interior_to_gcptr(object); 
       if WHITEP(gcptr) {
-	  SXmake_object_gray(gcptr, (BPTR) -1);
+	  WITH_LOCK(make_object_gray_lock,
+		    SXmake_object_gray(gcptr, (BPTR) -1););
 	}
     }
     //if (ENABLE_VISUAL_MEMORY) 
@@ -320,7 +322,8 @@ void scan_global_roots() {
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
 	if WHITEP(gcptr) {
-	    SXmake_object_gray(gcptr, ptr); /* Pass in group info! */
+	    WITH_LOCK(make_object_gray_lock,
+		      SXmake_object_gray(gcptr, ptr););
 	  }
       } else {
 	if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
@@ -474,13 +477,16 @@ void flip() {
       group->white = (GREENP(black) ? NULL : black);
     }
 
+    // Why do we make black point at free? Why not always make black
+    // null here?
     group->black = group->free;
     group->white_count = group->black_count;
     group->black_count = 0;
   }
 
   // we can safely do this without an explicit lock because we're holding
-  // all the green_locks right now
+  // all the green_locks right now, and the write barrier is off.
+  assert(0 == enable_write_barrier);
   SWAP(marked_color,unmarked_color);
   stop_all_mutators_and_save_state();
 
@@ -491,8 +497,9 @@ void flip() {
 
 }
 
-/* We need to change garbage color now so that conservative
-   scanning doesn't start making free objects that look white turn gray! */
+/* We need to change garbage color to green now so conservative
+   scanning in the next gc cyclse doesn't start making free objects 
+   that look white turn gray! */
 static
 GCPTR recycle_group_garbage(GPTR group) {
   int count = 0;
@@ -560,7 +567,6 @@ void recycle_all_garbage() {
   coalesce_all_free_pages();
 }
 
-
 static 
 void reset_gc_cycle_stats() {
   total_allocation_this_cycle = 0;
@@ -594,7 +600,8 @@ void full_gc() {
   
   enable_write_barrier = 0;
   recycle_all_garbage(0);
-  enable_write_barrier = 1;
+  // move this into 
+  // enable_write_barrier = 1;
 
   gc_count = gc_count + 1;
   summarize_gc_cycle_stats();
@@ -608,7 +615,7 @@ void rtgc_loop() {
     printf("gc start...");
     fflush(stdout);
     full_gc();
-    printf("gc end - count %d\n", gc_count);
+    printf("gc end - gc_count %d\n", gc_count);
     fflush(stdout);
     run_gc = 0;
   }
@@ -631,6 +638,7 @@ void init_realtime_gc() {
   last_gc_state = "<initial state>";
   pthread_mutex_init(&total_threads_lock, NULL);
   pthread_mutex_init(&empty_pages_lock, NULL);
+  pthread_mutex_init(&make_object_gray_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);
   init_signals_for_rtgc();
   counter_init(&stacks_copied_counter);

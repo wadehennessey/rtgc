@@ -229,7 +229,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	// concurrent gc
 	// need to wait until gc count increases by 2
 	// need to make gc_count a COUNTER counter instead of a lone int
-	Debugger(0);
+	Debugger("HEY! need to concurrent gc!");
       }
       pthread_mutex_lock(&(group->free_lock));
       memory_mutex = 1;
@@ -455,6 +455,7 @@ void * SXallocate(void * metadata, int size) {
   base = SXInitializeObject(metadata, new, group->size, real_size);
   
   /* optional stats */
+  // HEY! need an alloc_stats_lock
   total_requested_allocation = total_requested_allocation + data_size;
   total_allocation = total_allocation + group->size;
   total_requested_objects = total_requested_objects + 1;
@@ -680,8 +681,6 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
 
   
 
-/* Heap/Group verification */
-/* HEY! this isn't thread safe, needs locking */
 void verify_group(GPTR group) {
   int black_count = 0;
   GCPTR next = group->black;
@@ -703,6 +702,9 @@ void verify_group(GPTR group) {
   }
 }
 
+/* Heap/Group verification */
+/* HEY! this isn't thread safe, needs locking */
+// Better yet, just stop the gc when running this? 
 void verify_all_groups(void) {
   // iterate over all groups and verify each one
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {

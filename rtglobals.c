@@ -52,6 +52,10 @@ pthread_key_t thread_index_key;
 
 pthread_mutex_t total_threads_lock;
 pthread_mutex_t empty_pages_lock;
+// Only need this while mutators can make_object_gray in write barrier
+// on their thread. A mark vector based write barrier won't
+// need this because no real gc work will occur on mutator thread
+pthread_mutex_t make_object_gray_lock;
 
 COUNTER stacks_copied_counter;
 sem_t gc_semaphore;
