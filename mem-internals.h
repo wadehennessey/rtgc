@@ -114,6 +114,12 @@ typedef struct thread_info {
 
 typedef THREAD_INFO * TPTR;
 
+typedef struct start_thread_args {
+  int thread_index;
+  void *(*real_start_func) (void *);
+  char *real_args;
+} START_THREAD_ARGS;
+
 typedef struct counter {
   int count;
   pthread_mutex_t lock;

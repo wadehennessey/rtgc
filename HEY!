@@ -13,13 +13,10 @@ git commit -m "blah"
 
 git push
 
-move thread stopping stuff from a.c into rtgc.c
-
 use #define _GNU_SOURCE for weird compile problems not seeing decls
 
 
 gdb> info signals
-
 
 
 use next instead of continue to switch to diff thread break points
@@ -61,7 +58,8 @@ Just put locking needed by SXallocate and SXwrite_barrier call chain in
 
 Then try concurrent mutate and rtgc
 
-
+add
+wmctrl -r "emacs" -e 1,-1,-1,770,1010
 
 
 Ideas

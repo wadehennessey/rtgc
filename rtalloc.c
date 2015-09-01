@@ -54,7 +54,10 @@ void init_group_info() {
     groups[index].white_count = 0;
     groups[index].black_count = 0;
     groups[index].green_count = 0;
+    // Right free_last_lock isn't used
     pthread_mutex_init(&(groups[index].free_last_lock), NULL);
+    // free_lock owner owns: free, free_last and pages[i].bytes_used
+    // when pages[i].group is this group
     pthread_mutex_init(&(groups[index].free_lock), NULL);
   }
 }
@@ -132,7 +135,12 @@ int allocate_segment(int desired_bytes, int type) {
   }
   return(actual_bytes);
 }
-	  
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Everything above here should only be run at SXinit_heap time,
+// which completes before the gc ever gets a chance to start running.
+// Ignore locking issues until we decide to support more than 1 heap segment.
+
 static
 GCPTR allocate_empty_pages(int required_page_count,
 			   int min_page_count,
@@ -195,27 +203,23 @@ GCPTR allocate_empty_pages(int required_page_count,
   return(base);
 }
 
+// Whoever calls this function has to be holding he group->free_lock.
+// So far only SXallocate call this.
 static
 void init_pages_for_group(GPTR group, int min_pages) {
-  int i, num_objects, page_count, pages_per_object, byte_count;
-  int min_page_count;
-  GCPTR base;
-  GCPTR prev;
-  GCPTR current;
-  GCPTR next;
-
-  pages_per_object = group->size / BYTES_PER_PAGE;
-  byte_count = MAX(pages_per_object,min_pages) * BYTES_PER_PAGE;
-  num_objects = byte_count >> group->index;
-  page_count = (num_objects * group->size) / BYTES_PER_PAGE;
-  min_page_count = MAX(1, pages_per_object);
-  base = allocate_empty_pages(page_count, min_page_count, group);
+  int pages_per_object = group->size / BYTES_PER_PAGE;
+  int byte_count = MAX(pages_per_object,min_pages) * BYTES_PER_PAGE;
+  int num_objects = byte_count >> group->index;
+  int page_count = (num_objects * group->size) / BYTES_PER_PAGE;
+  int min_page_count = MAX(1, pages_per_object);
+  GCPTR base = allocate_empty_pages(page_count, min_page_count, group);
 
   /* HEY! do this somewhere else? */
   if (base == NULL) {
     int actual_bytes = allocate_segment(MAX(DEFAULT_HEAP_SEGMENT_SIZE,
 					    page_count * BYTES_PER_PAGE),
 					HEAP_SEGMENT);
+    assert(0 == actual_bytes);	// while we only have 1 segement
     if (actual_bytes < byte_count) {
       memory_mutex = 0;
       // atomic and concurrent gc can't flip without
@@ -238,18 +242,18 @@ void init_pages_for_group(GPTR group, int min_pages) {
   }
 
   if (base != NULL) {
-    next = base;
+    GCPTR next = base;
     if (group->free == NULL) {
       group->free = next;
     }
-    current = group->free_last;
+    GCPTR current = group->free_last;
     if (current == NULL) { 	/* No gray, black, or green objects? */
       group->black = next;
     } else {
       SET_LINK_POINTER(current->next,next);
     }
-    for (i = 0; i < num_objects; i++) {
-      prev = current;
+    for (int i = 0; i < num_objects; i++) {
+      GCPTR prev = current;
       current = next;
       next = (GCPTR) ((BPTR) current + group->size);
       current->prev = prev;
@@ -267,8 +271,6 @@ static
 GPTR allocationGroup(void * metadata, int size,
 		     int *return_data_size, int *return_real_size, void *return_metadata) {
   int data_size, real_size;
-  int group_index;
-  GPTR group;
 
   if (size >= 0) {
     switch ((long) metadata) {
@@ -287,7 +289,8 @@ GPTR allocationGroup(void * metadata, int size,
       break;
     }
     
-    group_index = size_to_group_index(real_size);
+    GPTR group;
+    int group_index = size_to_group_index(real_size);
     if (group_index > MAX_GROUP_INDEX) {
       printf("%d exceeds the maximum object size\n", real_size);
     } else {
@@ -300,71 +303,6 @@ GPTR allocationGroup(void * metadata, int size,
   } else {
     printf("Negative object size\n");
   }
-}
-
-int SXstackAllocationSize(void * metadata, int size) {
-  int data_size, real_size;
-  GPTR group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
-  return(real_size);
-}
-
-int SXtotalFreeHeapSpace() {
-  int free = 0;
-  int index;
-  HOLE_PTR next;
-
-  pthread_mutex_lock(&empty_pages_lock);
-  next = empty_pages;
-  while (next != NULL) {
-    free = free + (next->page_count * BYTES_PER_PAGE);
-    next = next->next;
-  }
-  for (index = MIN_GROUP_INDEX; index <= MAX_GROUP_INDEX; index = index + 1) {
-    int group_free = groups[index].green_count * groups[index].size;
-    free = free + group_free;
-  }
-  pthread_mutex_unlock(&empty_pages_lock);
-  return(free);
-}
-
-int SXlargestFreeHeapBlock() {
-  int largest = 0;
-  int index;
-  HOLE_PTR next;
-
-  pthread_mutex_lock(&empty_pages_lock);
-  next = empty_pages;
-  while (next != NULL) {
-    largest = MAX(largest, next->page_count * BYTES_PER_PAGE);
-    next = next->next;
-  }
-
-  index = MAX_GROUP_INDEX;
-  while (index >= MIN_GROUP_INDEX) {
-    if (groups[index].free != NULL) {
-      largest = MAX(largest, groups[index].size);
-      index = 0;
-    } else {
-      index = index - 1;
-    }
-  }
-  pthread_mutex_lock(&empty_pages_lock);
-  return(largest);
-}
-
-int SXallocationTrueSize(void * metadata, int size) {
-  int data_size, real_size;
-
-  GPTR group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
-  int md_size = ((metadata > SXpointers) ? 4 : 0);
-  return(group->size - sizeof(GC_HEADER) - md_size);
-}
-
-int SXtrueSize(void *ptr) {
-  GPTR group = PTR_TO_GROUP(ptr);
-  GCPTR gcptr = interior_to_gcptr(ptr);
-  int md_size = ((GET_STORAGE_CLASS(gcptr) > SC_POINTERS) ? 4 : 0);
-  return(group->size - sizeof(GC_HEADER) - md_size);
 }
 
 LPTR SXInitializeObject(void *metadata, void *void_base,
@@ -423,7 +361,6 @@ void * SXallocate(void * metadata, int size) {
 
   pthread_mutex_lock(&(group->free_lock));
   if (group->free == NULL) {
-    /* HEY! could unlock here and then lock again */
     init_pages_for_group(group,1);
     if (group->free == NULL) {
       out_of_memory("Heap", group->size);
@@ -437,10 +374,9 @@ void * SXallocate(void * metadata, int size) {
 
   // No need for an explicit flip lock here. During a flip the gc will
   // hold the green lock for each group, so no allocator can get here
-  // when marked_color is being changed.
+  // when the marked_color is being changed.
   SET_COLOR(new,marked_color);	/* Must allocate black! */
 
-  // HEY! need a lock for this
   //verify_group(group);
   {
     int page_index = PTR_TO_PAGE_INDEX(new);
@@ -454,136 +390,15 @@ void * SXallocate(void * metadata, int size) {
 
   base = SXInitializeObject(metadata, new, group->size, real_size);
   
-  /* optional stats */
-  // HEY! need an alloc_stats_lock
+  /* optional stats 
   total_requested_allocation = total_requested_allocation + data_size;
   total_allocation = total_allocation + group->size;
   total_requested_objects = total_requested_objects + 1;
   total_allocation_this_cycle = total_allocation_this_cycle + group->size;
-
+  */
   memory_mutex = 0;
 
   return(base);
-}
-
-void * SXstaticAllocate(void * metadata, int size) {
-  int real_size, data_size;
-  LPTR base;
-  GPTR group;
-  BPTR new_static_ptr;
-
-  /* We don't care about the group, just the GCHDR compatible real size */
-  group = allocationGroup(metadata, size, &data_size, &real_size, &metadata);
-  data_size = ROUND_UPTO_LONG_ALIGNMENT(data_size);
-  real_size = ROUND_UPTO_LONG_ALIGNMENT(real_size);
-
-  /* Static object headers are only 1 word long instead of 2 */
-  /* HEY! add 8 byte alignment??? */
-  new_static_ptr = first_static_ptr - (real_size - sizeof(GCPTR));
-  
-  if (new_static_ptr >= segments[0].first_segment_ptr) {
-    int first_static_page_index = PTR_TO_PAGE_INDEX(new_static_ptr);
-    int last_static_page_index = PTR_TO_PAGE_INDEX(first_static_ptr);
-    int index;
-
-    for (index = first_static_page_index; 
-	 index < last_static_page_index; 
-	 index++) {
-      pages[index].group = STATIC_PAGE;
-      if (VISUAL_MEMORY_ON) SXupdate_visual_page(index);
-    }
-    first_static_ptr = new_static_ptr;
-  } else {
-    /* HEY! allow more than 1 static segment? for now */
-    /* just dynamically allocate after booting */
-    return(SXallocate(metadata, size));
-  }
-
-  base = (LPTR) first_static_ptr;
-  *base = (data_size << LINK_INFO_BITS);
-  base = (LPTR) (((BPTR) base) - sizeof(GCPTR)); /* make base GCHDR compat */
-  base = SXInitializeObject(metadata, base, real_size, real_size);
-  return(base);
-}
-
-static void * copy_object(LPTR src, int storage_class, int current_size,
-			  int new_size, int group_size) {
-  BPTR new; LPTR new_base; LPTR src_base; int i;
-  int limit = current_size / sizeof(LPTR);
-
-  switch (storage_class) {
-  case SC_POINTERS:
-    new = SXallocate(SXpointers,new_size); break;
-  case SC_NOPOINTERS:
-    new = SXallocate(SXnopointers,new_size); break;
-  case SC_METADATA:
-    {
-      /* HEY! fix this to use current_size instead of group_size */
-      LPTR last_ptr = src + (group_size / 4) - 1;
-      void *md = (void*) *last_ptr;
-      if (METADATAP(md)) {
-	new = SXallocate(md, new_size);
-	limit = limit - 1;
-      } else {
-	printf("metadata based!\n");
-      }
-    }
-    break;
-  case SC_INSTANCE:
-    new = SXallocate(((GCMDPTR) src)->metadata,new_size);
-    break;
-  default: printf("Error! Uknown storage class in copy object\n");
-  }
-  new_base = (LPTR) HEAP_OBJECT_TO_GCPTR(new);
-
-  /* No need for write barrier calls since these are initializing writes */
-  for (i = 2; i < limit; i++) {
-    *(new_base + i) = *(src + i);
-  }
-  return(new);
-}
-
-void * SXreallocate(void *ptr, int new_size) {
-  GCPTR current;
-  GPTR group;
-  int storage_class;
-  
-  /* omitted debug message */
-  
-  if (IN_HEAP(ptr)) {
-    current = HEAP_OBJECT_TO_GCPTR(ptr);
-    storage_class = GET_STORAGE_CLASS(current);
-    group = pages[PTR_TO_PAGE_INDEX(current)].group;
-
-    /* HEY! subtrace only 8 if we don't have metadata */
-    if (new_size <= (group->size - 12)) {
-      /* HEY! If the object shrinks a lot, we should copy to a
-	 smaller group size. Then free the current object? Dangerous
-	 if other pointers to it exist. Maybe just let the GC find it.
-
-	 Also clear unused bits so we don't retain garbage! */
-      return(ptr);
-    } else {
-      return(copy_object((LPTR) current, storage_class, group->size, new_size,
-			 group->size));
-    }
-  } else {
-    if (IN_STATIC(ptr)) {
-      LPTR base = ((LPTR) ptr) - 1;
-      int current_size = (*base << LINK_INFO_BITS);
-      current = (GCPTR) (base - 1);
-      storage_class = GET_STORAGE_CLASS(current);
-      if (storage_class == SC_METADATA) {
-	printf("Cannot realloc static objects with metadata yet!!!\n");
-      }
-      // HEY! what should we be adding to current_size?
-      return(copy_object((LPTR) current, storage_class,
-			 current_size + sizeof(GC_HEADER),
-			 new_size, group->size));
-    } else {
-      printf("Cannot reallocate object\n");
-    }
-  }
 }
  
 /* HEY! make this a macro for speed eventually?
@@ -606,6 +421,83 @@ GCPTR interior_to_gcptr(BPTR ptr) {
   }
   return(gcptr);
 }
+
+void verify_group(GPTR group) {
+  int black_count = 0;
+  GCPTR next = group->black;
+
+  while ((next != group->free) && (next != group->free_last)) {
+    black_count = black_count + 1;
+    next = GET_LINK_POINTER(next->next);
+  }
+  if ((group->free != group->free_last) && (group->free_last == next)) {
+    /* free is the next object after the last black object
+       free is the last black object, so we count it here */
+    black_count = black_count + 1;
+  }
+
+  if (black_count == group->black_count) {
+    //printf("G %d, black count matches: %d\n", group->size, black_count);
+  } else {
+    Debugger("Group black counts do not match!!!\n");
+  }
+}
+
+/* Heap/Group verification */
+/* HEY! this isn't thread safe, needs locking */
+// Better yet, just stop the gc when running this? 
+void verify_all_groups(void) {
+  // iterate over all groups and verify each one
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    verify_group(&groups[i]);
+  }
+}
+
+int SXtotalFreeHeapSpace() {
+  int free = 0;
+  int index;
+
+  pthread_mutex_lock(&empty_pages_lock);
+  HOLE_PTR next = empty_pages;
+  while (next != NULL) {
+    free = free + (next->page_count * BYTES_PER_PAGE);
+    next = next->next;
+  }
+  for (index = MIN_GROUP_INDEX; index <= MAX_GROUP_INDEX; index = index + 1) {
+    int group_free = groups[index].green_count * groups[index].size;
+    free = free + group_free;
+  }
+  pthread_mutex_unlock(&empty_pages_lock);
+  return(free);
+}
+
+int SXlargestFreeHeapBlock() {
+  int largest = 0;
+
+  pthread_mutex_lock(&empty_pages_lock);
+  HOLE_PTR next = empty_pages;
+  while (next != NULL) {
+    largest = MAX(largest, next->page_count * BYTES_PER_PAGE);
+    next = next->next;
+  }
+
+  int index = MAX_GROUP_INDEX;
+  while (index >= MIN_GROUP_INDEX) {
+    if (groups[index].free != NULL) {
+      largest = MAX(largest, groups[index].size);
+      index = 0;
+    } else {
+      index = index - 1;
+    }
+  }
+  pthread_mutex_unlock(&empty_pages_lock);
+  return(largest);
+}
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Everything below here should run before the gc starts running
+// AS LONG AS WE HAVE ONLY 1 MUTATOR THREAD!
+
 
 // Thread 0 is considered the main stack that started this process.
 // The gc itself runs on Thread 0.
@@ -678,46 +570,6 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
   init_group_info();
   init_realtime_gc();
 }
-
-  
-
-void verify_group(GPTR group) {
-  int black_count = 0;
-  GCPTR next = group->black;
-
-  while ((next != group->free) && (next != group->free_last)) {
-    black_count = black_count + 1;
-    next = GET_LINK_POINTER(next->next);
-  }
-  if ((group->free != group->free_last) && (group->free_last == next)) {
-    /* free is the next object after the last black object
-       free is the last black object, so we count it here */
-    black_count = black_count + 1;
-  }
-
-  if (black_count == group->black_count) {
-    //printf("G %d, black count matches: %d\n", group->size, black_count);
-  } else {
-    Debugger("Group black counts do not match!!!\n");
-  }
-}
-
-/* Heap/Group verification */
-/* HEY! this isn't thread safe, needs locking */
-// Better yet, just stop the gc when running this? 
-void verify_all_groups(void) {
-  // iterate over all groups and verify each one
-  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    verify_group(&groups[i]);
-  }
-}
-
-typedef struct start_thread_args {
-  int thread_index;
-  void *(*real_start_func) (void *);
-  char *real_args;
-} START_THREAD_ARGS;
-
 
 void *rtalloc_start_thread(void *arg) {
   START_THREAD_ARGS *start_args = (START_THREAD_ARGS *) arg;
