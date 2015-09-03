@@ -87,46 +87,50 @@ char *read_word(FILE *f) {
   return(new_word(buffer, i));
 }
 
-void insert_node(NODE *next, char *word) {
+void insert_node(NODE *next, char *word, int level) {
   int result = strcmp(word, next->word);
-  if (0 == result) {
-    next->count = next->count + 1;
-  } else {
-    if (result < 0) {
-      if (NULL == next->lesser) {
-	setf_init(next->lesser, new_node(word, 0, 0));
-      } else {
-	result = strcmp(word, (next->lesser)->word);
-	if (0 == result) {
-	  (next->lesser)->count = (next->lesser)->count +1;
+  if (level < 1844) {
+    if (0 == result) {
+      next->count = next->count + 1;
+    } else {
+      if (result < 0) {
+	if (NULL == next->lesser) {
+	  setf_init(next->lesser, new_node(word, 0, 0));
 	} else {
-	  if (result < 0) {
-	    insert_node(next->lesser, word);
+	  result = strcmp(word, (next->lesser)->word);
+	  if (0 == result) {
+	    (next->lesser)->count = (next->lesser)->count +1;
 	  } else {
-	    /* Insert new node between next and lesser */
-	    NODE *new = new_node(word, next->lesser, 0);
-	    SXwrite_barrier(&(next->lesser), new);
+	    if (result < 0) {
+	      insert_node(next->lesser, word, level + 1);
+	    } else {
+	      /* Insert new node between next and lesser */
+	      NODE *new = new_node(word, next->lesser, 0);
+	      SXwrite_barrier(&(next->lesser), new);
+	    }
 	  }
 	}
-      }
-    } else {
-      if (NULL == next->greater) {
-	setf_init(next->greater, new_node(word, 0, 0));
       } else {
-	result = strcmp(word, (next->greater)->word);
-	if (0 == result) {
-	  (next->greater)->count = (next->greater)->count + 1;
+	if (NULL == next->greater) {
+	  setf_init(next->greater, new_node(word, 0, 0));
 	} else {
-	  if (result > 0) {
-	    insert_node(next->greater, word);
+	  result = strcmp(word, (next->greater)->word);
+	  if (0 == result) {
+	    (next->greater)->count = (next->greater)->count + 1;
 	  } else {
-	    /* Insert new node between next and greater */
-	    NODE *new = new_node(word, 0, next->greater);
-	    SXwrite_barrier(&(next->greater), new);
+	    if (result > 0) {
+	      insert_node(next->greater, word, level + 1);
+	    } else {
+	      /* Insert new node between next and greater */
+	      NODE *new = new_node(word, 0, next->greater);
+	      SXwrite_barrier(&(next->greater), new);
+	    }
 	  }
 	}
       }
     }
+  } else {
+    Debugger("Infinte recursion!\n");
   }
 }
 
@@ -139,7 +143,7 @@ NODE *build_word_tree(char *filename) {
     word = read_word(f);
     SXwrite_barrier(&root, new_node(word, NULL, NULL));
     while (NULL != (word = read_word(f))) {
-      insert_node(root, word);
+      insert_node(root, word, 0);
     }
     fclose(f);
   }

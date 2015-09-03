@@ -33,50 +33,58 @@ double last_cycle_ms;
 double last_gc_ms;
 double last_write_barrier_ms;
 
-/* HEY! pass in group info! */
+// HEY! pass in group info!
+// Whoever calls this functions needs to be holding the
+// make_object_gray lock! This is very coarse and can be improved upon
+// if we switch to a vector based write_barrier
 static
-int SXmake_object_gray(GCPTR current, BPTR raw) {
+void SXmake_object_gray(GCPTR current, BPTR raw) {
   GPTR group = PTR_TO_GROUP(current);
   BPTR header = (BPTR) current + sizeof(GC_HEADER);
-  
-  /* Only allow interior pointers to retain objects <= 1 page in size */
-  if ((group->size <= INTERIOR_PTR_RETENTION_LIMIT) ||
-      (((long) raw) == -1) || (raw == header)) {
-    GCPTR prev = GET_LINK_POINTER(current->prev);
-    GCPTR next = GET_LINK_POINTER(current->next);
 
-    /* Remove current from WHITE space */
-    if (current == group->white) {
-      group->white = next;
-    }
-    if (prev != NULL) {
-      SET_LINK_POINTER(prev->next, next);
-    }
-    if (next != NULL) {
-      SET_LINK_POINTER(next->prev, prev);
-    }
+  // Now that we are inside the make_object_gray_lock, be sure a race
+  // didn't already turn us gray
+  if (WHITEP(current)) {   
+    /* Only allow interior pointers to retain objects <= 1 page in size */
+    if ((group->size <= INTERIOR_PTR_RETENTION_LIMIT) ||
+	(((long) raw) == -1) || (raw == header)) {
+      GCPTR prev = GET_LINK_POINTER(current->prev);
+      GCPTR next = GET_LINK_POINTER(current->next);
 
-    /* Link current onto the end of the gray set. This give us a breadth
-       first search when scanning the gray set (not that it matters) */
-    SET_LINK_POINTER(current->prev, NULL);
-    GCPTR gray = group->gray;
-    if (gray == NULL) {
-      SET_LINK_POINTER(current->next, group->black);
-      if (group->black == NULL) {
-	group->black = current;
-	group->free_last = current;
-      } else {
-	SET_LINK_POINTER((group->black)->prev, current);
+      /* Remove current from WHITE space */
+      if (current == group->white) {
+	group->white = next;
       }
-    } else {
-      SET_LINK_POINTER(current->next, gray);
-      SET_LINK_POINTER(gray->prev, current);
+      if (prev != NULL) {
+	SET_LINK_POINTER(prev->next, next);
+      }
+      if (next != NULL) {
+	SET_LINK_POINTER(next->prev, prev);
+      }
+
+      /* Link current onto the end of the gray set. This give us a breadth
+	 first search when scanning the gray set (not that it matters) */
+      SET_LINK_POINTER(current->prev, NULL);
+      GCPTR gray = group->gray;
+      if (gray == NULL) {
+	SET_LINK_POINTER(current->next, group->black);
+	if (group->black == NULL) {
+	  group->black = current;
+	  group->free_last = current;
+	} else {
+	  SET_LINK_POINTER((group->black)->prev, current);
+	}
+      } else {
+	SET_LINK_POINTER(current->next, gray);
+	SET_LINK_POINTER(gray->prev, current);
+      }
+      assert(WHITEP(current));
+      SET_COLOR(current, GRAY);
+      group->gray = current;
+      assert(group->white_count > 0);
+      group->white_count = group->white_count - 1;
     }
-    SET_COLOR(current, GRAY);
-    group->gray = current;
-    group->white_count = group->white_count - 1;
   }
-  return(group->size);
 }
 
 /* Scan memory looking for *possible* pointers */
@@ -123,6 +131,7 @@ void * SXwrite_barrier(void *lhs_address, void *rhs) {
       GCPTR gcptr = interior_to_gcptr(object); 
       if WHITEP(gcptr) {
 	  WITH_LOCK(make_object_gray_lock,
+		    // HEY! why not pass object instead of -1 as raw ptr
 		    SXmake_object_gray(gcptr, (BPTR) -1););
 	}
     }
@@ -299,9 +308,10 @@ void scan_object(GCPTR ptr, int total_size) {
 static
 void scan_object_with_group(GCPTR ptr, GPTR group) {
   scan_object(ptr, group->size);
-  SET_COLOR(ptr,marked_color);
-  group->black = ptr;
-  group->black_count = group->black_count + 1;
+  WITH_LOCK(group->black_count_lock,
+	    SET_COLOR(ptr,marked_color);
+	    group->black_count = group->black_count + 1;
+	    group->black = ptr;);
 }
 
 /* HEY! Fix this up now that it's not continuation based... */
@@ -375,22 +385,22 @@ void flip() {
     
     GCPTR black = group->black;
     if (black == NULL) {
-      // HEY! Why can't black be null?
-      //printf("YOW! black is NULL\n");
+      // HEY! Why can't black be null? it is when the gc starts
+      //Debugger("YOW! black is NULL\n");
     } else {
-      // HEY! this was unconditional before - why?
       group->white = (GREENP(black) ? NULL : black);
     }
-
+    
     // Why do we make black point at free? Why not always make black
     // null here?
     group->black = group->free;
+    assert(group->black_count >= 0);
     group->white_count = group->black_count;
     group->black_count = 0;
   }
 
   // we can safely do this without an explicit lock because we're holding
-  // all the green_locks right now, and the write barrier is off.
+  // all the free_locks right now, and the write barrier is off.
   assert(0 == enable_write_barrier);
   SWAP(marked_color,unmarked_color);
   stop_all_mutators_and_save_state();
@@ -402,7 +412,8 @@ void flip() {
 
 }
 
-/* We need to change garbage color to green now so conservative
+/* The alloc counter part to this function init_pages_for_group
+   We need to change garbage color to green now so conservative
    scanning in the next gc cyclse doesn't start making free objects 
    that look white turn gray! */
 static
@@ -413,9 +424,8 @@ GCPTR recycle_group_garbage(GPTR group) {
 
   // HEY! need some locking here. Allocation changes free, free_last and
   // bytes_used too. Seems too coarse to just hold free_lock for entire
-  // group recyce, but we'll start off that way to be simple
-  // we deadlock when we acquire free_lock here
-  // pthread_mutex_lock(&(group->free_lock));
+  // group recycle, but we'll start off that way to be simple.
+  pthread_mutex_lock(&(group->free_lock));
   while (next != NULL) {
     int page_index = PTR_TO_PAGE_INDEX(next);
     PPTR page = &pages[page_index];
@@ -432,6 +442,7 @@ GCPTR recycle_group_garbage(GPTR group) {
     }
     last = next;
     next = GET_LINK_POINTER(next->next);
+    assert(count >= 0);
     count = count + 1;
     MAYBE_PAUSE_GC;
   }
@@ -439,8 +450,8 @@ GCPTR recycle_group_garbage(GPTR group) {
   /* HEY! could unlink free obj on pages whoe count is 0. Then hook remaining
      frag free onto free list and coalesce 0 pages */
   if (count != group->white_count) {
-    verify_all_groups();
-    Debugger(0);
+    //verify_all_groups();
+    Debugger("group->white_count doesn't equal actual count");
   }
   // Append garbage to free list. Not great for a VM system, but it's easier
   if (last != NULL) {
@@ -463,7 +474,7 @@ GCPTR recycle_group_garbage(GPTR group) {
   }
   group->white = NULL;
   group->white_count = 0;
-  //pthread_mutex_lock(&(group->free_lock));
+  pthread_mutex_unlock(&(group->free_lock));
   return(last);
 }
 
@@ -503,31 +514,31 @@ void summarize_gc_cycle_stats() {
 
 static
 void full_gc() {
-  reset_gc_cycle_stats();
+  //reset_gc_cycle_stats();
   flip();
   scan_root_set();
   scan_gray_set();
   
   enable_write_barrier = 0;
-  recycle_all_garbage(0);
+  recycle_all_garbage();
   // move this into 
   // enable_write_barrier = 1;
 
   gc_count = gc_count + 1;
-  summarize_gc_cycle_stats();
-  last_gc_state = "Cycle Complete";
-  UPDATE_VISUAL_STATE();
+  //summarize_gc_cycle_stats();
+  //last_gc_state = "Cycle Complete";
+  //UPDATE_VISUAL_STATE();
 }
 
 void rtgc_loop() {
   while (1) {
-    while (0 == run_gc);
+    if (1 == atomic_gc) while (0 == run_gc);
     printf("gc start...");
     fflush(stdout);
     full_gc();
     printf("gc end - gc_count %d\n", gc_count);
     fflush(stdout);
-    run_gc = 0;
+    if (1 == atomic_gc) run_gc = 0;
   }
 }
 
@@ -542,6 +553,7 @@ void init_realtime_gc() {
     printf("thread_index_key create failed!\n");
   }
 
+  atomic_gc = 0;
   total_global_roots = 0;
   gc_count = 0;
   visual_memory_on = 0;

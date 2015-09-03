@@ -74,8 +74,9 @@ typedef struct group_info {
   int black_count;		/* used in rtgc and rtalloc */
   int green_count;		/* used in rtgc and rtalloc */
 
-  pthread_mutex_t free_last_lock;	/* used in rtgc and rtalloc */
   pthread_mutex_t free_lock;	/* used in rtgc and rtalloc */
+  pthread_mutex_t black_count_lock;	/* used in rtgc and rtalloc */
+
 } GROUP_INFO;
 
 typedef GROUP_INFO * GPTR;
@@ -197,6 +198,7 @@ extern pthread_mutex_t empty_pages_lock;
 extern pthread_mutex_t make_object_gray_lock;
 extern sem_t gc_semaphore;
 extern int run_gc;
+extern int atomic_gc;
 
 #define ENABLE_LOCKING 1
 

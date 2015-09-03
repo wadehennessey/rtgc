@@ -60,3 +60,4 @@ pthread_mutex_t make_object_gray_lock;
 COUNTER stacks_copied_counter;
 sem_t gc_semaphore;
 int run_gc = 0;
+int atomic_gc = 1;

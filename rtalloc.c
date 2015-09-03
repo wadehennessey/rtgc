@@ -8,6 +8,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <unistd.h>
 #include <semaphore.h>
 #include <pthread.h>
 #include <signal.h>
@@ -54,8 +55,8 @@ void init_group_info() {
     groups[index].white_count = 0;
     groups[index].black_count = 0;
     groups[index].green_count = 0;
-    // Right free_last_lock isn't used
-    pthread_mutex_init(&(groups[index].free_last_lock), NULL);
+    // Right now free_last_lock isn't used
+    pthread_mutex_init(&(groups[index].black_count_lock), NULL);
     // free_lock owner owns: free, free_last and pages[i].bytes_used
     // when pages[i].group is this group
     pthread_mutex_init(&(groups[index].free_lock), NULL);
@@ -203,6 +204,8 @@ GCPTR allocate_empty_pages(int required_page_count,
   return(base);
 }
 
+// The gc counter part to this function is recycle_group_garbage.
+// We could try to unify the 
 // Whoever calls this function has to be holding he group->free_lock.
 // So far only SXallocate call this.
 static
@@ -225,7 +228,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
       // atomic and concurrent gc can't flip without
       // unlocking all group free locks	
       pthread_mutex_unlock(&(group->free_lock));
-      if (1) {
+      if (atomic_gc) {
 	// atomic gc
 	run_gc = 1;
 	while (1 == run_gc);
@@ -233,7 +236,8 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	// concurrent gc
 	// need to wait until gc count increases by 2
 	// need to make gc_count a COUNTER counter instead of a lone int
-	Debugger("HEY! need to concurrent gc!");
+	sleep(1);		/* fake it with a sleep */
+	assert(NULL != group->free);
       }
       pthread_mutex_lock(&(group->free_lock));
       memory_mutex = 1;
@@ -243,9 +247,9 @@ void init_pages_for_group(GPTR group, int min_pages) {
 
   if (base != NULL) {
     GCPTR next = base;
-    if (group->free == NULL) {
-      group->free = next;
-    }
+    assert(NULL == group->free);
+    // HEY! Remove this test and just do the free assignment
+    group->free = next;
     GCPTR current = group->free_last;
     if (current == NULL) { 	/* No gray, black, or green objects? */
       group->black = next;
@@ -369,8 +373,8 @@ void * SXallocate(void * metadata, int size) {
   new = group->free;
   group->free = GET_LINK_POINTER(new->next);
   group->green_count = group->green_count - 1;
-  group->black_count = group->black_count + 1;
-  pthread_mutex_unlock(&(group->free_lock));
+  WITH_LOCK(group->black_count_lock,
+	    group->black_count = group->black_count + 1;)
 
   // No need for an explicit flip lock here. During a flip the gc will
   // hold the green lock for each group, so no allocator can get here
@@ -387,7 +391,8 @@ void * SXallocate(void * metadata, int size) {
       SXmaybe_update_visual_page(page_index,old_bytes_used,page->bytes_used);
     }
   }
-
+  pthread_mutex_unlock(&(group->free_lock));
+  
   base = SXInitializeObject(metadata, new, group->size, real_size);
   
   /* optional stats 
@@ -397,7 +402,6 @@ void * SXallocate(void * metadata, int size) {
   total_allocation_this_cycle = total_allocation_this_cycle + group->size;
   */
   memory_mutex = 0;
-
   return(base);
 }
  
@@ -435,7 +439,6 @@ void verify_group(GPTR group) {
        free is the last black object, so we count it here */
     black_count = black_count + 1;
   }
-
   if (black_count == group->black_count) {
     //printf("G %d, black count matches: %d\n", group->size, black_count);
   } else {
@@ -443,13 +446,25 @@ void verify_group(GPTR group) {
   }
 }
 
-/* Heap/Group verification */
-/* HEY! this isn't thread safe, needs locking */
-// Better yet, just stop the gc when running this? 
+// Heap/Group verification
+// could try using SIGSTOP and SIGCONT to stop black changes instead
+// locks.
 void verify_all_groups(void) {
+  // Don't allow black state to change
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    GPTR group = &groups[i];
+    pthread_mutex_lock(&(group->free_lock));
+    pthread_mutex_lock(&(group->black_count_lock));
+  }
   // iterate over all groups and verify each one
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     verify_group(&groups[i]);
+  }
+  // allow black state to change again
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    GPTR group = &groups[i];
+    pthread_mutex_unlock(&(group->free_lock));
+    pthread_mutex_unlock(&(group->black_count_lock));
   }
 }
 

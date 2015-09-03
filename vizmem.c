@@ -40,8 +40,10 @@ static int debug;
 void Debugger(char *msg) {
   if (0 != msg) {
     printf(msg);
+  } else {
+    printf("Hey! rtgc called the debugger - fix me!\n");
   }
-  printf("Hey! rtgc called the debugger - fix me!\n");
+  fflush(stdout);
   debug = 1 / zero;
 }
 

@@ -52,8 +52,6 @@ perf report
 
 NEXT:
 -----
-don't coalesce_all_free_pages
-
 Just put locking needed by SXallocate and SXwrite_barrier call chain in
 
 Then try concurrent mutate and rtgc
@@ -82,3 +80,12 @@ of the partition. That's still only 3% overhead though.
 
 Could try copy on write stacks on flip? no memcpy that way
 would involve MAP_PRIVATE each stack to a file?
+
+
+
+latest:
+
+check if locking need in make_object_gray and
+we set
+group->black
+group->free_last
