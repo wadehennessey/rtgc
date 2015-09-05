@@ -205,8 +205,8 @@ GCPTR allocate_empty_pages(int required_page_count,
 }
 
 // The gc counter part to this function is recycle_group_garbage.
-// We could try to unify the 
-// Whoever calls this function has to be holding he group->free_lock.
+// We could try to unify the small common part.
+// Whoever calls this function has to be holding the group->free_lock.
 // So far only SXallocate call this.
 static
 void init_pages_for_group(GPTR group, int min_pages) {
@@ -248,8 +248,14 @@ void init_pages_for_group(GPTR group, int min_pages) {
   if (base != NULL) {
     GCPTR next = base;
     assert(NULL == group->free);
-    // HEY! Remove this test and just do the free assignment
     group->free = next;
+    // We conflict with make_object_gray and need to lock
+    // access to group->black and group->free_last
+    // Should make this locking finer grained, since we only
+    // care about group pointers here, but make_object_gray
+    // is a global lock serializing a core part of the gc.
+    // maybe change to a group->black_and_last_lock
+    pthread_mutex_lock(&make_object_gray_lock);
     GCPTR current = group->free_last;
     if (current == NULL) { 	/* No gray, black, or green objects? */
       group->black = next;
@@ -266,6 +272,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
     }
     SET_LINK_POINTER(current->next,NULL);
     group->free_last = current;
+    pthread_mutex_unlock(&make_object_gray_lock);
     group->green_count = group->green_count + num_objects;
     group->total_object_count = group->total_object_count + num_objects;
   }

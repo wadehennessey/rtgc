@@ -89,3 +89,13 @@ check if locking need in make_object_gray and
 we set
 group->black
 group->free_last
+
+
+write_barrier touches in make_object_gray:
+group->white (rw)
+group->gray (rw)
+group->black (rw)
+free_last (rw)
+group->white_count
+
+allocation touches:

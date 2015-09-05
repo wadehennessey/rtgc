@@ -69,6 +69,7 @@ void SXmake_object_gray(GCPTR current, BPTR raw) {
       if (gray == NULL) {
 	SET_LINK_POINTER(current->next, group->black);
 	if (group->black == NULL) {
+	  assert(NULL == group->free);
 	  group->black = current;
 	  group->free_last = current;
 	} else {
@@ -366,7 +367,8 @@ void flip() {
     GPTR group = &groups[i];
     // No allocation allowed during a flip
     pthread_mutex_lock(&(group->free_lock));
-		       
+
+    // should really set gray to NULL at end of scan_gray_set
     group->gray = NULL;
     GCPTR free = group->free;
     if (free != NULL) {
@@ -516,6 +518,7 @@ static
 void full_gc() {
   //reset_gc_cycle_stats();
   flip();
+  assert(1 == enable_write_barrier);
   scan_root_set();
   scan_gray_set();
   
