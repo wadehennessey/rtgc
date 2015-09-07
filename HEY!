@@ -104,3 +104,4 @@ group flip is sort of split between recycle garbage and flip.
 locking all free locks in each phase first things to help reduce problems.
 must be interaction we don't understand.
 
+gdb> set unwindonsignal on

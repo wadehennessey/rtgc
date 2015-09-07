@@ -69,21 +69,33 @@ void counter_init(COUNTER *c) {
   pthread_cond_init(&(c->cond), NULL);
 }
 
-void counter_zero(COUNTER *c) {
+int counter_zero(COUNTER *c) {
   pthread_mutex_lock(&(c->lock));
   c->count = 0;
-  pthread_cond_broadcast(&(c->cond));
+  int err = pthread_cond_broadcast(&(c->cond));
+  if (0 != err)  {
+    printf("pthread_cond_broadcast failed with %d!\n", err);
+  }
+  int val = c->count;
+  printf("counter zero\n");
   pthread_mutex_unlock(&(c->lock));
+  return(val);
 }
  
-void counter_increment(COUNTER *c) {
+int counter_increment(COUNTER *c) {
   pthread_mutex_lock(&(c->lock));
   // why can't we just say c->count = c->count + 1 ?
   int val = c->count;
   val = val + 1;
   c->count = val;
-  pthread_cond_broadcast(&(c->cond));
+  int err = pthread_cond_broadcast(&(c->cond));
+  if (0 != err)  {
+    printf("pthread_cond_broadcast failed with %d!\n", err);
+  }
+  printf("counter increment\n");
+  fflush(stdout);
   pthread_mutex_unlock(&(c->lock));
+  return(val);
 }
 
 void counter_wait_threshold(COUNTER *c, int threshold) {

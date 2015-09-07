@@ -16,8 +16,11 @@
 #include "mem-config.h"
 #include "mem-internals.h"
 #include "allocate.h"
+#include "vizmem.h"
+
 
 static int mutators_may_proceed = 0;
+static int handler_done = 0;
 
 // see /usr/include/sys/ucontext.h for more details
 void print_registers(gregset_t *gregs) {
@@ -93,7 +96,11 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
 	   live_stack_size);
     threads[thread_index].saved_stack_size = live_stack_size;
     
-    counter_increment(&stacks_copied_counter);
+    /*    if (1 != counter_increment(&stacks_copied_counter)) {
+	  Debugger("error, counter_increment failed!\n");
+	  } 
+    */
+    handler_done = 1;
 
     // Wait until all threads have stopped, and the write barrier
     // has been turned back on
@@ -125,14 +132,21 @@ int stop_all_mutators_and_save_state() {
   pthread_mutex_lock(&total_threads_lock);
   int total_threads_to_halt = total_threads - 1; /* omit gc thread */
   pthread_mutex_unlock(&total_threads_lock);
-  counter_zero(&stacks_copied_counter);
+  //counter_zero(&stacks_copied_counter);
+  handler_done = 0;
   mutators_may_proceed = 0;
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;		// skip 0 - gc thread
     threads[thread].saved_stack_size = 0;
-    pthread_kill(threads[thread].pthread, FLIP_SIGNAL);
+    int err = pthread_kill(threads[thread].pthread, FLIP_SIGNAL);
+    if (0 != err) {
+      printf("pthread_kill failed with err %d!\n", err);
+      Debugger("pthread_kill failed!");
+    }
   }
-  counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
+  //counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
+  while (0 == handler_done);
+    
   // all stacks and registers should be copied at this point
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;
@@ -140,7 +154,7 @@ int stop_all_mutators_and_save_state() {
       Debugger("Stack copy problem!");
     }
   }
-  printf("***All stacks copied!*****\n");
+  //  printf("***All stacks copied!*****\n");
   enable_write_barrier = 1;
   mutators_may_proceed = 1;
 }
