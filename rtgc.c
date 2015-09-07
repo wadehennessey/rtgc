@@ -354,22 +354,34 @@ void scan_gray_set() {
 }
 
 static
-void flip() {
-  MAYBE_PAUSE_GC;
-  // Originally, at this point all mutator threads are stopped, and none of
-  // them is in the middle of an SXallocate. We got this for free by being
-  // single threaded and implicity locking by yielding only when we chose to.
-  //
-  // Now, we have to acquire all group allocation locks to be sure no mutator
-  // is allocating. Then we have to interrupt all mutators to stop them.
-  // Then we can proceed to flip and then resume when the flip is done.
-  last_gc_state = "Flip";
+void lock_all_free_locks() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     GPTR group = &groups[i];
-    // No allocation allowed during a flip
     pthread_mutex_lock(&(group->free_lock));
+  }
+}
 
-    // should really set gray to NULL at end of scan_gray_set
+static
+void unlock_all_free_locks() {
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    GPTR group = &groups[i];
+    pthread_mutex_unlock(&(group->free_lock));
+  }
+}
+  
+static
+void flip() {
+  MAYBE_PAUSE_GC;
+  // Originally at this point all mutator threads are stopped, and none of
+  // them is in the middle of an SXallocate. We got this for free by being
+  // single threaded and implicity locking by yielding only when we chose to.
+  assert(0 == enable_write_barrier);
+  last_gc_state = "Flip";
+  // No allocation allowed during a flip
+  lock_all_free_locks();
+
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    GPTR group = &groups[i];
     group->gray = NULL;
     GCPTR free = group->free;
     if (free != NULL) {
@@ -385,17 +397,15 @@ void flip() {
       }
       group->free_last = NULL;
     }
-    
     GCPTR black = group->black;
     if (black == NULL) {
-      // HEY! Why can't black be null? it is when the gc starts
-      //Debugger("YOW! black is NULL\n");
+      // black can be NULL during 1st gc cycle, or if all white objects
+      // are garbage and no allocation occurrecd during this cycle.
+      group->white = NULL;
     } else {
       group->white = (GREENP(black) ? NULL : black);
     }
     
-    // Why do we make black point at free? Why not always make black
-    // null here?
     group->black = group->free;
     assert(group->black_count >= 0);
     group->white_count = group->black_count;
@@ -407,12 +417,7 @@ void flip() {
   assert(0 == enable_write_barrier);
   SWAP(marked_color,unmarked_color);
   stop_all_mutators_and_save_state();
-
-  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    GPTR group = &groups[i];
-    pthread_mutex_unlock(&(group->free_lock));
-  }
-
+  unlock_all_free_locks();
 }
 
 /* The alloc counter part to this function init_pages_for_group
@@ -425,7 +430,8 @@ GCPTR recycle_group_garbage(GPTR group) {
   GCPTR last = NULL;
   GCPTR next = group->white;
 
-  // HEY! need some locking here. Allocation changes free, free_last and
+  assert(0 == enable_write_barrier);
+  // HEY! need some locking here. Allocation changes free, black, free_last and
   // bytes_used too. Seems too coarse to just hold free_lock for entire
   // group recycle, but we'll start off that way to be simple.
   pthread_mutex_lock(&(group->free_lock));
@@ -454,15 +460,18 @@ GCPTR recycle_group_garbage(GPTR group) {
      frag free onto free list and coalesce 0 pages */
   if (count != group->white_count) {
     //verify_all_groups();
-    Debugger("group->white_count doesn't equal actual count");
+    Debugger("group->white_count doesn't equal actual count\n");
   }
-  // Append garbage to free list. Not great for a VM system, but it's easier
+
   if (last != NULL) {
     SET_LINK_POINTER(last->next, NULL);
 
     if (group->free == NULL) {
       group->free = group->white;
     }
+    // HEY! Shouldn't need this lock. We hold group free lock and
+    // write barrier isn't enabled, so no calls to make_object_gray
+    // should happen. Try removing this when things are working.
     WITH_LOCK((group->black_and_last_lock),
 	      if (group->black == NULL) {
 		group->black = group->white;
@@ -525,7 +534,7 @@ void full_gc() {
   
   enable_write_barrier = 0;
   recycle_all_garbage();
-  // move this into 
+  // moved this into stop_all_mutators_and_save_state.
   // enable_write_barrier = 1;
 
   gc_count = gc_count + 1;

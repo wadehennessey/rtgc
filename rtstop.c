@@ -132,10 +132,7 @@ int stop_all_mutators_and_save_state() {
     threads[thread].saved_stack_size = 0;
     pthread_kill(threads[thread].pthread, FLIP_SIGNAL);
   }
-  enable_write_barrier = 1;
-  mutators_may_proceed = 1;
   counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
-  
   // all stacks and registers should be copied at this point
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;
@@ -144,6 +141,8 @@ int stop_all_mutators_and_save_state() {
     }
   }
   printf("***All stacks copied!*****\n");
+  enable_write_barrier = 1;
+  mutators_may_proceed = 1;
 }
 
 

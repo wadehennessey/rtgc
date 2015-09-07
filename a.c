@@ -130,7 +130,7 @@ void insert_node(NODE *next, char *word, int level) {
       }
     }
   } else {
-    Debugger("Infinte recursion!\n");
+    Debugger("Infinite recursion!\n");
   }
 }
 
