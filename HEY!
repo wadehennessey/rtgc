@@ -99,3 +99,16 @@ free_last (rw)
 group->white_count
 
 allocation touches:
+
+
+CONFLICT:
+
+allocate uses black and free_last on mutator thread
+so does recycle garbage on gc thread
+free_lock is held, but free_lock doesn't cover
+  black and free_last
+
+need a black_and_last_lock in:
+1) new obj allocator (instead of locking make_object_gray)
+2) make_object_gray (in addition to our make_object_gray lock)
+3) recycle group garbage (a

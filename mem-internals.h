@@ -76,6 +76,7 @@ typedef struct group_info {
 
   pthread_mutex_t free_lock;	/* used in rtgc and rtalloc */
   pthread_mutex_t black_count_lock;	/* used in rtgc and rtalloc */
+  pthread_mutex_t black_and_last_lock;	/* used in rtgc and rtalloc */
 
 } GROUP_INFO;
 

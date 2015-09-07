@@ -67,14 +67,15 @@ void SXmake_object_gray(GCPTR current, BPTR raw) {
       SET_LINK_POINTER(current->prev, NULL);
       GCPTR gray = group->gray;
       if (gray == NULL) {
-	SET_LINK_POINTER(current->next, group->black);
-	if (group->black == NULL) {
-	  assert(NULL == group->free);
-	  group->black = current;
-	  group->free_last = current;
-	} else {
-	  SET_LINK_POINTER((group->black)->prev, current);
-	}
+	WITH_LOCK((group->black_and_last_lock),
+		  SET_LINK_POINTER(current->next, group->black);
+		  if (group->black == NULL) {
+		    assert(NULL == group->free);
+		    group->black = current;
+		    group->free_last = current;
+		  } else {
+		    SET_LINK_POINTER((group->black)->prev, current);
+		  });
       } else {
 	SET_LINK_POINTER(current->next, gray);
 	SET_LINK_POINTER(gray->prev, current);
@@ -462,16 +463,16 @@ GCPTR recycle_group_garbage(GPTR group) {
     if (group->free == NULL) {
       group->free = group->white;
     }
-    // HEY! need lock for this unless free_lock covers black too
-    if (group->black == NULL) {
-      group->black = group->white;
-    }
-    
-    if (group->free_last != NULL) {
-      SET_LINK_POINTER((group->free_last)->next, group->white);
-    }
-    SET_LINK_POINTER((group->white)->prev, group->free_last);
-    group->free_last = last;
+    WITH_LOCK((group->black_and_last_lock),
+	      if (group->black == NULL) {
+		group->black = group->white;
+	      }
+	      
+	      if (group->free_last != NULL) {
+		SET_LINK_POINTER((group->free_last)->next, group->white);
+	      }
+	      SET_LINK_POINTER((group->white)->prev, group->free_last);
+	      group->free_last = last;);
     group->green_count = group->green_count + count;
   }
   group->white = NULL;

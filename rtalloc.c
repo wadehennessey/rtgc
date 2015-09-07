@@ -55,11 +55,11 @@ void init_group_info() {
     groups[index].white_count = 0;
     groups[index].black_count = 0;
     groups[index].green_count = 0;
-    // Right now free_last_lock isn't used
     pthread_mutex_init(&(groups[index].black_count_lock), NULL);
     // free_lock owner owns: free, free_last and pages[i].bytes_used
     // when pages[i].group is this group
     pthread_mutex_init(&(groups[index].free_lock), NULL);
+    pthread_mutex_init(&(groups[index].black_and_last_lock), NULL);
   }
 }
 
@@ -249,30 +249,24 @@ void init_pages_for_group(GPTR group, int min_pages) {
     GCPTR next = base;
     assert(NULL == group->free);
     group->free = next;
-    // We conflict with make_object_gray and need to lock
-    // access to group->black and group->free_last
-    // Should make this locking finer grained, since we only
-    // care about group pointers here, but make_object_gray
-    // is a global lock serializing a core part of the gc.
-    // maybe change to a group->black_and_last_lock
-    pthread_mutex_lock(&make_object_gray_lock);
-    GCPTR current = group->free_last;
-    if (current == NULL) { 	/* No gray, black, or green objects? */
-      group->black = next;
-    } else {
-      SET_LINK_POINTER(current->next,next);
-    }
-    for (int i = 0; i < num_objects; i++) {
-      GCPTR prev = current;
-      current = next;
-      next = (GCPTR) ((BPTR) current + group->size);
-      current->prev = prev;
-      current->next = next;
-      SET_COLOR(current,GREEN);
-    }
-    SET_LINK_POINTER(current->next,NULL);
-    group->free_last = current;
-    pthread_mutex_unlock(&make_object_gray_lock);
+    WITH_LOCK((group->black_and_last_lock),
+	      // HEY! lock less here by moving free_last assign higher up
+	      GCPTR current = group->free_last;
+	      if (current == NULL) { 	/* No gray, black, or green objects? */
+		group->black = next;
+	      } else {
+		SET_LINK_POINTER(current->next,next);
+	      }
+	      for (int i = 0; i < num_objects; i++) {
+		GCPTR prev = current;
+		current = next;
+		next = (GCPTR) ((BPTR) current + group->size);
+		current->prev = prev;
+		current->next = next;
+		SET_COLOR(current,GREEN);
+	      }
+	      SET_LINK_POINTER(current->next,NULL);
+	      group->free_last = current;);
     group->green_count = group->green_count + num_objects;
     group->total_object_count = group->total_object_count + num_objects;
   }
