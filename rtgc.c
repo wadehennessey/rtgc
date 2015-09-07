@@ -425,19 +425,10 @@ void flip() {
    scanning in the next gc cyclse doesn't start making free objects 
    that look white turn gray! */
 static
-GCPTR recycle_group_garbage(GPTR group) {
+void recycle_group_garbage(GPTR group) {
   int count = 0;
   GCPTR last = NULL;
   GCPTR next = group->white;
-
-  assert(0 == enable_write_barrier);
-  // HEY! need some locking here. Allocation changes free, black, free_last and
-  // bytes_used too. Seems too coarse to just hold free_lock for entire
-  // group recycle, but we'll start off that way to be simple.
-
-
-  //pthread_mutex_lock(&(group->free_lock));
-  lock_all_free_locks();
 
   while (next != NULL) {
     int page_index = PTR_TO_PAGE_INDEX(next);
@@ -486,24 +477,26 @@ GCPTR recycle_group_garbage(GPTR group) {
 	      }
 	      SET_LINK_POINTER((group->white)->prev, group->free_last);
 	      group->free_last = last;);
+
     group->green_count = group->green_count + count;
   }
   group->white = NULL;
   group->white_count = 0;
-
-  //pthread_mutex_unlock(&(group->free_lock));
-  unlock_all_free_locks();
-  
-  return(last);
 }
 
 static 
 void recycle_all_garbage() {
   last_gc_state = "Recycle Garbage";
   UPDATE_VISUAL_STATE();
+
+  assert(0 == enable_write_barrier);
+
+  lock_all_free_locks();
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     recycle_group_garbage(&groups[i]);
   }
+  unlock_all_free_locks();
+
   //coalesce_all_free_pages();
 }
 
