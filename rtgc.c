@@ -434,7 +434,11 @@ GCPTR recycle_group_garbage(GPTR group) {
   // HEY! need some locking here. Allocation changes free, black, free_last and
   // bytes_used too. Seems too coarse to just hold free_lock for entire
   // group recycle, but we'll start off that way to be simple.
-  pthread_mutex_lock(&(group->free_lock));
+
+
+  //pthread_mutex_lock(&(group->free_lock));
+  lock_all_free_locks();
+
   while (next != NULL) {
     int page_index = PTR_TO_PAGE_INDEX(next);
     PPTR page = &pages[page_index];
@@ -486,7 +490,10 @@ GCPTR recycle_group_garbage(GPTR group) {
   }
   group->white = NULL;
   group->white_count = 0;
-  pthread_mutex_unlock(&(group->free_lock));
+
+  //pthread_mutex_unlock(&(group->free_lock));
+  unlock_all_free_locks();
+  
   return(last);
 }
 

@@ -98,8 +98,9 @@ group->black (rw)
 free_last (rw)
 group->white_count
 
-allocation touches:
 
+WHY:
+group flip is sort of split between recycle garbage and flip.
+locking all free locks in each phase first things to help reduce problems.
+must be interaction we don't understand.
 
-tried change to stop all allocation before any flip work. count problem
-stops, but deadlock and inf recursion still remain
