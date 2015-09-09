@@ -195,7 +195,6 @@ extern int total_global_roots;
 extern COUNTER stacks_copied_counter;
 extern pthread_mutex_t total_threads_lock;
 extern pthread_mutex_t empty_pages_lock;
-extern pthread_mutex_t make_object_gray_lock;
 extern sem_t gc_semaphore;
 extern int run_gc;
 extern int atomic_gc;

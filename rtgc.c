@@ -34,65 +34,52 @@ double last_gc_ms;
 double last_write_barrier_ms;
 
 static
-int use_write_vector = 1;
-
-
-// HEY! pass in group info!
-// Whoever calls this functions needs to be holding the
-// make_object_gray lock! This is very coarse and can be improved upon
-// if we switch to a vector based write_barrier
-static
 void SXmake_object_gray(GCPTR current, BPTR raw) {
   GPTR group = PTR_TO_GROUP(current);
   BPTR header = (BPTR) current + sizeof(GC_HEADER);
 
-  // Now that we are inside the make_object_gray_lock, be sure a race
-  // didn't already turn us gray
-  if (WHITEP(current)) {   
-    /* Only allow interior pointers to retain objects <= 1 page in size */
-    if ((group->size <= INTERIOR_PTR_RETENTION_LIMIT) ||
-	(((long) raw) == -1) || (raw == header)) {
-      GCPTR prev = GET_LINK_POINTER(current->prev);
-      GCPTR next = GET_LINK_POINTER(current->next);
+  /* Only allow interior pointers to retain objects <= 1 page in size */
+  if ((group->size <= INTERIOR_PTR_RETENTION_LIMIT) ||
+      (((long) raw) == -1) || (raw == header)) {
+    GCPTR prev = GET_LINK_POINTER(current->prev);
+    GCPTR next = GET_LINK_POINTER(current->next);
 
-      /* Remove current from WHITE space */
-      if (current == group->white) {
-	group->white = next;
-      }
-      if (prev != NULL) {
-	SET_LINK_POINTER(prev->next, next);
-      }
-      if (next != NULL) {
-	SET_LINK_POINTER(next->prev, prev);
-      }
-
-      /* Link current onto the end of the gray set. This give us a breadth
-	 first search when scanning the gray set (not that it matters) */
-      SET_LINK_POINTER(current->prev, NULL);
-      GCPTR gray = group->gray;
-      if (gray == NULL) {
-	WITH_LOCK((group->black_and_last_lock),
-		  SET_LINK_POINTER(current->next, group->black);
-		  if (group->black == NULL) {
-		    assert(NULL == group->free);
-		    group->black = current;
-		    group->free_last = current;
-		  } else {
-		    SET_LINK_POINTER((group->black)->prev, current);
-		  });
-      } else {
-	SET_LINK_POINTER(current->next, gray);
-	SET_LINK_POINTER(gray->prev, current);
-      }
-      assert(WHITEP(current));
-      SET_COLOR(current, GRAY);
-      group->gray = current;
-      assert(group->white_count > 0);
-      group->white_count = group->white_count - 1;
+    /* Remove current from WHITE space */
+    if (current == group->white) {
+      group->white = next;
     }
+    if (prev != NULL) {
+      SET_LINK_POINTER(prev->next, next);
+    }
+    if (next != NULL) {
+      SET_LINK_POINTER(next->prev, prev);
+    }
+
+    /* Link current onto the end of the gray set. This give us a breadth
+       first search when scanning the gray set (not that it matters) */
+    SET_LINK_POINTER(current->prev, NULL);
+    GCPTR gray = group->gray;
+    if (gray == NULL) {
+      WITH_LOCK((group->black_and_last_lock),
+		SET_LINK_POINTER(current->next, group->black);
+		if (group->black == NULL) {
+		  assert(NULL == group->free);
+		  group->black = current;
+		  group->free_last = current;
+		} else {
+		  SET_LINK_POINTER((group->black)->prev, current);
+		});
+    } else {
+      SET_LINK_POINTER(current->next, gray);
+      SET_LINK_POINTER(gray->prev, current);
+    }
+    assert(WHITEP(current));
+    SET_COLOR(current, GRAY);
+    group->gray = current;
+    assert(group->white_count > 0);
+    group->white_count = group->white_count - 1;
   }
 }
-
 
 /* Scan memory looking for *possible* pointers */
 void scan_memory_segment(BPTR low, BPTR high) {
@@ -108,8 +95,7 @@ void scan_memory_segment(BPTR low, BPTR high) {
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
 	if WHITEP(gcptr) {
-	    WITH_LOCK(make_object_gray_lock,
-		      SXmake_object_gray(gcptr, ptr););
+	    SXmake_object_gray(gcptr, ptr);
 	}
       } else {
 	if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
@@ -125,7 +111,6 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high, MetaData *md) {
   scan_memory_segment(low, high);
 }
 
-
 static
 int scan_write_vector() {
   int mark_count = 0;
@@ -134,10 +119,8 @@ int scan_write_vector() {
       GCPTR gcptr = (GCPTR) (first_partition_ptr + (index * MIN_GROUP_SIZE));
       write_vector[index] = 0;
       mark_count = mark_count + 1;
-      if (1 == use_write_vector) {
-	if (WHITEP(gcptr)) {
-	  SXmake_object_gray(gcptr, (BPTR) -1);
-	}
+      if (WHITEP(gcptr)) {
+	SXmake_object_gray(gcptr, (BPTR) -1);
       }
     }
   }
@@ -145,13 +128,11 @@ int scan_write_vector() {
   return(mark_count);
 }
 
-
 static
 void mark_write_vector(GCPTR gcptr) {
   int index = ((BPTR) gcptr - first_partition_ptr) / MIN_GROUP_SIZE;
   write_vector[index] = 1;
 }
-
   
 /* Snapshot-at-gc-start write barrier.
    This is really just a specialized version of scan_memory_segment. */
@@ -166,10 +147,6 @@ void * SXwrite_barrier(void *lhs_address, void *rhs) {
       GCPTR gcptr = interior_to_gcptr(object); 
       if WHITEP(gcptr) {
 	  mark_write_vector(gcptr);
-	  if (!use_write_vector) { // old write barrier
-	    WITH_LOCK(make_object_gray_lock,
-		      SXmake_object_gray(gcptr, (BPTR) -1););
-	  } 
 	}
     }
     //if (ENABLE_VISUAL_MEMORY) 
@@ -273,8 +250,7 @@ void scan_global_roots() {
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
 	if WHITEP(gcptr) {
-	    WITH_LOCK(make_object_gray_lock,
-		      SXmake_object_gray(gcptr, ptr););
+	    SXmake_object_gray(gcptr, ptr);
 	  }
       } else {
 	if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
@@ -287,10 +263,6 @@ void scan_global_roots() {
 
 static
 void scan_static_space() {
-  //  BPTR next, low, end;
-  //  GCPTR gcptr;
-  // int size;
-
   BPTR next = first_static_ptr;
   BPTR end = last_static_ptr;
   while (next < end) {
@@ -350,7 +322,6 @@ void scan_object_with_group(GCPTR ptr, GPTR group) {
 	    group->black_count = group->black_count + 1;
 	    group->black = ptr;);
 }
-
 
 /* HEY! Fix this up now that it's not continuation based... */
 static
@@ -458,7 +429,7 @@ void flip() {
 
 /* The alloc counter part to this function init_pages_for_group
    We need to change garbage color to green now so conservative
-   scanning in the next gc cyclse doesn't start making free objects 
+   scanning in the next gc cycle doesn't start making free objects 
    that look white turn gray! */
 static
 void recycle_group_garbage(GPTR group) {
@@ -614,7 +585,6 @@ void init_realtime_gc() {
   last_gc_state = "<initial state>";
   pthread_mutex_init(&total_threads_lock, NULL);
   pthread_mutex_init(&empty_pages_lock, NULL);
-  pthread_mutex_init(&make_object_gray_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);
   init_signals_for_rtgc();
   counter_init(&stacks_copied_counter);

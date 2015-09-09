@@ -108,6 +108,4 @@ gdb> set unwindonsignal on
 
 
 IDEA
-clean up vector based write_barrier:
-      - double whitep
-       - make_object_gray lock and all uses
+use new write barrier again
