@@ -108,4 +108,5 @@ gdb> set unwindonsignal on
 
 
 IDEA
-use new write barrier again
+Reread rtalloc and rtgc for locking now that
+we are using vector based write barrier. More implicit locking now.

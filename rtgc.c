@@ -458,8 +458,8 @@ void recycle_group_garbage(GPTR group) {
     MAYBE_PAUSE_GC;
   }
 
-  /* HEY! could unlink free obj on pages whoe count is 0. Then hook remaining
-     frag free onto free list and coalesce 0 pages */
+  /* HEY! could unlink free obj on pages where count is 0. Then hook remaining
+     frag onto free list and coalesce 0 pages */
   if (count != group->white_count) {
     //verify_all_groups();
     Debugger("group->white_count doesn't equal actual count\n");
@@ -471,20 +471,16 @@ void recycle_group_garbage(GPTR group) {
     if (group->free == NULL) {
       group->free = group->white;
     }
-    // HEY! Shouldn't need this lock. We hold group free lock and
-    // write barrier isn't enabled, so no calls to make_object_gray
-    // should happen. Try removing this when things are working.
-    WITH_LOCK((group->black_and_last_lock),
-	      if (group->black == NULL) {
-		group->black = group->white;
-	      }
-	      
-	      if (group->free_last != NULL) {
-		SET_LINK_POINTER((group->free_last)->next, group->white);
-	      }
-	      SET_LINK_POINTER((group->white)->prev, group->free_last);
-	      group->free_last = last;);
-
+    // No additional locking needed here. We hold group->free lock, so
+    // we can use black, free_last, and green_count without conflict
+    if (group->black == NULL) {
+      group->black = group->white;
+    }
+    if (group->free_last != NULL) {
+      SET_LINK_POINTER((group->free_last)->next, group->white);
+    }
+    SET_LINK_POINTER((group->white)->prev, group->free_last);
+    group->free_last = last;
     group->green_count = group->green_count + count;
   }
   group->white = NULL;

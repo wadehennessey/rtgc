@@ -250,7 +250,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
     assert(NULL == group->free);
     group->free = next;
     WITH_LOCK((group->black_and_last_lock),
-	      // HEY! lock less here by moving free_last assign higher up
+	      // HEY! lock less here by moving free_last assignment higher up
 	      GCPTR current = group->free_last;
 	      if (current == NULL) { 	/* No gray, black, or green objects? */
 		group->black = next;
@@ -449,7 +449,7 @@ void verify_group(GPTR group) {
 
 // Heap/Group verification
 // could try using SIGSTOP and SIGCONT to stop black changes instead
-// locks.
+// of locks.
 void verify_all_groups(void) {
   // Don't allow black state to change
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
