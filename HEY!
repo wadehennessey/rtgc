@@ -105,3 +105,9 @@ locking all free locks in each phase first things to help reduce problems.
 must be interaction we don't understand.
 
 gdb> set unwindonsignal on
+
+
+IDEA
+clean up vector based write_barrier:
+      - double whitep
+       - make_object_gray lock and all uses

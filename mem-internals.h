@@ -9,6 +9,9 @@
 #define HEAP_SEGMENT 0
 #define STATIC_SEGMENT 1
 
+typedef unsigned long * LPTR;
+typedef unsigned char * BPTR;
+
 #define BYTES_PER_PAGE (1 << PAGE_POWER)
 #define PAGE_ALIGNMENT_MASK (BYTES_PER_PAGE - 1)
 #define PTR_TO_PAGE_INDEX(ptr) ((long) (((BPTR) ptr - first_partition_ptr) >> PAGE_POWER))
@@ -23,16 +26,12 @@
 #define ROUND_DOWN_TO_PAGE(ptr) ((BPTR) (((long) ptr & ~PAGE_ALIGNMENT_MASK)))
 #define ROUND_UP_TO_PAGE(ptr) (ROUND_DOWN_TO_PAGE(ptr) + BYTES_PER_PAGE)
 
-typedef unsigned long * LPTR;
-typedef unsigned char * BPTR;
-
-// HEY! why will first heap object always be scanned???
-extern BPTR first_partition_ptr; /* First heap object will always be scanned!*/
+extern BPTR first_partition_ptr;
 extern BPTR last_partition_ptr;
 extern BPTR first_static_ptr;
 extern BPTR last_static_ptr;
 
-#define MIN_GROUP_INDEX 4	/* yields min 16 byte objects */
+#define MIN_GROUP_INDEX 5	/* yields min 32 byte objects on x86_64 */
 #define MAX_GROUP_INDEX 22	/* yields max 4 megabyte objects */
 #define MIN_GROUP_SIZE (1 << MIN_GROUP_INDEX)
 #define MAX_GROUP_SIZE ( 1 << MAX_GROUP_INDEX)
@@ -200,6 +199,8 @@ extern pthread_mutex_t make_object_gray_lock;
 extern sem_t gc_semaphore;
 extern int run_gc;
 extern int atomic_gc;
+extern BPTR write_vector;
+extern int write_vector_size;
 
 #define ENABLE_LOCKING 1
 

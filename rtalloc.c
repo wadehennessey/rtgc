@@ -561,7 +561,11 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
   segments = malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
   threads = malloc(sizeof(THREAD_INFO) * MAX_THREADS);
   global_roots = malloc(sizeof(char **) * MAX_GLOBAL_ROOTS);
-  if ((pages == 0) || (groups == 0) || (segments == 0) || (threads == 0)) {
+  write_vector_size = (total_partition_pages * 
+		       (BYTES_PER_PAGE / MIN_GROUP_SIZE));
+  write_vector = malloc(write_vector_size);
+  if ((pages == 0) || (groups == 0) || (segments == 0) || 
+      (threads == 0) || (global_roots == 0) || (write_vector == 0)) {
     out_of_memory("Heap Memory tables", 0);
   }
 
@@ -584,6 +588,7 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
   marked_color = GENERATION0;
   unmarked_color = GENERATION1;
   init_group_info();
+  memset(write_vector, 0, write_vector_size); // init write_vector
   init_realtime_gc();
 }
 

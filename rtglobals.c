@@ -39,6 +39,9 @@ BPTR last_static_ptr;
 BPTR first_partition_ptr;
 BPTR last_partition_ptr;
 
+BPTR write_vector;
+int write_vector_size;
+
 int total_partition_pages;
 int unmarked_color;
 int marked_color;

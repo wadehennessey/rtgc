@@ -33,6 +33,10 @@ double last_cycle_ms;
 double last_gc_ms;
 double last_write_barrier_ms;
 
+static
+int use_write_vector = 1;
+
+
 // HEY! pass in group info!
 // Whoever calls this functions needs to be holding the
 // make_object_gray lock! This is very coarse and can be improved upon
@@ -89,6 +93,7 @@ void SXmake_object_gray(GCPTR current, BPTR raw) {
   }
 }
 
+
 /* Scan memory looking for *possible* pointers */
 void scan_memory_segment(BPTR low, BPTR high) {
   /* if GC_POINTER_ALIGNMENT is < 4, avoid scanning potential pointers that
@@ -120,6 +125,34 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high, MetaData *md) {
   scan_memory_segment(low, high);
 }
 
+
+static
+int scan_write_vector() {
+  int mark_count = 0;
+  for (int index = 0; index < write_vector_size; index++) {
+    if (1 == write_vector[index]) {
+      GCPTR gcptr = (GCPTR) (first_partition_ptr + (index * MIN_GROUP_SIZE));
+      write_vector[index] = 0;
+      mark_count = mark_count + 1;
+      if (1 == use_write_vector) {
+	if (WHITEP(gcptr)) {
+	  SXmake_object_gray(gcptr, (BPTR) -1);
+	}
+      }
+    }
+  }
+  //printf("mark_count is %d\n", mark_count);
+  return(mark_count);
+}
+
+
+static
+void mark_write_vector(GCPTR gcptr) {
+  int index = ((BPTR) gcptr - first_partition_ptr) / MIN_GROUP_SIZE;
+  write_vector[index] = 1;
+}
+
+  
 /* Snapshot-at-gc-start write barrier.
    This is really just a specialized version of scan_memory_segment. */
 void * SXwrite_barrier(void *lhs_address, void *rhs) {
@@ -132,9 +165,11 @@ void * SXwrite_barrier(void *lhs_address, void *rhs) {
     if (IN_HEAP(object)) {
       GCPTR gcptr = interior_to_gcptr(object); 
       if WHITEP(gcptr) {
-	  WITH_LOCK(make_object_gray_lock,
-		    // HEY! why not pass object instead of -1 as raw ptr
-		    SXmake_object_gray(gcptr, (BPTR) -1););
+	  mark_write_vector(gcptr);
+	  if (!use_write_vector) { // old write barrier
+	    WITH_LOCK(make_object_gray_lock,
+		      SXmake_object_gray(gcptr, (BPTR) -1););
+	  } 
 	}
     }
     //if (ENABLE_VISUAL_MEMORY) 
@@ -161,7 +196,7 @@ void * SXsafe_bash(void * lhs_address, void * rhs) {
       }
     }
   }
-  /* Why is the calling the write barrier instead of simply doing the
+  /* Why is this calling the write barrier instead of simply doing the
      assignment?? */
   return(SXwrite_barrier(lhs_address, rhs));
 }
@@ -315,6 +350,7 @@ void scan_object_with_group(GCPTR ptr, GPTR group) {
 	    group->black_count = group->black_count + 1;
 	    group->black = ptr;);
 }
+
 
 /* HEY! Fix this up now that it's not continuation based... */
 static
@@ -530,7 +566,12 @@ void full_gc() {
   flip();
   assert(1 == enable_write_barrier);
   scan_root_set();
-  scan_gray_set();
+
+  int mark_count = 0;
+  do {
+    scan_gray_set();
+    mark_count = scan_write_vector();
+  } while (mark_count > 0);
   
   enable_write_barrier = 0;
   recycle_all_garbage();
