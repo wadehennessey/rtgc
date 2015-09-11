@@ -47,7 +47,7 @@ extern BPTR last_static_ptr;
 /* HEY!This is a pretty stupid definition. Something better?
    #define METADATAP(p) (IN_GLOBALS(p) !! !(isObj(p))) */
 
-/* HEY! This is still pretty dumb, but beter... */
+/* HEY! This is still pretty dumb, but better... */
 #define  CLASSP(ptr) (IN_HEAP_OR_STATIC(ptr) && (GET_INSTANCE_STORAGE_CLASS(ptr) == SC_INSTANCE))
 #define METADATAP(ptr) (!(CLASSP(ptr)))
 
@@ -64,7 +64,7 @@ typedef struct group_info {
   GCPTR free_last;		/* used in rtgc and rtalloc */
   GCPTR free;			/* used in rtgc and rtalloc */
   GCPTR gray;			/* only used in rtgc */
-  GCPTR black;			/* only used in rtgc */
+  GCPTR black;			/* only used in rtgc and rtalloc */
   GCPTR white;			/* only used in rtgc */
 
 
@@ -76,7 +76,6 @@ typedef struct group_info {
   pthread_mutex_t free_lock;	/* used in rtgc and rtalloc */
   pthread_mutex_t black_count_lock;	/* used in rtgc and rtalloc */
   pthread_mutex_t black_and_last_lock;	/* used in rtgc and rtalloc */
-
 } GROUP_INFO;
 
 typedef GROUP_INFO * GPTR;

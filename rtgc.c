@@ -67,7 +67,11 @@ void SXmake_object_gray(GCPTR current, BPTR raw) {
 		  group->black = current;
 		  group->free_last = current;
 		} else {
+		  // looks like a race with alloc setting storage class on 
+		  // black->prev. Should use a more specific lock than free.
+		  pthread_mutex_lock(&(group->free_lock));  
 		  SET_LINK_POINTER((group->black)->prev, current);
+		  pthread_mutex_unlock(&(group->free_lock));  
 		});
     } else {
       SET_LINK_POINTER(current->next, gray);
@@ -76,7 +80,7 @@ void SXmake_object_gray(GCPTR current, BPTR raw) {
     assert(WHITEP(current));
     SET_COLOR(current, GRAY);
     group->gray = current;
-    assert(group->white_count > 0);
+    assert(group->white_count > 0); // no lock needed, white_count is gc only
     group->white_count = group->white_count - 1;
   }
 }
@@ -136,7 +140,7 @@ void mark_write_vector(GCPTR gcptr) {
   
 /* Snapshot-at-gc-start write barrier.
    This is really just a specialized version of scan_memory_segment. */
-void * SXwrite_barrier(void *lhs_address, void *rhs) {
+void *SXwrite_barrier(void *lhs_address, void *rhs) {
   if (memory_mutex == 1) {
     Debugger("HEY! write_barrier called from within GC!\n");
   }
@@ -155,7 +159,7 @@ void * SXwrite_barrier(void *lhs_address, void *rhs) {
   return((void *) (*(LPTR)lhs_address = (long) rhs));
 }
 
-void * SXsafe_bash(void * lhs_address, void * rhs) {
+void *SXsafe_bash(void * lhs_address, void * rhs) {
   BPTR object;
   GCPTR gcptr;
 
@@ -178,7 +182,7 @@ void * SXsafe_bash(void * lhs_address, void * rhs) {
   return(SXwrite_barrier(lhs_address, rhs));
 }
 
-void *  SXsafe_setfInit(void * lhs_address, void * rhs) {
+void *SXsafe_setfInit(void * lhs_address, void * rhs) {
   if (CHECK_SETFINIT) {
     BPTR object = *((BPTR *) lhs_address);
     if (object != NULL) {
@@ -235,6 +239,7 @@ void scan_thread(int thread) {
 static
 void scan_threads() {
   // HEY! need to pass along number of threads scanned
+  // Acquire total_threads lock here? Maybe earlier in flip.
   for (int next_thread = 1; next_thread < total_threads; next_thread++) {
     scan_thread(next_thread);
   }
@@ -352,7 +357,6 @@ void scan_gray_set() {
       rescan_all_groups = 1;
       i = MIN_GROUP_INDEX;
       scan_count = 0;
-
     } else {
       rescan_all_groups = 0;
     }
@@ -407,14 +411,15 @@ void flip() {
     GCPTR black = group->black;
     if (black == NULL) {
       // black can be NULL during 1st gc cycle, or if all white objects
-      // are garbage and no allocation occurrecd during this cycle.
+      // are garbage and no allocation occurred during this cycle.
       group->white = NULL;
     } else {
       group->white = (GREENP(black) ? NULL : black);
     }
     
     group->black = group->free;
-    assert(group->black_count >= 0);
+    assert(group->black_count >= 0); 
+
     group->white_count = group->black_count;
     group->black_count = 0;
   }
@@ -460,7 +465,7 @@ void recycle_group_garbage(GPTR group) {
 
   /* HEY! could unlink free obj on pages where count is 0. Then hook remaining
      frag onto free list and coalesce 0 pages */
-  if (count != group->white_count) {
+  if (count != group->white_count) { // no lock needed, white_count is gc only
     //verify_all_groups();
     Debugger("group->white_count doesn't equal actual count\n");
   }
@@ -484,20 +489,20 @@ void recycle_group_garbage(GPTR group) {
     group->green_count = group->green_count + count;
   }
   group->white = NULL;
-  group->white_count = 0;
+  group->white_count = 0; // no lock needed, white_count is gc only
 }
 
 static 
 void recycle_all_garbage() {
   last_gc_state = "Recycle Garbage";
   UPDATE_VISUAL_STATE();
-
   assert(0 == enable_write_barrier);
-
   lock_all_free_locks();
+  //verify_all_groups();
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     recycle_group_garbage(&groups[i]);
   }
+  //verify_all_groups();
   unlock_all_free_locks();
 
   //coalesce_all_free_pages();
@@ -554,11 +559,11 @@ void full_gc() {
 void rtgc_loop() {
   while (1) {
     if (1 == atomic_gc) while (0 == run_gc);
-    printf("gc start...");
-    fflush(stdout);
     full_gc();
-    printf("gc end - gc_count %d\n", gc_count);
-    fflush(stdout);
+    if (0 == (gc_count % 500)) {
+      printf("gc end - gc_count %d\n", gc_count);
+      fflush(stdout);
+    }
     if (1 == atomic_gc) run_gc = 0;
   }
 }

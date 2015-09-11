@@ -167,6 +167,7 @@ int walk_word_tree(NODE *n, int verbose) {
 
 void *start_word_count(void *arg) {
   int i = 0;
+  
   while (i < 5000) {
     char top;
     //usleep(1000);

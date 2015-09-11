@@ -56,8 +56,6 @@ void init_group_info() {
     groups[index].black_count = 0;
     groups[index].green_count = 0;
     pthread_mutex_init(&(groups[index].black_count_lock), NULL);
-    // free_lock owner owns: free, free_last and pages[i].bytes_used
-    // when pages[i].group is this group
     pthread_mutex_init(&(groups[index].free_lock), NULL);
     pthread_mutex_init(&(groups[index].black_and_last_lock), NULL);
   }
@@ -207,7 +205,7 @@ GCPTR allocate_empty_pages(int required_page_count,
 // The gc counter part to this function is recycle_group_garbage.
 // We could try to unify the small common part.
 // Whoever calls this function has to be holding the group->free_lock.
-// So far only SXallocate call this.
+// So far only SXallocate calls this.
 static
 void init_pages_for_group(GPTR group, int min_pages) {
   int pages_per_object = group->size / BYTES_PER_PAGE;
@@ -447,25 +445,14 @@ void verify_group(GPTR group) {
   }
 }
 
-// Heap/Group verification
 // could try using SIGSTOP and SIGCONT to stop black changes instead
 // of locks.
+
+// GC thread caller of this should own all the free locks
 void verify_all_groups(void) {
-  // Don't allow black state to change
-  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    GPTR group = &groups[i];
-    pthread_mutex_lock(&(group->free_lock));
-    pthread_mutex_lock(&(group->black_count_lock));
-  }
   // iterate over all groups and verify each one
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     verify_group(&groups[i]);
-  }
-  // allow black state to change again
-  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    GPTR group = &groups[i];
-    pthread_mutex_unlock(&(group->free_lock));
-    pthread_mutex_unlock(&(group->black_count_lock));
   }
 }
 
