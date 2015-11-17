@@ -7,7 +7,7 @@ service sshd start
 systemctl enable sshd.service
 
 
-git clone https://github.com/wadehennessey/rtgc
+git clone https://github.com/wadehennessey/rtgc.git
 
 git commit -m "blah"
 
@@ -135,3 +135,89 @@ verify all _count fields are correct.
 
 TRY: ignoring group->*_count fields for now.
      page->bytes used doesn't matter until we add back coalescing
+
+# to limit all threads in ./a to the second core:
+taskset 0x10 ./a
+
+# rr traces are stored in /home/wade/.local/share/rr/
+
+
+
+gc end - gc_count 689000
+gc end - gc_count 689500
+gc end - gc_count 690000
+a: rtalloc.c:243: init_pages_for_group: Assertion `((void *)0) != group->free' failed.
+[rr.137493656] Warning: task 7599 (process 7598) dying from fatal signal SIGABRT.
+
+real	185m4.775s
+user	23m21.228s
+sys	11m19.452s
+[wade@mogmog rtgc]$ 
+
+
+gdb tui mode in xterm: c-x a
+
+too see event numbers and start at a specific event number:
+rr -M replay -g <event-number>
+
+first run take a long time
+run again jumps to event time immediately on future runs
+
+
+try gdb cmds:
+
+checkpoint
+info checkpoints
+restart <cp-id>
+delete <cp-id>
+
+gdb "when" command shows current event-number
+
+try rr -c and -e options to increase thread interleave
+
+# task switch after every  retired branches
+rr record -c 2500 ./a
+
+# to see record options
+rr record -h
+rr replay -h
+
+From rr/src/Scheduler.h
+-c default:  enum { DEFAULT_MAX_TICKS = 250000 };    // 50ms time slice
+-e default:  enum { DEFAULT_MAX_EVENTS = 10 };
+
+new_word is allocated
+0x7f46ba9f82d0
+gcptr 0x7f46ba9f82c0
+
+CONFUSING!!!!!
+SXpointers = 0, but SC_POINTERS = 1
+SXnopointer = 1 but SC_NOPOINTERS = 0
+
+
+event time 630: new node alloc for "found" node thread switches to gc thread
+
+stack location of "found", about to be copied into node word ptr
+0x7f46b9f7ac48: 0x00007f46ba9f82d0
+
+0x7f46b9 f7ae70: stack_bottom
+
+0x7f46b9f7ac60: $rbp
+less 0x18
+0x7f46b9 f7ac48: 0x00007f46ba9f82d0
+
+
+0x7f46b9f7ac30: $esp in live frame
+
+0x7f46b9f7ab30: saved $esp seen in signal handler
+
+
+
+
+
+
+
+
+
+
+0x7f46b9 77b000: stack base

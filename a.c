@@ -12,6 +12,7 @@
 #include <semaphore.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <assert.h>
 #include <pthread.h>
 #include "compat.h"
 #include "infoBits.h"
@@ -151,10 +152,18 @@ NODE *build_word_tree(char *filename) {
 
 // Walk word tree, print if verbose is not 0. Return total word count.
 int walk_word_tree(NODE *n, int verbose) {
-  int count;
+  int r, count;
   if (NULL == n) {
     count = 0;
   } else {
+    if (0 != n->lesser) {
+      r = strcmp(n->word, (n->lesser)->word);
+      assert(r > 0);
+    }
+    if (0 != n->greater) {
+      r = strcmp(n->word, (n->greater)->word);
+      assert(r < 0);
+    }
     count = n->count;
     count = count + walk_word_tree(n->lesser, verbose);
     if (0 != verbose) {
@@ -168,18 +177,21 @@ int walk_word_tree(NODE *n, int verbose) {
 void *start_word_count(void *arg) {
   int i = 0;
   
-  while (i < 5000) {
+  while (i < 5000000) {
     char top;
-    //usleep(1000);
     build_word_tree("redhead.txt");
-    printf("%d: Total words %d\n", i, walk_word_tree(root, 0));
+    walk_word_tree(root, 0);
+    if (0 == (i % 25)) {
+      printf("%d word counts\n", i);
+    }
     i = i + 1;
   }
   exit(1);
 }
 
 int main(int argc, char *argv[]) {
-  SXinit_heap(1 << 19, 0);
+  //SXinit_heap(1 << 19, 0);
+  SXinit_heap(1 << 21, 0);
   register_global_root(&root);
   new_thread(&start_word_count, (void *) 0);
   rtgc_loop();

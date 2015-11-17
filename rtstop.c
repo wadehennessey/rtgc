@@ -92,7 +92,7 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
     // Be careful here, must copy from lowest to highest address
     // in both real stack and saved stack
     memcpy(threads[thread_index].saved_stack_base,
-	   &stack_top,
+	   stack_top,
 	   live_stack_size);
     threads[thread_index].saved_stack_size = live_stack_size;
     
@@ -101,18 +101,22 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
 	  } 
     */
     handler_done = 1;
-
+    //printf("about to wait on may_proceed\n");
     // Wait until all threads have stopped, and the write barrier
     // has been turned back on
-    while (0 == mutators_may_proceed);
+    while (0 == mutators_may_proceed) {
+      sched_yield();
+    }
+    // indicate mutator is proceeding
+    handler_done = -1;
     //printf("Resuming after signal\n");
   }
 }
 
 void init_signals_for_rtgc() {
   struct sigaction signal_action;
-
   sigset_t set;
+
   sigemptyset(&set);
   sigaddset(&set, FLIP_SIGNAL);
   // sigprocmask seems to do the same thing as this
@@ -154,9 +158,12 @@ int stop_all_mutators_and_save_state() {
       Debugger("Stack copy problem!");
     }
   }
-  //  printf("***All stacks copied!*****\n");
+  //printf("***All stacks copied!*****\n");
   enable_write_barrier = 1;
   mutators_may_proceed = 1;
+  //printf("mutators_may_proceed is now %d\n", mutators_may_proceed);
+  while (-1 != handler_done);
+  //usleep(100000);
 }
 
 

@@ -34,6 +34,27 @@ double last_gc_ms;
 double last_write_barrier_ms;
 
 static
+void verify_white_count(GPTR group) {
+  GCPTR next = group->white;
+  int count = 0;
+  while (next != NULL) {
+    count = count + 1;
+    next = GET_LINK_POINTER(next->next);    
+  }
+  if (group->white_count != count) {
+    Debugger("incorrect white_count\n");
+  }
+}
+
+static
+void verify_white_counts() {
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    GPTR group = &groups[i];
+    verify_white_count(group);
+  }
+}
+
+static
 void SXmake_object_gray(GCPTR current, BPTR raw) {
   GPTR group = PTR_TO_GROUP(current);
   BPTR header = (BPTR) current + sizeof(GC_HEADER);
@@ -377,6 +398,7 @@ void unlock_all_free_locks() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     GPTR group = &groups[i];
     pthread_mutex_unlock(&(group->free_lock));
+    sched_yield();
   }
 }
   
@@ -393,6 +415,9 @@ void flip() {
 
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     GPTR group = &groups[i];
+
+    //verify_white_count(group);
+    
     group->gray = NULL;
     GCPTR free = group->free;
     if (free != NULL) {
@@ -422,6 +447,7 @@ void flip() {
 
     group->white_count = group->black_count;
     group->black_count = 0;
+    // verify_white_count(group);
   }
 
   // we can safely do this without an explicit lock because we're holding
@@ -442,6 +468,7 @@ void recycle_group_garbage(GPTR group) {
   GCPTR last = NULL;
   GCPTR next = group->white;
 
+  pthread_mutex_lock(&(group->free_lock));
   while (next != NULL) {
     int page_index = PTR_TO_PAGE_INDEX(next);
     PPTR page = &pages[page_index];
@@ -467,7 +494,9 @@ void recycle_group_garbage(GPTR group) {
      frag onto free list and coalesce 0 pages */
   if (count != group->white_count) { // no lock needed, white_count is gc only
     //verify_all_groups();
-    Debugger("group->white_count doesn't equal actual count\n");
+    printf("group->white_count is %d, actual count is %d\n", 
+	   group->white_count, count);
+    //Debugger("group->white_count of doesn't equal actual count\n");
   }
 
   if (last != NULL) {
@@ -490,6 +519,8 @@ void recycle_group_garbage(GPTR group) {
   }
   group->white = NULL;
   group->white_count = 0; // no lock needed, white_count is gc only
+  pthread_mutex_unlock(&(group->free_lock));
+  sched_yield();
 }
 
 static 
@@ -497,13 +528,11 @@ void recycle_all_garbage() {
   last_gc_state = "Recycle Garbage";
   UPDATE_VISUAL_STATE();
   assert(0 == enable_write_barrier);
-  lock_all_free_locks();
   //verify_all_groups();
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     recycle_group_garbage(&groups[i]);
   }
   //verify_all_groups();
-  unlock_all_free_locks();
 
   //coalesce_all_free_pages();
 }

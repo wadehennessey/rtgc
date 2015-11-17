@@ -1,6 +1,6 @@
 // rtgc.c page coalescing code. 
-// moved here for now to reduce clutter since we aren't
-// we've stopped using until a concurrent collector is working well
+// moved here for now to reduce clutter 
+// until a concurrent collector is working well
 
 
 static
@@ -59,7 +59,7 @@ void convert_free_to_empty_pages(int first_page, int page_count) {
 
 // Need to hold the group free lock so mutator doesn't allocate on
 // a page that we've identified as free here. Maybe mutators should do this
-// them selves before deciding they need a full_gc to get memory.
+// themselves before deciding they need a full_gc to get memory.
 // They already must have the free lock to be allocating
 static
 void coalesce_segment_free_pages(int segment) {

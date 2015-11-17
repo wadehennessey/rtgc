@@ -51,7 +51,7 @@ extern BPTR last_static_ptr;
 #define  CLASSP(ptr) (IN_HEAP_OR_STATIC(ptr) && (GET_INSTANCE_STORAGE_CLASS(ptr) == SC_INSTANCE))
 #define METADATAP(ptr) (!(CLASSP(ptr)))
 
-#define MAYBE_PAUSE_GC
+#define MAYBE_PAUSE_GC sched_yield();
 
 #define MIN(x,y) ((x < y) ? x : y)
 #define MAX(x,y) ((x > y) ? x : y)

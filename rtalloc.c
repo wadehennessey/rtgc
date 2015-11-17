@@ -234,7 +234,12 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	// concurrent gc
 	// need to wait until gc count increases by 2
 	// need to make gc_count a COUNTER counter instead of a lone int
-	sleep(1);		/* fake it with a sleep */
+
+	printf("alloc out ran gc, sync collect\n");
+	int current_gc_count = gc_count;
+	while (gc_count < (current_gc_count + 2)) {
+	  sched_yield();
+	}
 	assert(NULL != group->free);
       }
       pthread_mutex_lock(&(group->free_lock));
@@ -390,9 +395,12 @@ void * SXallocate(void * metadata, int size) {
       SXmaybe_update_visual_page(page_index,old_bytes_used,page->bytes_used);
     }
   }
-  pthread_mutex_unlock(&(group->free_lock));
-  
+
   base = SXInitializeObject(metadata, new, group->size, real_size);
+  // Unlock after Initialization beause storage class is set without a lock
+  // and gc recyling garbage may be affect by locked next ptr read, set, and
+  // store.
+  pthread_mutex_unlock(&(group->free_lock));
   
   /* optional stats 
   total_requested_allocation = total_requested_allocation + data_size;
