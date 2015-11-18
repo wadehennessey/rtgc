@@ -57,7 +57,7 @@ void convert_free_to_empty_pages(int first_page, int page_count) {
   SXinit_empty_pages(first_page, page_count, HEAP_SEGMENT);
 }
 
-// Need to hold the group free lock so mutator doesn't allocate on
+// Need to hold the group free lock so mutators do not allocate on
 // a page that we've identified as free here. Maybe mutators should do this
 // themselves before deciding they need a full_gc to get memory.
 // They already must have the free lock to be allocating

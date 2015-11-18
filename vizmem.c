@@ -77,7 +77,7 @@ int counter_zero(COUNTER *c) {
     printf("pthread_cond_broadcast failed with %d!\n", err);
   }
   int val = c->count;
-  printf("counter zero\n");
+  //printf("counter zero\n");
   pthread_mutex_unlock(&(c->lock));
   return(val);
 }
@@ -92,7 +92,7 @@ int counter_increment(COUNTER *c) {
   if (0 != err)  {
     printf("pthread_cond_broadcast failed with %d!\n", err);
   }
-  printf("counter increment\n");
+  //printf("counter increment\n");
   fflush(stdout);
   pthread_mutex_unlock(&(c->lock));
   return(val);

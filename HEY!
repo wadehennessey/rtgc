@@ -10,7 +10,7 @@ systemctl enable sshd.service
 git clone https://github.com/wadehennessey/rtgc.git
 
 git commit -m "blah"
-
+# then must push commit
 git push
 
 use #define _GNU_SOURCE for weird compile problems not seeing decls

@@ -96,11 +96,11 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
 	   live_stack_size);
     threads[thread_index].saved_stack_size = live_stack_size;
     
-    /*    if (1 != counter_increment(&stacks_copied_counter)) {
-	  Debugger("error, counter_increment failed!\n");
-	  } 
-    */
-    handler_done = 1;
+    if (1 != counter_increment(&stacks_copied_counter)) {
+      Debugger("error, counter_increment failed!\n");
+    } 
+    //handler_done = 1;
+
     //printf("about to wait on may_proceed\n");
     // Wait until all threads have stopped, and the write barrier
     // has been turned back on
@@ -108,7 +108,7 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
       sched_yield();
     }
     // indicate mutator is proceeding
-    handler_done = -1;
+    //handler_done = -1;
     //printf("Resuming after signal\n");
   }
 }
@@ -136,8 +136,8 @@ int stop_all_mutators_and_save_state() {
   pthread_mutex_lock(&total_threads_lock);
   int total_threads_to_halt = total_threads - 1; /* omit gc thread */
   pthread_mutex_unlock(&total_threads_lock);
-  //counter_zero(&stacks_copied_counter);
-  handler_done = 0;
+  counter_zero(&stacks_copied_counter);
+  //handler_done = 0;
   mutators_may_proceed = 0;
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;		// skip 0 - gc thread
@@ -148,8 +148,8 @@ int stop_all_mutators_and_save_state() {
       Debugger("pthread_kill failed!");
     }
   }
-  //counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
-  while (0 == handler_done);
+  counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
+  //while (0 == handler_done);
     
   // all stacks and registers should be copied at this point
   for (int i = 0; i < total_threads_to_halt; i++) {
@@ -162,8 +162,11 @@ int stop_all_mutators_and_save_state() {
   enable_write_barrier = 1;
   mutators_may_proceed = 1;
   //printf("mutators_may_proceed is now %d\n", mutators_may_proceed);
-  while (-1 != handler_done);
+  //while (-1 != handler_done);
   //usleep(100000);
-}
 
+  // Do we need per thread state (threads[t].in_handler == 0) 
+  // to proceed from here?
+  // while (-1 != handler_done); used to hold us up with just one mutator 
+}
 
