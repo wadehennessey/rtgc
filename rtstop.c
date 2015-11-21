@@ -33,6 +33,21 @@ man page:
 
        Mutexes and condition variables are thus not suitable  for  releasing  a
        waiting thread by signaling from code running in a signal handler.
+
+New method using sig_atomic_t flags. 
+3 step "handshake" interaction:
+
+1. handler_done = 0. mutators_may_proceed = 0. 
+   Stop every mutator, mutators copy stack, set handler_done - 1;
+
+2. then busy wait until gc thread sets mutators_may_proceed to 1.
+
+3. Then each mutator acknowledges mutators_may proceed == 1 by exiting busy wait
+   and setting handler_done = -1 (meaning handlers is exiting). Gc thread uses 
+   handler_done == -1 loop to wait for all acknowledgements before starting 
+   a new gc cycle. This avoids being deadlocked in step 2, and each new gc cycle
+   starts only after all mutators acknowledge signal handler is going to exit.
+
 */
 
 // integers safe to read and set in signal handler
