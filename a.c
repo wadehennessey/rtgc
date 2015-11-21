@@ -39,9 +39,8 @@ int NODE_md[] = {offsetof(NODE, word),
 		 offsetof(NODE, greater),
 		 -1};
 
-NODE *root;
+NODE *roots[100];
 
-int node_count = 0;
 NODE *new_node(char *word, NODE *lesser, NODE *greater) {
   NODE *node = (NODE *) SXallocate(SXpointers, sizeof(NODE));
   //NODE *node = (NODE *) SXallocate(NODE_md, sizeof(NODE));
@@ -49,7 +48,6 @@ NODE *new_node(char *word, NODE *lesser, NODE *greater) {
   node->count = 1;
   setf_init(node->lesser, lesser);
   setf_init(node->greater, greater);
-  node_count = node_count + 1;
   return node;
 }
 
@@ -141,12 +139,15 @@ NODE *build_word_tree(char *filename) {
     printf("Cannot open file %s\n", filename);
   } else {
     char *word;
+    NODE *root;
     word = read_word(f);
-    SXwrite_barrier(&root, new_node(word, NULL, NULL));
+    // No write_barrier needed - intialzing write to the stack
+    root = new_node(word, NULL, NULL);
     while (NULL != (word = read_word(f))) {
       insert_node(root, word, 0);
     }
     fclose(f);
+    return(root);
   }
 }
 
@@ -176,13 +177,16 @@ int walk_word_tree(NODE *n, int verbose) {
 
 void *start_word_count(void *arg) {
   int i = 0;
-  
+
+  long tid = (long) arg;
+  register_global_root(&(roots[tid]));
   while (i < 5000000) {
     char top;
-    build_word_tree("redhead.txt");
-    walk_word_tree(root, 0);
+    NODE *root = build_word_tree("redhead.txt");
+    SXwrite_barrier(&(roots[tid]), root); 
+    assert(9317 == walk_word_tree(roots[tid], 0));
     if (0 == (i % 25)) {
-      printf("%d word counts\n", i);
+      printf("[%d] %d word counts\n", tid, i);
     }
     i = i + 1;
   }
@@ -191,9 +195,11 @@ void *start_word_count(void *arg) {
 
 int main(int argc, char *argv[]) {
   //SXinit_heap(1 << 19, 0);
-  SXinit_heap(1 << 21, 0);
-  register_global_root(&root);
-  new_thread(&start_word_count, (void *) 0);
+  //SXinit_heap(1 << 21, 0);
+  SXinit_heap(1 << 23, 0);
+  for (long i = 1; i <= 7; i++) {
+    new_thread(&start_word_count, (void *) i);
+  }
   rtgc_loop();
 }
 

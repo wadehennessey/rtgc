@@ -162,9 +162,7 @@ void mark_write_vector(GCPTR gcptr) {
 /* Snapshot-at-gc-start write barrier.
    This is really just a specialized version of scan_memory_segment. */
 void *SXwrite_barrier(void *lhs_address, void *rhs) {
-  if (memory_mutex == 1) {
-    Debugger("HEY! write_barrier called from within GC!\n");
-  }
+
   if (enable_write_barrier) {
     //if (ENABLE_VISUAL_MEMORY) START_CODE_TIMING;
     BPTR object = *((BPTR *) lhs_address);

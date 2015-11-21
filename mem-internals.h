@@ -110,6 +110,7 @@ typedef struct thread_info {
   char *stack_bottom; 	/* HIGHEST address seen when thread started */
   char *saved_stack_base;    /* This is the LOWEST addressable byte */
   int saved_stack_size;
+  int handler_done;
 } THREAD_INFO;
 
 typedef THREAD_INFO * TPTR;

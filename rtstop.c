@@ -18,9 +18,27 @@
 #include "allocate.h"
 #include "vizmem.h"
 
+/*
+Tried using condition variables to synch handlers and gc. Always deadlocked after
+running a long time. Then discovered this from the pthread_cond_broadcast
+man page:
 
-static int mutators_may_proceed = 0;
-static int handler_done = 0;
+       int pthread_cond_broadcast(pthread_cond_t *cond);
+       int pthread_cond_signal(pthread_cond_t *cond);
+
+       It  is  not  safe  to use the pthread_cond_signal() function in a signal
+       handler that is invoked asynchronously. Even  if  it  were  safe,  there
+       would   still   be   a   race   between   the   test   of   the  Boolean
+       pthread_cond_wait() that could not be efficiently eliminated.
+
+       Mutexes and condition variables are thus not suitable  for  releasing  a
+       waiting thread by signaling from code running in a signal handler.
+*/
+
+// integers safe to read and set in signal handler
+// could probaly just haved use a normal int.
+static volatile sig_atomic_t mutators_may_proceed = 0;
+static volatile sig_atomic_t handler_done[100]; //  = 0;
 
 // see /usr/include/sys/ucontext.h for more details
 void print_registers(gregset_t *gregs) {
@@ -95,11 +113,11 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
 	   stack_top,
 	   live_stack_size);
     threads[thread_index].saved_stack_size = live_stack_size;
-    
-    if (1 != counter_increment(&stacks_copied_counter)) {
-      Debugger("error, counter_increment failed!\n");
-    } 
-    //handler_done = 1;
+
+    handler_done[thread_index] = 1;
+    //if (1 != counter_increment(&stacks_copied_counter)) {
+    //  Debugger("error, counter_increment failed!\n");
+    //} 
 
     //printf("about to wait on may_proceed\n");
     // Wait until all threads have stopped, and the write barrier
@@ -108,7 +126,7 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
       sched_yield();
     }
     // indicate mutator is proceeding
-    //handler_done = -1;
+    handler_done[thread_index] = -1;
     //printf("Resuming after signal\n");
   }
 }
@@ -135,12 +153,11 @@ int stop_all_mutators_and_save_state() {
   // stop the world and copy all stack and register state in each live thread
   pthread_mutex_lock(&total_threads_lock);
   int total_threads_to_halt = total_threads - 1; /* omit gc thread */
-  pthread_mutex_unlock(&total_threads_lock);
   counter_zero(&stacks_copied_counter);
-  //handler_done = 0;
   mutators_may_proceed = 0;
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;		// skip 0 - gc thread
+    handler_done[thread] = 0;
     threads[thread].saved_stack_size = 0;
     int err = pthread_kill(threads[thread].pthread, FLIP_SIGNAL);
     if (0 != err) {
@@ -148,12 +165,12 @@ int stop_all_mutators_and_save_state() {
       Debugger("pthread_kill failed!");
     }
   }
-  counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
-  //while (0 == handler_done);
+  //counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
     
   // all stacks and registers should be copied at this point
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;
+    while (0 == handler_done[thread]);
     if (0 == threads[thread].saved_stack_size) {
       Debugger("Stack copy problem!");
     }
@@ -162,11 +179,11 @@ int stop_all_mutators_and_save_state() {
   enable_write_barrier = 1;
   mutators_may_proceed = 1;
   //printf("mutators_may_proceed is now %d\n", mutators_may_proceed);
-  //while (-1 != handler_done);
+  for (int i = 0; i < total_threads_to_halt; i++) {
+    int thread = i + 1;
+    while (-1 != handler_done[thread]);
+  }
+  pthread_mutex_unlock(&total_threads_lock);
   //usleep(100000);
-
-  // Do we need per thread state (threads[t].in_handler == 0) 
-  // to proceed from here?
-  // while (-1 != handler_done); used to hold us up with just one mutator 
 }
 

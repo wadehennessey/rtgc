@@ -222,9 +222,9 @@ void init_pages_for_group(GPTR group, int min_pages) {
 					HEAP_SEGMENT);
     assert(0 == actual_bytes);	// while we only have 1 segement
     if (actual_bytes < byte_count) {
-      memory_mutex = 0;
       // atomic and concurrent gc can't flip without
-      // unlocking all group free locks	
+      // unlocking all group free locks
+      memory_mutex = 0;
       pthread_mutex_unlock(&(group->free_lock));
       if (atomic_gc) {
 	// atomic gc
@@ -359,14 +359,7 @@ void * SXallocate(void * metadata, int size) {
   LPTR base;
   GPTR group;
 
-  if (memory_mutex) {
-    Debugger("ERROR! alloc within GC!\n");
-  }
-
   group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
-
-  memory_mutex = 1;
-
   pthread_mutex_lock(&(group->free_lock));
   if (group->free == NULL) {
     init_pages_for_group(group,1);
@@ -408,7 +401,6 @@ void * SXallocate(void * metadata, int size) {
   total_requested_objects = total_requested_objects + 1;
   total_allocation_this_cycle = total_allocation_this_cycle + group->size;
   */
-  memory_mutex = 0;
   return(base);
 }
  
@@ -653,9 +645,12 @@ int new_thread(void *(*start_func) (void *), void *args) {
 			    (void *) start_args)) {
       Debugger("pthread_create failed!\n");
     } else {
+      // HEY! should do something smarter than busy wait
+      // rtalloc_start_thread to complete thread init
       while (0 == threads[index].saved_stack_base) {
-	// HEY! should do something smarter than busy wait
-	// rtalloc_start_thread to completion thread init
+	// YOW! without this explicit sched_yield(), we hang in this
+	// loop when compiled with -O1 and-O2
+	sched_yield();
       }
       return(index);
     }

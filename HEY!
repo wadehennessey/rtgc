@@ -9,7 +9,7 @@ systemctl enable sshd.service
 
 git clone https://github.com/wadehennessey/rtgc.git
 
-git commit -m "blah"
+git commit -am "blah"
 # then must push commit
 git push
 
@@ -195,29 +195,36 @@ SXpointers = 0, but SC_POINTERS = 1
 SXnopointer = 1 but SC_NOPOINTERS = 0
 
 
-event time 630: new node alloc for "found" node thread switches to gc thread
+multiple threads fix:
+----------------------
+keep mutators_may_resume as is. 
+use thread specific .handler_done
 
-stack location of "found", about to be copied into node word ptr
-0x7f46b9f7ac48: 0x00007f46ba9f82d0
+set handler_done 0 at start of handler
+change single check for (-1 != handler_done)
+to
 
-0x7f46b9 f7ae70: stack_bottom
-
-0x7f46b9f7ac60: $rbp
-less 0x18
-0x7f46b9 f7ac48: 0x00007f46ba9f82d0
-
-
-0x7f46b9f7ac30: $esp in live frame
-
-0x7f46b9f7ab30: saved $esp seen in signal handler
+for (int i = 0; i < total_threads_to_halt; i++) {
+    while (-1 != threads[i + 1].handler_done);
+}
 
 
 
+-----------------
+alternate idea use handler_done_count and count_threshold instead to decide
+all mutators have actually proceeded and we can safely start the next
+gc cycle
 
 
+3 step interaction:
 
+1. stop every mutator, mutators copy stack, inc counter
+   wait for stack_copied_count to reach limit
 
+2. then busy wait mutators_may_proceed to change to 1
 
+3. gc thread uses handler_done loop or handler_done_count to prevent new cycle starting until all mutators have stopped busy waiting for may_proceed. No new cycle can then start until every mutator has clear path to exit. Never caught in step 2 because step 3 is omitted  and starts and completes before old cycle has finished!
 
+remove all uses of plain old int mutex
 
-0x7f46b9 77b000: stack base
+use timeradd(3) calls for time diffs, etc.
