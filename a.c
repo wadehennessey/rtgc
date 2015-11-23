@@ -196,8 +196,8 @@ void *start_word_count(void *arg) {
 int main(int argc, char *argv[]) {
   //SXinit_heap(1 << 19, 0);
   //SXinit_heap(1 << 21, 0);
-  SXinit_heap(1 << 23, 0);
-  for (long i = 1; i <= 7; i++) {
+  SXinit_heap(1 << 22, 0);
+  for (long i = 1; i <= 1; i++) {
     new_thread(&start_word_count, (void *) i);
   }
   rtgc_loop();

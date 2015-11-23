@@ -32,6 +32,7 @@ struct timeval start_gc_cycle_time;
 double last_cycle_ms;
 double last_gc_ms;
 double last_write_barrier_ms;
+struct timeval start_tv, end_tv, flip_tv, max_flip_tv;
 
 static
 void verify_white_count(GPTR group) {
@@ -396,7 +397,7 @@ void unlock_all_free_locks() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     GPTR group = &groups[i];
     pthread_mutex_unlock(&(group->free_lock));
-    sched_yield();
+    //sched_yield();
   }
 }
   
@@ -452,11 +453,23 @@ void flip() {
   // all the free_locks right now, and the write barrier is off.
   assert(0 == enable_write_barrier);
   SWAP(marked_color,unmarked_color);
+
+  gettimeofday(&start_tv, 0);
   stop_all_mutators_and_save_state();
+  gettimeofday(&end_tv, 0);
+
   unlock_all_free_locks();
+  timersub(&end_tv, &start_tv, &flip_tv);
+  if timercmp(&flip_tv, &max_flip_tv, >) {
+      max_flip_tv = flip_tv;
+      printf("max_flip_tv is %d.%06d, saved stack is %d bytes\n", 
+	     max_flip_tv.tv_sec, 
+	     max_flip_tv.tv_usec,
+	     threads[1].saved_stack_size);
+  }
 }
 
-/* The alloc counter part to this function init_pages_for_group
+/* The alloc counterpart to this function is init_pages_for_group.
    We need to change garbage color to green now so conservative
    scanning in the next gc cycle doesn't start making free objects 
    that look white turn gray! */
@@ -587,7 +600,7 @@ void rtgc_loop() {
   while (1) {
     if (1 == atomic_gc) while (0 == run_gc);
     full_gc();
-    if (0 == (gc_count % 500)) {
+    if (0 == (gc_count % 50)) {
       printf("gc end - gc_count %d\n", gc_count);
       fflush(stdout);
     }
@@ -616,4 +629,5 @@ void init_realtime_gc() {
   sem_init(&gc_semaphore, 0, 0);
   init_signals_for_rtgc();
   counter_init(&stacks_copied_counter);
+  timerclear(&max_flip_tv);
 }
