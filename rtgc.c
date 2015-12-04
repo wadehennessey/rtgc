@@ -12,7 +12,6 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include <signal.h>
-#include "compat.h"
 #include "mem-config.h"
 #include "infoBits.h"
 #include "mem-internals.h"
@@ -32,7 +31,8 @@ struct timeval start_gc_cycle_time;
 double last_cycle_ms;
 double last_gc_ms;
 double last_write_barrier_ms;
-struct timeval start_tv, end_tv, flip_tv, max_flip_tv;
+struct timeval start_tv, end_tv, flip_tv, max_flip_tv, total_flip_tv;
+
 
 static
 void verify_white_count(GPTR group) {
@@ -133,7 +133,7 @@ void scan_memory_segment(BPTR low, BPTR high) {
 }
 
 static
-void scan_memory_segment_with_metadata(BPTR low, BPTR high, MetaData *md) {
+void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
   scan_memory_segment(low, high);
 }
 
@@ -460,11 +460,15 @@ void flip() {
 
   unlock_all_free_locks();
   timersub(&end_tv, &start_tv, &flip_tv);
+  timeradd(&total_flip_tv, &flip_tv, &total_flip_tv);
   if timercmp(&flip_tv, &max_flip_tv, >) {
       max_flip_tv = flip_tv;
-      printf("max_flip_tv is %d.%06d, saved stack is %d bytes\n", 
+      printf("max_flip_tv is %d.%06d, avg is %f, saved stack is %d bytes\n", 
 	     max_flip_tv.tv_sec, 
 	     max_flip_tv.tv_usec,
+	     ((total_flip_tv.tv_sec * 1.0) + 
+	      (total_flip_tv.tv_usec / 1000000.0))
+	     / (gc_count + 1), 
 	     threads[1].saved_stack_size);
   }
 }
@@ -492,7 +496,7 @@ void recycle_group_garbage(GPTR group) {
 
     SET_COLOR(next,GREEN);
     if (DETECT_INVALID_REFS) {
-      memset((BPTR) next + 8, INVALID_ADDRESS, group->size);
+      memset((BPTR) next + sizeof(GC_HEADER), INVALID_ADDRESS, group->size);
     }
     last = next;
     next = GET_LINK_POINTER(next->next);
@@ -630,4 +634,5 @@ void init_realtime_gc() {
   init_signals_for_rtgc();
   counter_init(&stacks_copied_counter);
   timerclear(&max_flip_tv);
+  timerclear(&total_flip_tv);
 }

@@ -14,36 +14,31 @@
 #include <signal.h>
 #include <assert.h>
 #include <pthread.h>
-#include "compat.h"
 #include "infoBits.h"
-
 #include "mem-config.h"
 #include "mem-internals.h"
 #include "allocate.h"
 
-
 /* http://www.textfiles.com/etext/AUTHORS/DOYLE/ for text files */
 
 typedef struct node {
-  int *md;
   char *word;
   int count;
   struct node *lesser;
   struct node *greater;
 } NODE;
 
-NODE sample_node;
-
-int NODE_md[] = {offsetof(NODE, word),
-		 offsetof(NODE, lesser),
-		 offsetof(NODE, greater),
-		 -1};
+RT_METADATA NODE_md[] = {sizeof(NODE),
+			 offsetof(NODE, word),
+			 offsetof(NODE, lesser),
+			 offsetof(NODE, greater),
+			 -1};
 
 NODE *roots[100];
 
 NODE *new_node(char *word, NODE *lesser, NODE *greater) {
-  NODE *node = (NODE *) SXallocate(SXpointers, sizeof(NODE));
-  //NODE *node = (NODE *) SXallocate(NODE_md, sizeof(NODE));
+  //NODE *node = (NODE *) SXallocate(SXpointers, sizeof(NODE));
+  NODE *node = (NODE *) SXallocate(NODE_md, 1);
   node->word = word;
   node->count = 1;
   setf_init(node->lesser, lesser);
@@ -197,7 +192,7 @@ int main(int argc, char *argv[]) {
   //SXinit_heap(1 << 19, 0);
   //SXinit_heap(1 << 21, 0);
   SXinit_heap(1 << 22, 0);
-  for (long i = 1; i <= 1; i++) {
+  for (long i = 1; i <= 3; i++) {
     new_thread(&start_word_count, (void *) i);
   }
   rtgc_loop();

@@ -10,7 +10,6 @@
 #include <semaphore.h>
 #include <signal.h>
 #include <pthread.h>
-#include "compat.h"
 #include "mem-config.h"
 #include "infoBits.h"
 #include "mem-internals.h"

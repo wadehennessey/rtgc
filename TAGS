@@ -1,40 +1,35 @@
 
-a.c,639
+a.c,580
 #define _GNU_SOURCE3,66
-typedef struct node 26,498
-  int *md;md27,520
-  char *word;word28,531
-  int count;29,545
-  struct node *lesser;lesser30,558
-  struct node *greater;greater31,581
-} NODE;32,605
-NODE sample_node;34,614
-int NODE_md[NODE_md36,633
-NODE *root;root41,736
-int node_count 43,749
-NODE *new_node(new_node44,769
-int smallword_count 55,1111
-int bigword_count 56,1136
-char *new_word(new_word57,1159
-char *read_word(read_word69,1428
-void insert_node(90,1772
-NODE *build_word_tree(build_word_tree137,3042
-int walk_word_tree(153,3467
-void *start_word_count(start_word_count168,3801
-int main(180,4038
+typedef struct node 24,496
+  char *word;word25,518
+  int count;26,532
+  struct node *lesser;lesser27,545
+  struct node *greater;greater28,568
+} NODE;29,592
+RT_METADATA NODE_md[NODE_md31,601
+NODE *roots[roots37,733
+NODE *new_node(new_node39,752
+int smallword_count 49,1052
+int bigword_count 50,1077
+char *new_word(new_word51,1100
+char *read_word(read_word63,1369
+void insert_node(84,1713
+NODE *build_word_tree(build_word_tree131,2983
+int walk_word_tree(150,3488
+void *start_word_count(start_word_count173,4025
+int main(191,4431
 
-allocate.h,138
-#define SXpointers 6,131
-#define SXnopointers 7,165
-#define SXbeerBash(9,200
-#define setf_init(10,245
-#define INVALID_ADDRESS 12,290
-
-compat.h,105
-typedef int *SXobject;SXobject3,66
-typedef struct metadata 5,90
-  int nBytes;6,116
-} MetaData;7,130
+allocate.h,246
+#define SXnopointers 5,105
+#define SXpointers 6,139
+#define SXbeerBash(8,174
+#define setf_init(9,219
+#define INVALID_ADDRESS 11,264
+typedef struct rt_metadata 13,294
+  long size;14,323
+  long *offsets;offsets15,336
+} RT_METADATA;16,353
 
 infoBits.h,1175
 typedef struct gc_header 9,249
@@ -100,7 +95,7 @@ mem-config.h,763
 #define ENABLE_GC_TIMING 37,1377
 #define DETECT_INVALID_REFS 38,1404
 
-mem-internals.h,3026
+mem-internals.h,3027
 #define EMPTY_PAGE 4,133
 #define SYSTEM_PAGE 5,167
 #define STATIC_PAGE 6,201
@@ -134,100 +129,100 @@ typedef unsigned char * BPTR;13,349
 #define DOUBLE_ALIGNED_P(43,2036
 #define LONG_ALIGNMENT 44,2112
 #define ROUND_UPTO_LONG_ALIGNMENT(45,2154
-#define  CLASSP(51,2451
-#define METADATAP(52,2549
-#define MAYBE_PAUSE_GC54,2590
-#define MIN(56,2614
-#define MAX(57,2649
-#define SWAP(58,2684
-typedef struct group_info 60,2739
-  int size;61,2767
-  int index;62,2779
-  GCPTR free_last;64,2793
-  GCPTR free;65,2844
-  GCPTR gray;66,2891
-  GCPTR black;67,2931
-  GCPTR white;68,2972
-  int total_object_count;71,3015
-  int white_count;72,3072
-  int black_count;73,3116
-  int green_count;74,3167
-  pthread_mutex_t free_lock;76,3219
-  pthread_mutex_t black_count_lock;77,3279
-  pthread_mutex_t black_and_last_lock;78,3346
-} GROUP_INFO;80,3417
-typedef GROUP_INFO * GPTR;82,3432
-typedef struct segment 84,3460
-  BPTR first_segment_ptr;85,3485
-  BPTR last_segment_ptr;86,3511
-  int segment_page_count;87,3536
-  int type;88,3562
-} SEGMENT;89,3574
-typedef struct hole 91,3586
-  int page_count;92,3608
-  struct hole *next;next93,3654
-} HOLE;94,3703
-typedef HOLE * HOLE_PTR;96,3712
-typedef struct page_info 98,3738
-  GCPTR base;99,3765
-  GPTR group;100,3779
-  int bytes_used;101,3793
-} PAGE_INFO;102,3811
-typedef PAGE_INFO * PPTR;104,3825
-typedef struct thread_info 106,3852
-  pthread_t pthread;107,3881
-  gregset_t registers;108,3902
-  long long *stack_base;stack_base109,3953
-  int stack_size;110,4033
-  char *stack_bottom;stack_bottom111,4051
-  char *saved_stack_base;saved_stack_base112,4121
-  int saved_stack_size;113,4192
-} THREAD_INFO;114,4216
-typedef THREAD_INFO * TPTR;116,4232
-typedef struct start_thread_args 118,4261
-  int thread_index;119,4296
-  void *(*real_start_func)real_start_func120,4316
-  char *real_args;real_args121,4353
-} START_THREAD_ARGS;122,4372
-typedef struct counter 124,4394
-  int count;125,4419
-  pthread_mutex_t lock;126,4432
-  pthread_cond_t cond;127,4456
-} COUNTER;128,4479
-#define ENABLE_LOCKING 204,6640
-#define LOCK(207,6685
-#define UNLOCK(208,6731
-#define LOCK(210,6786
-#define UNLOCK(211,6807
-#define WITH_LOCK(214,6836
+#define METADATAP(48,2281
+#define MAYBE_PAUSE_GC 50,2336
+#define MIN(52,2375
+#define MAX(53,2410
+#define SWAP(54,2445
+typedef struct group_info 56,2500
+  int size;57,2528
+  int index;58,2540
+  GCPTR free_last;60,2554
+  GCPTR free;61,2605
+  GCPTR gray;62,2652
+  GCPTR black;63,2692
+  GCPTR white;64,2745
+  int total_object_count;67,2788
+  int white_count;68,2845
+  int black_count;69,2889
+  int green_count;70,2940
+  pthread_mutex_t free_lock;72,2992
+  pthread_mutex_t black_count_lock;73,3052
+  pthread_mutex_t black_and_last_lock;74,3119
+} GROUP_INFO;75,3189
+typedef GROUP_INFO * GPTR;77,3204
+typedef struct segment 79,3232
+  BPTR first_segment_ptr;80,3257
+  BPTR last_segment_ptr;81,3283
+  int segment_page_count;82,3308
+  int type;83,3334
+} SEGMENT;84,3346
+typedef struct hole 86,3358
+  int page_count;87,3380
+  struct hole *next;next88,3426
+} HOLE;89,3475
+typedef HOLE * HOLE_PTR;91,3484
+typedef struct page_info 93,3510
+  GCPTR base;94,3537
+  GPTR group;95,3551
+  int bytes_used;96,3565
+} PAGE_INFO;97,3583
+typedef PAGE_INFO * PPTR;99,3597
+typedef struct thread_info 101,3624
+  pthread_t pthread;102,3653
+  gregset_t registers;103,3674
+  long long *stack_base;stack_base104,3725
+  int stack_size;105,3805
+  char *stack_bottom;stack_bottom106,3823
+  char *saved_stack_base;saved_stack_base107,3893
+  int saved_stack_size;108,3964
+  int handler_done;109,3988
+} THREAD_INFO;110,4008
+typedef THREAD_INFO * TPTR;112,4024
+typedef struct start_thread_args 114,4053
+  int thread_index;115,4088
+  void *(*real_start_func)real_start_func116,4108
+  char *real_args;real_args117,4145
+} START_THREAD_ARGS;118,4164
+typedef struct counter 120,4186
+  int count;121,4211
+  pthread_mutex_t lock;122,4224
+  pthread_cond_t cond;123,4248
+} COUNTER;124,4271
+#define ENABLE_LOCKING 200,6432
+#define LOCK(203,6477
+#define UNLOCK(204,6523
+#define LOCK(206,6578
+#define UNLOCK(207,6599
+#define WITH_LOCK(210,6628
 
-rtalloc.c,873
+rtalloc.c,872
 #define _GNU_SOURCE4,100
-HOLE_PTR empty_pages;22,439
-int total_allocation;24,462
-int total_requested_allocation;25,484
-int total_requested_objects;26,516
-int total_allocation_this_cycle;27,545
-int size_to_group_index(30,586
-void init_group_info(43,781
-void init_page_info(67,1614
-void SXinit_empty_pages(76,1857
-int allocate_segment(100,2666
-GCPTR allocate_empty_pages(146,4385
-void init_pages_for_group(212,6431
-GPTR allocationGroup(276,8611
-LPTR SXInitializeObject(313,9723
-void * SXallocate(353,10779
-GCPTR interior_to_gcptr(411,12559
-void verify_group(430,13043
-void verify_all_groups(453,13800
-int SXtotalFreeHeapSpace(472,14442
-int SXlargestFreeHeapBlock(490,14924
-void init_gc_thread(520,15742
-void register_global_root(538,16280
-void SXinit_heap(547,16527
-void *rtalloc_start_thread(rtalloc_start_thread595,18234
-int new_thread(638,19784
+HOLE_PTR empty_pages;21,419
+int total_allocation;23,442
+int total_requested_allocation;24,464
+int total_requested_objects;25,496
+int total_allocation_this_cycle;26,525
+int size_to_group_index(29,566
+void init_group_info(42,761
+void init_page_info(64,1484
+void SXinit_empty_pages(73,1727
+int allocate_segment(97,2536
+GCPTR allocate_empty_pages(143,4255
+void init_pages_for_group(209,6302
+GPTR allocationGroup(278,8592
+LPTR SXInitializeObject(316,9757
+void * SXallocate(355,10824
+GCPTR interior_to_gcptr(408,12654
+void verify_group(427,13138
+void verify_all_groups(451,13930
+int SXtotalFreeHeapSpace(458,14108
+int SXlargestFreeHeapBlock(476,14590
+void init_gc_thread(506,15408
+void register_global_root(524,15946
+void SXinit_heap(533,16193
+void *rtalloc_start_thread(rtalloc_start_thread581,17900
+int new_thread(624,19450
 
 rtalloc-extra.c,191
 void * SXstaticAllocate(6,128
@@ -237,112 +232,121 @@ int SXstackAllocationSize(128,3995
 int SXallocationTrueSize(135,4207
 int SXtrueSize(144,4502
 
-rtgc.c,1294
-int gc_count;27,694
-double total_gc_time_in_cycle;28,708
-double max_increment_in_cycle;29,739
-double total_write_barrier_time_in_cycle;30,770
-struct timeval start_gc_cycle_time;31,812
-double last_cycle_ms;32,848
-double last_gc_ms;33,870
-double last_write_barrier_ms;34,889
-void SXmake_object_gray(41,1130
-void scan_memory_segment(90,2673
-void scan_memory_segment_with_metadata(115,3427
-int scan_write_vector(121,3548
-void mark_write_vector(138,3998
-void * SXwrite_barrier(145,4248
-void * SXsafe_bash(164,4809
-void *  SXsafe_setfInit(187,5380
-void *ptrcpy(ptrcpy198,5682
-void *ptrset(ptrset210,6037
-void scan_thread_registers(221,6278
-void scan_thread_saved_stack(228,6513
-void scan_thread(236,6800
-void scan_threads(242,6909
-void scan_global_roots(250,7106
-void scan_static_space(271,7658
-void scan_root_set(293,8249
-void scan_object(305,8516
-void scan_object_with_group(328,9051
-void scan_gray_set(339,9359
-void lock_all_free_locks(375,10202
-void unlock_all_free_locks(383,10380
-void flip(391,10564
-void recycle_group_garbage(446,12460
-void recycle_all_garbage(506,14264
-void reset_gc_cycle_stats(522,14593
-void summarize_gc_cycle_stats(533,14849
-void full_gc(546,15210
-void rtgc_loop(569,15708
-int rtgc_count(581,15959
-void init_realtime_gc(585,16005
+rtgc.c,1661
+int gc_count;26,674
+double total_gc_time_in_cycle;27,688
+double max_increment_in_cycle;28,719
+double total_write_barrier_time_in_cycle;29,750
+struct timeval start_gc_cycle_time;30,792
+double last_cycle_ms;31,828
+double last_gc_ms;32,850
+double last_write_barrier_ms;33,869
+struct timeval start_tv,34,899
+struct timeval start_tv, end_tv,34,899
+struct timeval start_tv, end_tv, flip_tv,34,899
+struct timeval start_tv, end_tv, flip_tv, max_flip_tv,34,899
+struct timeval start_tv, end_tv, flip_tv, max_flip_tv, total_flip_tv;34,899
+void verify_white_count(38,978
+void verify_white_counts(51,1251
+void SXmake_object_gray(59,1415
+void scan_memory_segment(111,3220
+void scan_memory_segment_with_metadata(136,3974
+int scan_write_vector(141,4097
+void mark_write_vector(158,4547
+void *SXwrite_barrier(SXwrite_barrier165,4797
+void *SXsafe_bash(SXsafe_bash182,5266
+void *SXsafe_setfInit(SXsafe_setfInit205,5836
+void *ptrcpy(ptrcpy216,6136
+void *ptrset(ptrset228,6491
+void scan_thread_registers(239,6732
+void scan_thread_saved_stack(246,6967
+void scan_thread(254,7254
+void scan_threads(260,7363
+void scan_global_roots(269,7621
+void scan_static_space(290,8173
+void scan_root_set(308,8702
+void scan_object(320,8969
+void scan_object_with_group(343,9504
+void scan_gray_set(353,9811
+void lock_all_free_locks(388,10653
+void unlock_all_free_locks(396,10831
+void flip(405,11036
+void recycle_group_garbage(481,13516
+void recycle_all_garbage(542,15496
+void reset_gc_cycle_stats(556,15821
+void summarize_gc_cycle_stats(567,16077
+void full_gc(580,16438
+void rtgc_loop(603,16936
+int rtgc_count(615,17182
+void init_realtime_gc(619,17228
 
 rtgc-extra.c,162
-void remove_object_from_free_list(7,166
-void convert_free_to_empty_pages(37,987
-void coalesce_segment_free_pages(65,2050
-void coalesce_all_free_pages(94,3097
+void remove_object_from_free_list(7,131
+void convert_free_to_empty_pages(37,952
+void coalesce_segment_free_pages(65,2014
+void coalesce_all_free_pages(94,3061
 
 rtglobals.c,940
 #define _USE_GNU5,125
 #define _GNU_SOURCE6,142
-GROUP_INFO *groups;groups23,442
-PAGE_INFO *pages;pages24,462
-SEGMENT *segments;segments26,481
-int total_segments;27,500
-THREAD_INFO *threads;threads29,521
-int total_threads;30,543
-char **global_roots;global_roots32,563
-int total_global_roots;33,584
-BPTR first_static_ptr;36,666
-BPTR last_static_ptr;37,689
-BPTR first_partition_ptr;39,712
-BPTR last_partition_ptr;40,738
-BPTR write_vector;42,764
-int write_vector_size;43,783
-int total_partition_pages;45,807
-int unmarked_color;46,834
-int marked_color;47,854
-int enable_write_barrier;48,872
-int memory_mutex;49,898
-int visual_memory_on;51,917
-char *last_gc_state;last_gc_state52,939
-pthread_key_t thread_index_key;54,961
-pthread_mutex_t total_threads_lock;56,994
-pthread_mutex_t empty_pages_lock;57,1030
-COUNTER stacks_copied_counter;59,1065
-sem_t gc_semaphore;60,1096
-int run_gc 61,1116
-int atomic_gc 62,1132
+GROUP_INFO *groups;groups22,422
+PAGE_INFO *pages;pages23,442
+SEGMENT *segments;segments25,461
+int total_segments;26,480
+THREAD_INFO *threads;threads28,501
+int total_threads;29,523
+char **global_roots;global_roots31,543
+int total_global_roots;32,564
+BPTR first_static_ptr;35,646
+BPTR last_static_ptr;36,669
+BPTR first_partition_ptr;38,692
+BPTR last_partition_ptr;39,718
+BPTR write_vector;41,744
+int write_vector_size;42,763
+int total_partition_pages;44,787
+int unmarked_color;45,814
+int marked_color;46,834
+int enable_write_barrier;47,852
+int memory_mutex;48,878
+int visual_memory_on;50,897
+char *last_gc_state;last_gc_state51,919
+pthread_key_t thread_index_key;53,941
+pthread_mutex_t total_threads_lock;55,974
+pthread_mutex_t empty_pages_lock;56,1010
+COUNTER stacks_copied_counter;58,1045
+sem_t gc_semaphore;59,1076
+int run_gc 60,1096
+int atomic_gc 61,1112
 
-rtstop.c,244
+rtstop.c,297
 #define _GNU_SOURCE3,66
-static int mutators_may_proceed 22,408
-static int handler_done 23,445
-void print_registers(26,527
-void gc_flip_action_func(68,1879
-void init_signals_for_rtgc(112,3580
-int stop_all_mutators_and_save_state(130,4088
+static volatile sig_atomic_t mutators_may_proceed 54,1887
+static volatile sig_atomic_t handler_done[handler_done55,1942
+void print_registers(58,2052
+void gc_flip_action_func(100,3404
+void init_signals_for_rtgc(148,5262
+int stop_all_mutators_and_save_state(166,5770
 
 vizmem.c,593
-void *SXbig_malloc(SXbig_malloc21,413
-void out_of_memory(32,659
-static int zero 37,781
-static int debug;38,802
-void Debugger(40,821
-void copy_test(51,997
-void counter_init(66,1449
-int counter_zero(72,1579
-int counter_increment(85,1897
-void counter_wait_threshold(101,2314
-void SXmaybe_update_visual_page(110,2561
-int SXupdate_visual_page(114,2659
-void SXupdate_visual_static_page(117,2705
-void SXupdate_visual_fake_ptr_page(119,2759
-void SXdraw_visual_gc_state(121,2814
-void SXdraw_visual_gc_stats(123,2852
-void SXvisual_runbar_on(125,2890
-void SXvisual_runbar_off(127,2924
+void *SXbig_malloc(SXbig_malloc20,393
+void out_of_memory(31,639
+static int zero 36,761
+static int debug;37,782
+void Debugger(39,801
+void copy_test(50,977
+void counter_init(65,1429
+int counter_zero(71,1559
+int counter_increment(84,1879
+void counter_wait_threshold(102,2382
+void SXmaybe_update_visual_page(111,2629
+int SXupdate_visual_page(115,2727
+void SXupdate_visual_static_page(118,2773
+void SXupdate_visual_fake_ptr_page(120,2827
+void SXdraw_visual_gc_state(122,2882
+void SXdraw_visual_gc_stats(124,2920
+void SXvisual_runbar_on(126,2958
+void SXvisual_runbar_off(128,2992
 
 vizmem.h,0
+
+compat.h,0

@@ -174,14 +174,22 @@ From rr/src/Scheduler.h
 -c default:  enum { DEFAULT_MAX_TICKS = 250000 };    // 50ms time slice
 -e default:  enum { DEFAULT_MAX_EVENTS = 10 };
 
-CONFUSING!!!!!
-SXpointers = 0, but SC_POINTERS = 1
-SXnopointer = 1 but SC_NOPOINTERS = 0
+
+To run real-time round-robin:
+-----------------
+chrt --rr 30 ./a
+or
+chrt --fifo 30 ./a
+
+ps -Lo pid,tid,class <./a pid #>
 
 cleanup
 -------
 get rid of count timer that won't work for us
 
 investigate real-time scheduler for mutator threads.
-real-time gc needs real-time linux, or gc isn't weakest link, linux is.
 
+separate InitializeObject into 2 parts
+
+just support md, no classes in first slot of object
+del GCMD_HEADER, CLASSP, etc. 

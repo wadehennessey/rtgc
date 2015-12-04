@@ -12,7 +12,6 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include <signal.h>
-#include "compat.h"
 #include "mem-config.h"
 #include "infoBits.h"
 #include "mem-internals.h"
@@ -276,7 +275,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
 }
 
 static
-GPTR allocationGroup(void * metadata, int size,
+GPTR allocationGroup(int *metadata, int size,
 		     int *return_data_size, int *return_real_size, void *return_metadata) {
   int data_size, real_size;
 
@@ -289,7 +288,7 @@ GPTR allocationGroup(void * metadata, int size,
     default:
       if (METADATAP(metadata)) {
 	/* We count the metadata ptr in data_size for compat with instance */
-	data_size = (size * (((MetaData *) metadata)->nBytes)) + sizeof(void *);
+	data_size = (size * (((RT_METADATA *) metadata)->size)) + sizeof(void *);
 	real_size = data_size + sizeof(GC_HEADER);
       } else {
 	Debugger("Error - you may not allocate instances\n");
@@ -306,7 +305,8 @@ GPTR allocationGroup(void * metadata, int size,
     }
     *return_data_size = data_size;
     *return_real_size = real_size;
-    *((SXobject *) return_metadata) = (SXobject) metadata;
+    //*((SXobject *) return_metadata) = (SXobject) metadata;
+    *((int **) return_metadata) = (int *) metadata;
     return(group);
   } else {
     printf("Negative object size\n");
@@ -316,13 +316,12 @@ GPTR allocationGroup(void * metadata, int size,
 LPTR SXInitializeObject(void *metadata, void *void_base,
 			int total_size, int real_size) {
   LPTR base = void_base;
-  int limit, i;
   GCPTR gcptr = (GCPTR) base;
+  int limit = ((DETECT_INVALID_REFS) ?
+	       ((real_size / sizeof(LPTR)) + ((real_size % sizeof(LPTR)) != 0)) :
+	       total_size / sizeof(LPTR));
 
-  limit = ((DETECT_INVALID_REFS) ?
-	   ((real_size / sizeof(LPTR)) + ((real_size % sizeof(LPTR)) != 0)) :
-	   total_size / sizeof(LPTR));
-  for (i = 2; i < limit; i++) {
+  for (int i = 2; i < limit; i++) {
     *(base + i) = 0;
   }
 
@@ -337,7 +336,7 @@ LPTR SXInitializeObject(void *metadata, void *void_base,
     break;    
   default:
     if (METADATAP(metadata)) {
-      LPTR last_ptr = base + (total_size / 4) - 1;
+      LPTR last_ptr = base + (total_size / sizeof(LPTR)) - 1;
       SET_STORAGE_CLASS(gcptr,SC_METADATA);
       *last_ptr = (long) metadata;
       base = base + 2;
@@ -353,7 +352,7 @@ LPTR SXInitializeObject(void *metadata, void *void_base,
   return(base);
 }
 
-void * SXallocate(void * metadata, int size) {
+void * SXallocate(void *metadata, int size) {
   int i, data_size, real_size, limit;
   GCPTR new;
   LPTR base;

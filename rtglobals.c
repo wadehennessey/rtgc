@@ -14,7 +14,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <semaphore.h>
-#include "compat.h"
 #include "mem-config.h"
 #include "infoBits.h"
 #include "mem-internals.h"

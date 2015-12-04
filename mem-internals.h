@@ -44,12 +44,8 @@ extern BPTR last_static_ptr;
 #define LONG_ALIGNMENT (sizeof(long) - 1)
 #define ROUND_UPTO_LONG_ALIGNMENT(n) (((((n) - 1)) & ~LONG_ALIGNMENT) + \
                                      sizeof(long)) 
-/* HEY!This is a pretty stupid definition. Something better?
-   #define METADATAP(p) (IN_GLOBALS(p) !! !(isObj(p))) */
 
-/* HEY! This is still pretty dumb, but better... */
-#define  CLASSP(ptr) (IN_HEAP_OR_STATIC(ptr) && (GET_INSTANCE_STORAGE_CLASS(ptr) == SC_INSTANCE))
-#define METADATAP(ptr) (!(CLASSP(ptr)))
+#define METADATAP(ptr) (((void *) ptr)  > SXpointers)
 
 #define MAYBE_PAUSE_GC sched_yield();
 
