@@ -604,7 +604,7 @@ void rtgc_loop() {
   while (1) {
     if (1 == atomic_gc) while (0 == run_gc);
     full_gc();
-    if (0 == (gc_count % 50)) {
+    if (0 == (gc_count % 2)) {
       printf("gc end - gc_count %d\n", gc_count);
       fflush(stdout);
     }

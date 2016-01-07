@@ -189,14 +189,14 @@ typedef struct counter 120,4186
   pthread_mutex_t lock;122,4224
   pthread_cond_t cond;123,4248
 } COUNTER;124,4271
-#define ENABLE_LOCKING 200,6432
-#define LOCK(203,6477
-#define UNLOCK(204,6523
-#define LOCK(206,6578
-#define UNLOCK(207,6599
-#define WITH_LOCK(210,6628
+#define ENABLE_LOCKING 200,6444
+#define LOCK(203,6489
+#define UNLOCK(204,6535
+#define LOCK(206,6590
+#define UNLOCK(207,6611
+#define WITH_LOCK(210,6640
 
-rtalloc.c,872
+rtalloc.c,873
 #define _GNU_SOURCE4,100
 HOLE_PTR empty_pages;21,419
 int total_allocation;23,442
@@ -207,22 +207,22 @@ int size_to_group_index(29,566
 void init_group_info(42,761
 void init_page_info(64,1484
 void SXinit_empty_pages(73,1727
-int allocate_segment(97,2536
-GCPTR allocate_empty_pages(143,4255
-void init_pages_for_group(209,6302
-GPTR allocationGroup(278,8592
-LPTR SXInitializeObject(316,9757
-void * SXallocate(355,10824
-GCPTR interior_to_gcptr(408,12654
-void verify_group(427,13138
-void verify_all_groups(451,13930
-int SXtotalFreeHeapSpace(458,14108
-int SXlargestFreeHeapBlock(476,14590
-void init_gc_thread(506,15408
-void register_global_root(524,15946
-void SXinit_heap(533,16193
-void *rtalloc_start_thread(rtalloc_start_thread581,17900
-int new_thread(624,19450
+long allocate_segment(97,2536
+GCPTR allocate_empty_pages(143,4262
+void init_pages_for_group(209,6309
+GPTR allocationGroup(278,8599
+LPTR SXInitializeObject(316,9764
+void * SXallocate(355,10831
+GCPTR interior_to_gcptr(408,12661
+void verify_group(427,13145
+void verify_all_groups(451,13937
+int SXtotalFreeHeapSpace(458,14115
+int SXlargestFreeHeapBlock(476,14597
+void init_gc_thread(506,15415
+void register_global_root(524,15953
+void SXinit_heap(533,16200
+void *rtalloc_start_thread(rtalloc_start_thread581,17910
+int new_thread(624,19460
 
 rtalloc-extra.c,191
 void * SXstaticAllocate(6,128
@@ -286,7 +286,7 @@ void convert_free_to_empty_pages(37,952
 void coalesce_segment_free_pages(65,2014
 void coalesce_all_free_pages(94,3061
 
-rtglobals.c,940
+rtglobals.c,941
 #define _USE_GNU5,125
 #define _GNU_SOURCE6,142
 GROUP_INFO *groups;groups22,422
@@ -302,21 +302,21 @@ BPTR last_static_ptr;36,669
 BPTR first_partition_ptr;38,692
 BPTR last_partition_ptr;39,718
 BPTR write_vector;41,744
-int write_vector_size;42,763
-int total_partition_pages;44,787
-int unmarked_color;45,814
-int marked_color;46,834
-int enable_write_barrier;47,852
-int memory_mutex;48,878
-int visual_memory_on;50,897
-char *last_gc_state;last_gc_state51,919
-pthread_key_t thread_index_key;53,941
-pthread_mutex_t total_threads_lock;55,974
-pthread_mutex_t empty_pages_lock;56,1010
-COUNTER stacks_copied_counter;58,1045
-sem_t gc_semaphore;59,1076
-int run_gc 60,1096
-int atomic_gc 61,1112
+long write_vector_size;42,763
+int total_partition_pages;44,788
+int unmarked_color;45,815
+int marked_color;46,835
+int enable_write_barrier;47,853
+int memory_mutex;48,879
+int visual_memory_on;50,898
+char *last_gc_state;last_gc_state51,920
+pthread_key_t thread_index_key;53,942
+pthread_mutex_t total_threads_lock;55,975
+pthread_mutex_t empty_pages_lock;56,1011
+COUNTER stacks_copied_counter;58,1046
+sem_t gc_semaphore;59,1077
+int run_gc 60,1097
+int atomic_gc 61,1113
 
 rtstop.c,297
 #define _GNU_SOURCE3,66
@@ -329,24 +329,22 @@ int stop_all_mutators_and_save_state(166,5770
 
 vizmem.c,593
 void *SXbig_malloc(SXbig_malloc20,393
-void out_of_memory(31,639
-static int zero 36,761
-static int debug;37,782
-void Debugger(39,801
-void copy_test(50,977
-void counter_init(65,1429
-int counter_zero(71,1559
-int counter_increment(84,1879
-void counter_wait_threshold(102,2382
-void SXmaybe_update_visual_page(111,2629
-int SXupdate_visual_page(115,2727
-void SXupdate_visual_static_page(118,2773
-void SXupdate_visual_fake_ptr_page(120,2827
-void SXdraw_visual_gc_state(122,2882
-void SXdraw_visual_gc_stats(124,2920
-void SXvisual_runbar_on(126,2958
-void SXvisual_runbar_off(128,2992
+void out_of_memory(31,643
+static int zero 36,765
+static int debug;37,786
+void Debugger(39,805
+void copy_test(50,981
+void counter_init(65,1433
+int counter_zero(71,1563
+int counter_increment(84,1883
+void counter_wait_threshold(102,2386
+void SXmaybe_update_visual_page(111,2633
+int SXupdate_visual_page(115,2731
+void SXupdate_visual_static_page(118,2777
+void SXupdate_visual_fake_ptr_page(120,2831
+void SXdraw_visual_gc_state(122,2886
+void SXdraw_visual_gc_stats(124,2924
+void SXvisual_runbar_on(126,2962
+void SXvisual_runbar_off(128,2996
 
 vizmem.h,0
-
-compat.h,0

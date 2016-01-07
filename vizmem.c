@@ -17,14 +17,14 @@
 
 
 // grows *DOWN*, not up
-void *SXbig_malloc(int bytes) {
+void *SXbig_malloc(size_t bytes) {
   BPTR p = (mmap(0,
 		 bytes,
 		 PROT_READ | PROT_WRITE, /* leave out PROT_EXEC */
 		 MAP_PRIVATE | MAP_ANONYMOUS,
 		 0,
 		 0));
-  printf("big_malloc of %d bytes returning pointer %p\n", bytes, p);
+  printf("big_malloc of %ld bytes returning pointer %p\n", bytes, p);
   return(p);
 }
 

@@ -125,7 +125,6 @@ typedef struct counter {
 
 void scan_memory_segment(BPTR low, BPTR high);
 void scan_object(GCPTR ptr, int total_size);
-void *big_malloc(int size);
 GCPTR interior_to_gcptr(BPTR ptr);
 void SXinit_empty_pages(int first_page, int page_count, int type);
 void verify_total_object_count(void);
@@ -142,10 +141,11 @@ int stop_all_mutators_and_save_state();
 
 
 int SXallocationTrueSize(void * metadata, int size);
-void SXinit_heap(int default_heap_bytes, int static_size);
+void SXinit_heap(size_t default_heap_bytes, int static_size);
 void SXinit_realtime_gc(void);
 void Debugger(char *msg);
-void * SXbig_malloc(int size);
+void * SXbig_malloc(size_t size);
+//void * SXbig_malloc(int size);
 void SXcopy_regs_to_stack(BPTR regptr);
 void out_of_memory(char *space_name, int size);
 void register_global_root(void *root);
@@ -169,8 +169,7 @@ extern int total_segments;
 extern THREAD_INFO *threads;
 extern int total_threads;
 
-extern int heap_bytes;
-extern int total_partition_pages;
+extern long total_partition_pages;
 extern int memory_mutex;
 extern int unmarked_color;
 extern int marked_color;
@@ -195,7 +194,7 @@ extern sem_t gc_semaphore;
 extern int run_gc;
 extern int atomic_gc;
 extern BPTR write_vector;
-extern int write_vector_size;
+extern size_t write_vector_size;
 
 #define ENABLE_LOCKING 1
 

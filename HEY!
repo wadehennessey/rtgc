@@ -49,13 +49,6 @@ other profilers
 perf ./a
 perf report
 
-
-NEXT:
------
-Just put locking needed by SXallocate and SXwrite_barrier call chain in
-
-Then try concurrent mutate and rtgc
-
 add
 wmctrl -r "emacs" -e 1,-1,-1,770,1010
 
@@ -174,6 +167,18 @@ From rr/src/Scheduler.h
 -c default:  enum { DEFAULT_MAX_TICKS = 250000 };    // 50ms time slice
 -e default:  enum { DEFAULT_MAX_EVENTS = 10 };
 
+To add swap
+------------
+su
+cd /home
+dd if=/dev/zero of=bigswapfile bs=1G count=64
+chmod 600 /root/bigswapfile
+mkswap bigswapfile
+swapon bigswapfile
+
+in /etc/fstab add:
+/home/bigswapfile		swap		swap	defaults	0 0
+
 
 To run real-time round-robin:
 -----------------
@@ -192,4 +197,7 @@ investigate real-time scheduler for mutator threads.
 separate InitializeObject into 2 parts
 
 just support md, no classes in first slot of object
-del GCMD_HEADER, CLASSP, etc. 
+del GCMD_HEADER, CLASSP, etc.
+
+chg all SX to RT
+

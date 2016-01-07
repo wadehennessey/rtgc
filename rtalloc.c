@@ -94,8 +94,8 @@ void SXinit_empty_pages(int first_page, int page_count, int type) {
 }
 
 static
-int allocate_segment(int desired_bytes, int type) {
-  int actual_bytes = 0;
+long allocate_segment(size_t desired_bytes, int type) {
+  size_t actual_bytes = 0;
   BPTR first_segment_ptr, last_segment_ptr;
   int segment_page_count, first_segment_page;
   int segment = total_segments;
@@ -530,7 +530,7 @@ void register_global_root(void *root) {
   }
 }
 
-void SXinit_heap(int first_segment_bytes, int static_size) {
+void SXinit_heap(size_t first_segment_bytes, int static_size) {
 
   enable_write_barrier = 0;
   total_allocation = 0;
@@ -543,13 +543,14 @@ void SXinit_heap(int first_segment_bytes, int static_size) {
      scan it. We don't want the GC looking at itself! */
   total_partition_pages = first_segment_bytes / BYTES_PER_PAGE;
   groups = malloc(sizeof(GROUP_INFO) * (MAX_GROUP_INDEX + 1));
-  pages = malloc(sizeof(PAGE_INFO) * total_partition_pages);
+  pages = SXbig_malloc(sizeof(PAGE_INFO) * total_partition_pages);
   segments = malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
   threads = malloc(sizeof(THREAD_INFO) * MAX_THREADS);
   global_roots = malloc(sizeof(char **) * MAX_GLOBAL_ROOTS);
   write_vector_size = (total_partition_pages * 
 		       (BYTES_PER_PAGE / MIN_GROUP_SIZE));
-  write_vector = malloc(write_vector_size);
+  printf("write_vector_size is %ld\n", write_vector_size);
+  write_vector = SXbig_malloc(write_vector_size);
   if ((pages == 0) || (groups == 0) || (segments == 0) || 
       (threads == 0) || (global_roots == 0) || (write_vector == 0)) {
     out_of_memory("Heap Memory tables", 0);
