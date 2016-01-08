@@ -1,7 +1,8 @@
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
+
 // rtgc.c page coalescing code. 
 // moved here for now to reduce clutter 
 // until a concurrent collector is working well
-
 
 static
 void remove_object_from_free_list(GPTR group, GCPTR object) {
@@ -54,7 +55,7 @@ void convert_free_to_empty_pages(int first_page, int page_count) {
     }
     next_page_index = next_page_index + total_pages;
   }
-  SXinit_empty_pages(first_page, page_count, HEAP_SEGMENT);
+  RTinit_empty_pages(first_page, page_count, HEAP_SEGMENT);
 }
 
 // Need to hold the group free lock so mutators do not allocate on

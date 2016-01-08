@@ -1,11 +1,11 @@
-// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
 /* Interface to the memory manager */
 
-#define SXnopointers ((void *) 0)
-#define SXpointers   ((void *) 1)
+#define RTnopointers ((void *) 0)
+#define RTpointers   ((void *) 1)
 
-#define SXbeerBash(lhs, rhs) ((lhs) = (rhs))
+#define RTbeerBash(lhs, rhs) ((lhs) = (rhs))
 #define setf_init(lhs, rhs) ((lhs) = (rhs))
 
 #define INVALID_ADDRESS 0xEF
@@ -15,31 +15,31 @@ typedef struct rt_metadata {
   long *offsets;
 } RT_METADATA;
 
-void * SXwrite_barrier(void *lhs_address, void * rhs);
+void * RTwrite_barrier(void *lhs_address, void * rhs);
 
-void * SXsafe_bash(void *lhs_address, void * rhs);
+void * RTsafe_bash(void *lhs_address, void * rhs);
 
-void * SXsafe_setfInit(void *lhs_address, void * rhs);
+void * RTsafe_setfInit(void *lhs_address, void * rhs);
 
-void * SXallocate(void *metadata, int number_of_bytes);
+void * RTallocate(void *metadata, int number_of_bytes);
 
-void * SXstaticAllocate(void *metadata, int number_of_bytes);
+void * RTstaticAllocate(void *metadata, int number_of_bytes);
 
-void * SXreallocate(void *pointer, int new_size);
+void * RTreallocate(void *pointer, int new_size);
 
 void * ptrcpy(void *p1, void * p2, int num_bytes);
 
 void * ptrset(void *p1, int data, int num_bytes);
 
-int SXlargestFreeHeapBlock(void);
+int RTlargestFreeHeapBlock(void);
 
-int SXstackAllocationSize(void *metadata, int size);
+int RTstackAllocationSize(void *metadata, int size);
 
-int SXallocationTrueSize(void *metadata, int size);
+//int RTallocationTrueSize(void *metadata, int size);
 
-int SXtrueSize(void *ptr);
+int RTtrueSize(void *ptr);
 
-LPTR SXinitializeObject(void *metadata, void *base, int total_size, int real);
+//LPTR RTinitializeObject(void *metadata, void *base, int total_size, int real);
 
 void init_realtime_gc();
 

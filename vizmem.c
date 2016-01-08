@@ -1,4 +1,4 @@
-// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,14 +17,14 @@
 
 
 // grows *DOWN*, not up
-void *SXbig_malloc(size_t bytes) {
+void *RTbig_malloc(size_t bytes) {
   BPTR p = (mmap(0,
 		 bytes,
 		 PROT_READ | PROT_WRITE, /* leave out PROT_EXEC */
 		 MAP_PRIVATE | MAP_ANONYMOUS,
 		 0,
 		 0));
-  printf("big_malloc of %ld bytes returning pointer %p\n", bytes, p);
+  printf("RTbig_malloc of %ld bytes returning pointer %p\n", bytes, p);
   return(p);
 }
 
@@ -108,22 +108,22 @@ void counter_wait_threshold(COUNTER *c, int threshold) {
   pthread_mutex_unlock(&(c->lock));
 }
   
-void SXmaybe_update_visual_page(int page_number, int old_bytes_used,
+void RTmaybe_update_visual_page(int page_number, int old_bytes_used,
 				int new_bytes_used) {
 }
 
-int SXupdate_visual_page(int page_index) {
+int RTupdate_visual_page(int page_index) {
 }
 
-void SXupdate_visual_static_page(int page_number) {
+void RTupdate_visual_static_page(int page_number) {
 }
-void SXupdate_visual_fake_ptr_page(int page_index) {
+void RTupdate_visual_fake_ptr_page(int page_index) {
 }
-void SXdraw_visual_gc_state(void) {
+void RTdraw_visual_gc_state(void) {
 }
-void SXdraw_visual_gc_stats(void) {
+void RTdraw_visual_gc_stats(void) {
 }
-void SXvisual_runbar_on(void) {
+void RTvisual_runbar_on(void) {
 }
-void SXvisual_runbar_off(void) {
+void RTvisual_runbar_off(void) {
 }

@@ -1,4 +1,4 @@
-// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
 #define _GNU_SOURCE
 
@@ -167,7 +167,6 @@ int stop_all_mutators_and_save_state() {
   // stop the world and copy all stack and register state in each live thread
   pthread_mutex_lock(&total_threads_lock);
   int total_threads_to_halt = total_threads - 1; /* omit gc thread */
-  counter_zero(&stacks_copied_counter);
   mutators_may_proceed = 0;
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;		// skip 0 - gc thread
@@ -179,8 +178,6 @@ int stop_all_mutators_and_save_state() {
       Debugger("pthread_kill failed!");
     }
   }
-  //counter_wait_threshold(&stacks_copied_counter, total_threads_to_halt);
-    
   // all stacks and registers should be copied at this point
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;

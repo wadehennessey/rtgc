@@ -1,4 +1,4 @@
-// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
 /* Real time garbage collector running on one or more threads/cores */
 
@@ -56,7 +56,7 @@ void verify_white_counts() {
 }
 
 static
-void SXmake_object_gray(GCPTR current, BPTR raw) {
+void RTmake_object_gray(GCPTR current, BPTR raw) {
   GPTR group = PTR_TO_GROUP(current);
   BPTR header = (BPTR) current + sizeof(GC_HEADER);
 
@@ -121,11 +121,11 @@ void scan_memory_segment(BPTR low, BPTR high) {
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
 	if WHITEP(gcptr) {
-	    SXmake_object_gray(gcptr, ptr);
+	    RTmake_object_gray(gcptr, ptr);
 	}
       } else {
 	if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
-	  SXupdate_visual_fake_ptr_page(page_index);
+	  RTupdate_visual_fake_ptr_page(page_index);
 	}
       }
     }
@@ -146,7 +146,7 @@ int scan_write_vector() {
       write_vector[index] = 0;
       mark_count = mark_count + 1;
       if (WHITEP(gcptr)) {
-	SXmake_object_gray(gcptr, (BPTR) -1);
+	RTmake_object_gray(gcptr, (BPTR) -1);
       }
     }
   }
@@ -159,13 +159,13 @@ void mark_write_vector(GCPTR gcptr) {
   int index = ((BPTR) gcptr - first_partition_ptr) / MIN_GROUP_SIZE;
   write_vector[index] = 1;
 }
-  
-/* Snapshot-at-gc-start write barrier.
-   This is really just a specialized version of scan_memory_segment. */
-void *SXwrite_barrier(void *lhs_address, void *rhs) {
 
+// Snapshot-at-gc-start write barrier.
+// This is really just a version of scan_memory_segment on a single pointer.
+// It marks the write_vector instead of immediately making white 
+// objects become gray.
+void *RTwrite_barrier(void *lhs_address, void *rhs) {
   if (enable_write_barrier) {
-    //if (ENABLE_VISUAL_MEMORY) START_CODE_TIMING;
     BPTR object = *((BPTR *) lhs_address);
     if (IN_HEAP(object)) {
       GCPTR gcptr = interior_to_gcptr(object); 
@@ -173,13 +173,11 @@ void *SXwrite_barrier(void *lhs_address, void *rhs) {
 	  mark_write_vector(gcptr);
 	}
     }
-    //if (ENABLE_VISUAL_MEMORY) 
-    //END_CODE_TIMING(total_write_barrier_time_in_cycle);
   }
   return((void *) (*(LPTR)lhs_address = (long) rhs));
 }
 
-void *SXsafe_bash(void * lhs_address, void * rhs) {
+void *RTsafe_bash(void * lhs_address, void * rhs) {
   BPTR object;
   GCPTR gcptr;
 
@@ -188,49 +186,52 @@ void *SXsafe_bash(void * lhs_address, void * rhs) {
     if (IN_HEAP(object)) {
       gcptr = interior_to_gcptr(object); 
       if WHITEP(gcptr) {
-	if (memory_mutex == 1) {
-	  printf("HEY! write_barrier called from within GC!\n");
-	  /* Call Debugger, then
-	     return((void *) (*lhs_address = rhs)); */
-	}
-	/* Debugger */
+	  Debugger("White object is escaping write_barrier!\n");
       }
     }
   }
-  /* Why is this calling the write barrier instead of simply doing the
-     assignment?? */
-  return(SXwrite_barrier(lhs_address, rhs));
+  return((void *) (*(LPTR)lhs_address = (long) rhs));
 }
 
-void *SXsafe_setfInit(void * lhs_address, void * rhs) {
+void *RTsafe_setfInit(void * lhs_address, void * rhs) {
   if (CHECK_SETFINIT) {
     BPTR object = *((BPTR *) lhs_address);
     if (object != NULL) {
       /* if ((int) object != rhs) */
-      Debugger("SXsafe_setfInit problem\n");
+      Debugger("RTsafe_setfInit problem\n");
     }
   }
   return((void *) (* (LPTR) lhs_address = (long) rhs));
 }
 
-void *ptrcpy(void *p1, void *p2, int num_bytes) {
+// This is just a version of scan_memory_segment that marks the 
+// write_vector instead of immediately making white objects become gray.
+void memory_segment_write_barrier(BPTR low, BPTR high) {
+  Debugger("HEY! I haven't been tested!\n");
   if (enable_write_barrier) {
-    if (ENABLE_GC_TIMING) START_CODE_TIMING;
-    //pause_ok_flag = 0;
-    scan_memory_segment(p1, (BPTR) p1 + num_bytes);
-    //pause_ok_flag = 1;
-    if (ENABLE_GC_TIMING) END_CODE_TIMING(total_write_barrier_time_in_cycle);
+    // if GC_POINTER_ALIGNMENT is < 4, avoid scanning potential pointers that
+    // extend past the end of this object
+    high = high - sizeof(LPTR) + 1;
+    for (BPTR next = low; next < high; next = next + GC_POINTER_ALIGNMENT) {
+      BPTR object = *((BPTR *) next);
+      if (IN_HEAP(object)) {
+	GCPTR gcptr = interior_to_gcptr(object); 
+	if WHITEP(gcptr) {
+	    mark_write_vector(gcptr);
+	  }
+      }
+    }
   }
+}
+
+void *ptrcpy(void *p1, void *p2, int num_bytes) {
+  memory_segment_write_barrier(p1, (BPTR) p1 + num_bytes);
   memcpy(p1, p2, num_bytes);
   return(p1);
 }
 
 void *ptrset(void *p1, int data, int num_bytes) {
-  if (enable_write_barrier) {
-    //pause_ok_flag = 0;
-    scan_memory_segment(p1, (BPTR) p1 + num_bytes);
-    //pause_ok_flag = 1;
-  }
+  memory_segment_write_barrier(p1, (BPTR) p1 + num_bytes);
   memset(p1, data, num_bytes);
   return(p1);
 }
@@ -275,11 +276,11 @@ void scan_global_roots() {
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
 	if WHITEP(gcptr) {
-	    SXmake_object_gray(gcptr, ptr);
+	    RTmake_object_gray(gcptr, ptr);
 	  }
       } else {
 	if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
-	  SXupdate_visual_fake_ptr_page(page_index);
+	  RTupdate_visual_fake_ptr_page(page_index);
 	}
       }
     }
@@ -332,7 +333,7 @@ void scan_object(GCPTR ptr, int total_size) {
     scan_memory_segment_with_metadata(low, high, 0);
     break;
   case SC_INSTANCE:
-    /* instance_metadata((SXobject) low); */
+    /* instance_metadata((RTobject) low); */
     scan_memory_segment_with_metadata(low,high,0);
     break;
   default: Debugger(0);
@@ -405,7 +406,7 @@ static
 void flip() {
   MAYBE_PAUSE_GC;
   // Originally at this point all mutator threads are stopped, and none of
-  // them is in the middle of an SXallocate. We got this for free by being
+  // them is in the middle of an RTallocate. We got this for free by being
   // single threaded and implicity locking by yielding only when we chose to.
   assert(0 == enable_write_barrier);
   last_gc_state = "Flip";
@@ -490,7 +491,7 @@ void recycle_group_garbage(GPTR group) {
     int old_bytes_used = page->bytes_used;
     page->bytes_used = page->bytes_used - group->size;
     if (VISUAL_MEMORY_ON) {
-      SXmaybe_update_visual_page(page_index,old_bytes_used,page->bytes_used);
+      RTmaybe_update_visual_page(page_index,old_bytes_used,page->bytes_used);
     }
     /* Finalize code was here. Maybe add new finalize code some day */
 
@@ -554,7 +555,7 @@ void recycle_all_garbage() {
 
 static 
 void reset_gc_cycle_stats() {
-  total_allocation_this_cycle = 0;
+  //total_allocation_this_cycle = 0;
   total_gc_time_in_cycle = 0.0;
   total_write_barrier_time_in_cycle = 0.0;
   max_increment_in_cycle = 0.0;
@@ -573,7 +574,7 @@ void summarize_gc_cycle_stats() {
     last_gc_ms = total_gc_time_in_cycle;
     last_write_barrier_ms = total_write_barrier_time_in_cycle;
   }
-  if (VISUAL_MEMORY_ON) SXdraw_visual_gc_stats();
+  if (VISUAL_MEMORY_ON) RTdraw_visual_gc_stats();
 }
 
 static
@@ -604,7 +605,7 @@ void rtgc_loop() {
   while (1) {
     if (1 == atomic_gc) while (0 == run_gc);
     full_gc();
-    if (0 == (gc_count % 2)) {
+    if (0 == (gc_count % 25)) {
       printf("gc end - gc_count %d\n", gc_count);
       fflush(stdout);
     }
@@ -632,7 +633,7 @@ void init_realtime_gc() {
   pthread_mutex_init(&empty_pages_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);
   init_signals_for_rtgc();
-  counter_init(&stacks_copied_counter);
+  //counter_init(&stacks_copied_counter);
   timerclear(&max_flip_tv);
   timerclear(&total_flip_tv);
 }

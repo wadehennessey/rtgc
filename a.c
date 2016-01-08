@@ -1,4 +1,4 @@
-// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
 #define _GNU_SOURCE
 
@@ -37,8 +37,8 @@ RT_METADATA NODE_md[] = {sizeof(NODE),
 NODE *roots[100];
 
 NODE *new_node(char *word, NODE *lesser, NODE *greater) {
-  //NODE *node = (NODE *) SXallocate(SXpointers, sizeof(NODE));
-  NODE *node = (NODE *) SXallocate(NODE_md, 1);
+  //NODE *node = (NODE *) RTallocate(RTpointers, sizeof(NODE));
+  NODE *node = (NODE *) RTallocate(NODE_md, 1);
   node->word = word;
   node->count = 1;
   setf_init(node->lesser, lesser);
@@ -49,7 +49,7 @@ NODE *new_node(char *word, NODE *lesser, NODE *greater) {
 int smallword_count = 0;
 int bigword_count = 0;
 char *new_word(char *buffer, int i) {
-  char *word = SXallocate(SXnopointers, (i + 1));
+  char *word = RTallocate(RTnopointers, (i + 1));
   buffer[i] = '\0';
   strcpy(word, buffer);
   if ((i + 1) > 8) {
@@ -100,7 +100,7 @@ void insert_node(NODE *next, char *word, int level) {
 	    } else {
 	      /* Insert new node between next and lesser */
 	      NODE *new = new_node(word, next->lesser, 0);
-	      SXwrite_barrier(&(next->lesser), new);
+	      RTwrite_barrier(&(next->lesser), new);
 	    }
 	  }
 	}
@@ -117,7 +117,7 @@ void insert_node(NODE *next, char *word, int level) {
 	    } else {
 	      /* Insert new node between next and greater */
 	      NODE *new = new_node(word, 0, next->greater);
-	      SXwrite_barrier(&(next->greater), new);
+	      RTwrite_barrier(&(next->greater), new);
 	    }
 	  }
 	}
@@ -178,7 +178,7 @@ void *start_word_count(void *arg) {
   while (i < 5000000) {
     char top;
     NODE *root = build_word_tree("redhead.txt");
-    SXwrite_barrier(&(roots[tid]), root); 
+    RTwrite_barrier(&(roots[tid]), root); 
     assert(9317 == walk_word_tree(roots[tid], 0));
     if (0 == (i % 25)) {
       printf("[%d] %d word counts\n", tid, i);
@@ -188,9 +188,27 @@ void *start_word_count(void *arg) {
   exit(1);
 }
 
+void atomic_or_int(volatile int *m, int inval)
+{
+        register int val = inval;
+        __asm__ __volatile__ ( "lock or %1,%0" : "=m" (*m), "=r" (val) : "1" (inval));
+}
+
+void atomic_or_byte(volatile char *m, int inval) {
+  register int val = inval;
+  __asm__ __volatile__ ( "lock or %1,%0" : 
+			 "=m" (*m), 
+			 "=r" (val) : 
+			 "1" (inval));
+}
+
 int main(int argc, char *argv[]) {
-  //SXinit_heap(1 << 22, 0);
-  SXinit_heap((1L << 36), 0);
+  //char x = 2;
+  //atomic_or_byte(&x, 0b11);
+  //printf("x is %d\n", x);
+  //return(0);
+  //RTinit_heap((1L << 36), 0);
+  RTinit_heap((1L << 30), 0);
   for (long i = 1; i <= 3; i++) {
     new_thread(&start_word_count, (void *) i);
   }

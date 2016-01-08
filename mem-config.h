@@ -1,4 +1,4 @@
-// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
 /* Memory management configuration */
 
@@ -33,7 +33,7 @@
 #define VISUAL_MEMORY_ON (ENABLE_VISUAL_MEMORY && visual_memory_on)
 #define VISUAL_MEMORY_DEFAULT_ON 0
 #define UPDATE_VISUAL_STATE() {if (VISUAL_MEMORY_ON) { \
-                               SXdraw_visual_gc_state(); }}
+                               RTdraw_visual_gc_state(); }}
 #define ENABLE_GC_TIMING 1
 #define DETECT_INVALID_REFS 0
 

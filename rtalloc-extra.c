@@ -1,9 +1,11 @@
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
+
 // rtalloc.c stuff we may use again some day
 // moved here for now to reduce clutter since we aren't
 // usinig this stuff now
 
 
-void * SXstaticAllocate(void * metadata, int size) {
+void * RTstaticAllocate(void * metadata, int size) {
   int real_size, data_size;
   LPTR base;
   GPTR group;
@@ -27,19 +29,19 @@ void * SXstaticAllocate(void * metadata, int size) {
 	 index < last_static_page_index; 
 	 index++) {
       pages[index].group = STATIC_PAGE;
-      if (VISUAL_MEMORY_ON) SXupdate_visual_page(index);
+      if (VISUAL_MEMORY_ON) RTupdate_visual_page(index);
     }
     first_static_ptr = new_static_ptr;
   } else {
     /* HEY! allow more than 1 static segment? for now */
     /* just dynamically allocate after booting */
-    return(SXallocate(metadata, size));
+    return(RTallocate(metadata, size));
   }
 
   base = (LPTR) first_static_ptr;
   *base = (data_size << LINK_INFO_BITS);
   base = (LPTR) (((BPTR) base) - sizeof(GCPTR)); /* make base GCHDR compat */
-  base = SXInitializeObject(metadata, base, real_size, real_size);
+  base = RTInitializeObject(metadata, base, real_size, real_size);
   return(base);
 }
 
@@ -50,16 +52,16 @@ static void * copy_object(LPTR src, int storage_class, int current_size,
 
   switch (storage_class) {
   case SC_POINTERS:
-    new = SXallocate(SXpointers,new_size); break;
+    new = RTallocate(RTpointers,new_size); break;
   case SC_NOPOINTERS:
-    new = SXallocate(SXnopointers,new_size); break;
+    new = RTallocate(RTnopointers,new_size); break;
   case SC_METADATA:
     {
       /* HEY! fix this to use current_size instead of group_size */
       LPTR last_ptr = src + (group_size / 4) - 1;
       void *md = (void*) *last_ptr;
       if (METADATAP(md)) {
-	new = SXallocate(md, new_size);
+	new = RTallocate(md, new_size);
 	limit = limit - 1;
       } else {
 	printf("metadata based!\n");
@@ -67,7 +69,7 @@ static void * copy_object(LPTR src, int storage_class, int current_size,
     }
     break;
   case SC_INSTANCE:
-    new = SXallocate(((GCMDPTR) src)->metadata,new_size);
+    new = RTallocate(((GCMDPTR) src)->metadata,new_size);
     break;
   default: printf("Error! Uknown storage class in copy object\n");
   }
@@ -80,7 +82,7 @@ static void * copy_object(LPTR src, int storage_class, int current_size,
   return(new);
 }
 
-void * SXreallocate(void *ptr, int new_size) {
+void * RTreallocate(void *ptr, int new_size) {
   GCPTR current;
   GPTR group;
   int storage_class;
@@ -125,23 +127,23 @@ void * SXreallocate(void *ptr, int new_size) {
 
 
 // seems to never be used
-int SXstackAllocationSize(void * metadata, int size) {
+int RTstackAllocationSize(void * metadata, int size) {
   int data_size, real_size;
   GPTR group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
   return(real_size);
 }
 
 // seems to never be used
-int SXallocationTrueSize(void * metadata, int size) {
+int RTallocationTrueSize(void * metadata, int size) {
   int data_size, real_size;
 
   GPTR group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
-  int md_size = ((metadata > SXpointers) ? 4 : 0);
+  int md_size = ((metadata > RTpointers) ? 4 : 0);
   return(group->size - sizeof(GC_HEADER) - md_size);
 }
 
 // seems to never be used
-int SXtrueSize(void *ptr) {
+int RTtrueSize(void *ptr) {
   GPTR group = PTR_TO_GROUP(ptr);
   GCPTR gcptr = interior_to_gcptr(ptr);
   int md_size = ((GET_STORAGE_CLASS(gcptr) > SC_POINTERS) ? 4 : 0);

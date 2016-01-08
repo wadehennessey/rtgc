@@ -1,6 +1,7 @@
-// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
 /* Real time storage allocater */
+
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -19,11 +20,6 @@
 #include "allocate.h"
 
 HOLE_PTR empty_pages;
-
-int total_allocation;
-int total_requested_allocation;
-int total_requested_objects;
-int total_allocation_this_cycle;
 
 static
 int size_to_group_index(int size) {
@@ -70,14 +66,14 @@ void init_page_info() {
   }
 }
 
-void SXinit_empty_pages(int first_page, int page_count, int type) {
+void RTinit_empty_pages(int first_page, int page_count, int type) {
   int last_page = first_page + page_count;
   for (int i = first_page; i < last_page; i++) {
     /* Could put the next two in a per segment table to save memory */
     pages[i].base = NULL;
     pages[i].bytes_used = 0;
     pages[i].group = EMPTY_PAGE;
-    if (VISUAL_MEMORY_ON) SXupdate_visual_page(i);
+    if (VISUAL_MEMORY_ON) RTupdate_visual_page(i);
   }
 
   if (type == HEAP_SEGMENT) {
@@ -103,7 +99,7 @@ long allocate_segment(size_t desired_bytes, int type) {
   if ((desired_bytes > 0) &&
       (desired_bytes == (desired_bytes & ~PAGE_ALIGNMENT_MASK)) &&
       (total_segments < MAX_SEGMENTS)) {
-    first_segment_ptr = SXbig_malloc(desired_bytes);
+    first_segment_ptr = RTbig_malloc(desired_bytes);
 
     if (NULL != first_segment_ptr) {
       total_segments = total_segments + 1;
@@ -128,14 +124,14 @@ long allocate_segment(size_t desired_bytes, int type) {
       }
       
       first_segment_page = PTR_TO_PAGE_INDEX(first_segment_ptr);
-      SXinit_empty_pages(first_segment_page, segment_page_count, type);
+      RTinit_empty_pages(first_segment_page, segment_page_count, type);
     }
   }
   return(actual_bytes);
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Everything above here should only be run at SXinit_heap time,
+// Everything above here should only be run at RTinit_heap time,
 // which completes before the gc ever gets a chance to start running.
 // Ignore locking issues until we decide to support more than 1 heap segment.
 
@@ -204,7 +200,7 @@ GCPTR allocate_empty_pages(int required_page_count,
 // The gc counter part to this function is recycle_group_garbage.
 // We could try to unify the small common part.
 // Whoever calls this function has to be holding the group->free_lock.
-// So far only SXallocate calls this.
+// So far only RTallocate calls this.
 static
 void init_pages_for_group(GPTR group, int min_pages) {
   int pages_per_object = group->size / BYTES_PER_PAGE;
@@ -275,14 +271,15 @@ void init_pages_for_group(GPTR group, int min_pages) {
 }
 
 static
-GPTR allocationGroup(int *metadata, int size,
-		     int *return_data_size, int *return_real_size, void *return_metadata) {
+GPTR allocation_group(int *metadata, int size,
+		      int *return_data_size, int *return_real_size, 
+		      void *return_metadata) {
   int data_size, real_size;
 
   if (size >= 0) {
     switch ((long) metadata) {
-    case (long) SXnopointers:
-    case (long) SXpointers:
+    case (long) RTnopointers:
+    case (long) RTpointers:
       data_size = size;
       real_size = size + sizeof(GC_HEADER); break;
     default:
@@ -305,7 +302,7 @@ GPTR allocationGroup(int *metadata, int size,
     }
     *return_data_size = data_size;
     *return_real_size = real_size;
-    //*((SXobject *) return_metadata) = (SXobject) metadata;
+    //*((RTobject *) return_metadata) = (RTobject) metadata;
     *((int **) return_metadata) = (int *) metadata;
     return(group);
   } else {
@@ -313,8 +310,9 @@ GPTR allocationGroup(int *metadata, int size,
   }
 }
 
-LPTR SXInitializeObject(void *metadata, void *void_base,
-			int total_size, int real_size) {
+static
+void initialize_object_body(void *void_base,
+			    int total_size, int real_size) {
   LPTR base = void_base;
   GCPTR gcptr = (GCPTR) base;
   int limit = ((DETECT_INVALID_REFS) ?
@@ -324,13 +322,20 @@ LPTR SXInitializeObject(void *metadata, void *void_base,
   for (int i = 2; i < limit; i++) {
     *(base + i) = 0;
   }
+}
+
+static
+LPTR initialize_object_metadata(void *metadata, void *void_base,
+				int total_size, int real_size) {
+  LPTR base = void_base;
+  GCPTR gcptr = (GCPTR) base;
 
   switch ((long) metadata) {
-  case (long) SXnopointers:
+  case (long) RTnopointers:
     SET_STORAGE_CLASS(gcptr,SC_NOPOINTERS);
     base = base + 2;
     break;
-  case (long) SXpointers:
+  case (long) RTpointers:
     SET_STORAGE_CLASS(gcptr,SC_POINTERS);
     base = base + 2;
     break;    
@@ -341,24 +346,25 @@ LPTR SXInitializeObject(void *metadata, void *void_base,
       *last_ptr = (long) metadata;
       base = base + 2;
     } else {
-      /* optionally, print out the name of the class being allocated */
-      /* code omitted */
+      /*
       SET_STORAGE_CLASS(gcptr,SC_INSTANCE);
       ((GCMDPTR) gcptr)->metadata = metadata;
       base = base + 2;
+      */
+      Debugger("Unsupported metadata\n");
     }
     break;
   }
   return(base);
 }
 
-void * SXallocate(void *metadata, int size) {
+void *RTallocate(void *metadata, int size) {
   int i, data_size, real_size, limit;
   GCPTR new;
   LPTR base;
   GPTR group;
 
-  group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
+  group = allocation_group(metadata,size,&data_size,&real_size,&metadata);
   pthread_mutex_lock(&(group->free_lock));
   if (group->free == NULL) {
     init_pages_for_group(group,1);
@@ -384,22 +390,17 @@ void * SXallocate(void *metadata, int size) {
     int old_bytes_used = page->bytes_used;
     page->bytes_used = page->bytes_used + group->size;
     if (VISUAL_MEMORY_ON) {
-      SXmaybe_update_visual_page(page_index,old_bytes_used,page->bytes_used);
+      RTmaybe_update_visual_page(page_index,old_bytes_used,page->bytes_used);
     }
   }
 
-  base = SXInitializeObject(metadata, new, group->size, real_size);
-  // Unlock after Initialization beause storage class is set without a lock
-  // and gc recyling garbage may be affect by locked next ptr read, set, and
+  base = initialize_object_metadata(metadata, new, group->size, real_size);
+  // Unlock after initialization because storage class is set without a lock
+  // and gc recyling garbage may affect locked next ptr read, set, and
   // store.
   pthread_mutex_unlock(&(group->free_lock));
-  
-  /* optional stats 
-  total_requested_allocation = total_requested_allocation + data_size;
-  total_allocation = total_allocation + group->size;
-  total_requested_objects = total_requested_objects + 1;
-  total_allocation_this_cycle = total_allocation_this_cycle + group->size;
-  */
+  initialize_object_body(new, group->size, real_size);
+
   return(base);
 }
  
@@ -455,7 +456,7 @@ void verify_all_groups(void) {
   }
 }
 
-int SXtotalFreeHeapSpace() {
+int RTtotalFreeHeapSpace() {
   int free = 0;
   int index;
 
@@ -473,7 +474,7 @@ int SXtotalFreeHeapSpace() {
   return(free);
 }
 
-int SXlargestFreeHeapBlock() {
+int RTlargestFreeHeapBlock() {
   int largest = 0;
 
   pthread_mutex_lock(&empty_pages_lock);
@@ -522,35 +523,32 @@ void init_gc_thread() {
 
 
 void register_global_root(void *root) {
+  pthread_mutex_lock(&global_roots_lock);
   if (total_global_roots == MAX_GLOBAL_ROOTS) {
     Debugger("global roots full!\n");
   } else {
     global_roots[total_global_roots] = (char *) root;
     total_global_roots = total_global_roots + 1;
   }
+  pthread_mutex_unlock(&global_roots_lock);
 }
 
-void SXinit_heap(size_t first_segment_bytes, int static_size) {
-
+void RTinit_heap(size_t first_segment_bytes, int static_size) {
   enable_write_barrier = 0;
-  total_allocation = 0;
-  total_requested_allocation = 0;
-  total_requested_objects = 0;
-  BPTR p;
 
   /* We malloc vectors here so that they are NOT part of the global
      data segment, and thus will not be scanned if we decide to 
      scan it. We don't want the GC looking at itself! */
   total_partition_pages = first_segment_bytes / BYTES_PER_PAGE;
   groups = malloc(sizeof(GROUP_INFO) * (MAX_GROUP_INDEX + 1));
-  pages = SXbig_malloc(sizeof(PAGE_INFO) * total_partition_pages);
+  pages = RTbig_malloc(sizeof(PAGE_INFO) * total_partition_pages);
   segments = malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
   threads = malloc(sizeof(THREAD_INFO) * MAX_THREADS);
   global_roots = malloc(sizeof(char **) * MAX_GLOBAL_ROOTS);
   write_vector_size = (total_partition_pages * 
 		       (BYTES_PER_PAGE / MIN_GROUP_SIZE));
   printf("write_vector_size is %ld\n", write_vector_size);
-  write_vector = SXbig_malloc(write_vector_size);
+  write_vector = RTbig_malloc(write_vector_size);
   if ((pages == 0) || (groups == 0) || (segments == 0) || 
       (threads == 0) || (global_roots == 0) || (write_vector == 0)) {
     out_of_memory("Heap Memory tables", 0);
@@ -616,7 +614,7 @@ void *rtalloc_start_thread(void *arg) {
   } else {
     // initializing saved_stack_base tells new_thread
     // that stack setup is done and it can return
-    threads[thread_index].saved_stack_base = SXbig_malloc(stacksize);
+    threads[thread_index].saved_stack_base = RTbig_malloc(stacksize);
     // after setup, invoke the real start func with the real args
     (real_start_func)(real_args);
   }

@@ -1,4 +1,4 @@
- m-x gud-gdb to switch *dedicated* window
+m-x gud-gdb to switch *dedicated* window
 
 c-x c-a c-b to set breakpoint at point line. Who changed this and why?
 
@@ -126,9 +126,6 @@ double linked lists correct - (obj->next)->prev == obj, (obj->prev)->next == obj
 verify color in header and color in list are the same
 verify all _count fields are correct.
 
-TRY: ignoring group->*_count fields for now.
-     page->bytes used doesn't matter until we add back coalescing
-
 # to limit all threads in ./a to the second core:
 taskset 0x10 ./a
 
@@ -167,6 +164,15 @@ From rr/src/Scheduler.h
 -c default:  enum { DEFAULT_MAX_TICKS = 250000 };    // 50ms time slice
 -e default:  enum { DEFAULT_MAX_EVENTS = 10 };
 
+To run real-time round-robin:
+-----------------
+chrt --rr 30 ./a
+or
+chrt --fifo 30 ./a
+
+ps -Lo pid,tid,class <./a pid #>
+
+
 To add swap
 ------------
 su
@@ -180,24 +186,8 @@ in /etc/fstab add:
 /home/bigswapfile		swap		swap	defaults	0 0
 
 
-To run real-time round-robin:
------------------
-chrt --rr 30 ./a
-or
-chrt --fifo 30 ./a
-
-ps -Lo pid,tid,class <./a pid #>
-
 cleanup
 -------
-get rid of count timer that won't work for us
+support md, no classes in first slot of object
 
-investigate real-time scheduler for mutator threads.
-
-separate InitializeObject into 2 parts
-
-just support md, no classes in first slot of object
-del GCMD_HEADER, CLASSP, etc.
-
-chg all SX to RT
-
+test memory_segment_write_barrier

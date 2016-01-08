@@ -1,4 +1,4 @@
-// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
 /* State shared by rtalloc, rtgc, and vizmem goes here */
 
@@ -54,6 +54,7 @@ pthread_key_t thread_index_key;
 
 pthread_mutex_t total_threads_lock;
 pthread_mutex_t empty_pages_lock;
+pthread_mutex_t global_roots_lock;
 
 COUNTER stacks_copied_counter;
 sem_t gc_semaphore;

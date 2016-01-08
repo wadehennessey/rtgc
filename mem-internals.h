@@ -1,4 +1,4 @@
-// (C) Copyright 2015 by Wade L. Hennessey. All rights reserved.
+// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
 /* Other parts of the system like to use IN_HEAP and IN_GLOBALS */
 #define EMPTY_PAGE     ((GPTR) 0)
@@ -45,7 +45,7 @@ extern BPTR last_static_ptr;
 #define ROUND_UPTO_LONG_ALIGNMENT(n) (((((n) - 1)) & ~LONG_ALIGNMENT) + \
                                      sizeof(long)) 
 
-#define METADATAP(ptr) (((void *) ptr)  > SXpointers)
+#define METADATAP(ptr) (((void *) ptr)  > RTpointers)
 
 #define MAYBE_PAUSE_GC sched_yield();
 
@@ -126,27 +126,26 @@ typedef struct counter {
 void scan_memory_segment(BPTR low, BPTR high);
 void scan_object(GCPTR ptr, int total_size);
 GCPTR interior_to_gcptr(BPTR ptr);
-void SXinit_empty_pages(int first_page, int page_count, int type);
+void RTinit_empty_pages(int first_page, int page_count, int type);
 void verify_total_object_count(void);
 void verify_header(GCPTR ptr);
 void verify_group(GPTR group);
 void verify_all_groups(void);
-int SXprint_object_info(GCPTR ptr, int i);
-int SXprint_page_info(int page_index);
-void SXprint_group_info(GPTR group);
-void SXprint_memory_summary(void);
+int RTprint_object_info(GCPTR ptr, int i);
+int RTprint_page_info(int page_index);
+void RTprint_group_info(GPTR group);
+void RTprint_memory_summary(void);
 void rtgc_loop();
 void init_signals_for_rtgc();
 int stop_all_mutators_and_save_state();
 
 
-int SXallocationTrueSize(void * metadata, int size);
-void SXinit_heap(size_t default_heap_bytes, int static_size);
-void SXinit_realtime_gc(void);
+//int RTallocationTrueSize(void * metadata, int size);
+void RTinit_heap(size_t default_heap_bytes, int static_size);
+void RTinit_realtime_gc(void);
 void Debugger(char *msg);
-void * SXbig_malloc(size_t size);
-//void * SXbig_malloc(int size);
-void SXcopy_regs_to_stack(BPTR regptr);
+void * RTbig_malloc(size_t size);
+void RTcopy_regs_to_stack(BPTR regptr);
 void out_of_memory(char *space_name, int size);
 void register_global_root(void *root);
 void counter_init(COUNTER *c);
@@ -156,8 +155,6 @@ void counter_wait_threshold(COUNTER *c, int threshold);
 
 extern GROUP_INFO *groups;
 extern PAGE_INFO *pages;
-
-extern int next_thread; 	/* HEY! get rid of this... */
 
 extern int gc_count;
 extern int gc_increment;
@@ -187,9 +184,9 @@ extern double last_write_barrier_ms;
 extern pthread_key_t thread_index_key;
 extern char **global_roots;
 extern int total_global_roots;
-extern COUNTER stacks_copied_counter;
 extern pthread_mutex_t total_threads_lock;
 extern pthread_mutex_t empty_pages_lock;
+extern pthread_mutex_t global_roots_lock;
 extern sem_t gc_semaphore;
 extern int run_gc;
 extern int atomic_gc;
