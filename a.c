@@ -202,10 +202,12 @@ void atomic_or_byte(volatile char *m, int inval) {
 			 "1" (inval));
 }
 
+
+
 int main(int argc, char *argv[]) {
-  //char x = 2;
-  //atomic_or_byte(&x, 0b11);
-  //printf("x is %d\n", x);
+  //unsigned char x = 0b10;
+  //locked_byte_or(&x, 0b10000000);
+  //printf("x is %hhu\n", x);
   //return(0);
   //RTinit_heap((1L << 36), 0);
   RTinit_heap((1L << 30), 0);

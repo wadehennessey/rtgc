@@ -152,6 +152,7 @@ void counter_init(COUNTER *c);
 int counter_zero(COUNTER *c);
 int counter_increment(COUNTER *c);
 void counter_wait_threshold(COUNTER *c, int threshold);
+void locked_byte_or(unsigned char *b, unsigned char mask);
 
 extern GROUP_INFO *groups;
 extern PAGE_INFO *pages;
@@ -192,7 +193,6 @@ extern int run_gc;
 extern int atomic_gc;
 extern BPTR write_vector;
 extern size_t write_vector_size;
-
 #define ENABLE_LOCKING 1
 
 #if ENABLE_LOCKING
