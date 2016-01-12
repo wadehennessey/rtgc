@@ -188,29 +188,12 @@ void *start_word_count(void *arg) {
   exit(1);
 }
 
-void atomic_or_int(volatile int *m, int inval)
-{
-        register int val = inval;
-        __asm__ __volatile__ ( "lock or %1,%0" : "=m" (*m), "=r" (val) : "1" (inval));
-}
-
-void atomic_or_byte(volatile char *m, int inval) {
-  register int val = inval;
-  __asm__ __volatile__ ( "lock or %1,%0" : 
-			 "=m" (*m), 
-			 "=r" (val) : 
-			 "1" (inval));
-}
-
-
-
 int main(int argc, char *argv[]) {
-  //unsigned char x = 0b10;
-  //locked_byte_or(&x, 0b10000000);
-  //printf("x is %hhu\n", x);
-  //return(0);
+  unsigned long x = 0b101;
+  unsigned long y = 0b010;
+  locked_long_or(&x, y);
   //RTinit_heap((1L << 36), 0);
-  RTinit_heap((1L << 30), 0);
+  RTinit_heap((1L << 22), 0);
   for (long i = 1; i <= 3; i++) {
     new_thread(&start_word_count, (void *) i);
   }

@@ -137,10 +137,48 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
   scan_memory_segment(low, high);
 }
 
+#if USE_BIT_WRITE_BARRIER
 static
 int scan_write_vector() {
   int mark_count = 0;
-  for (int index = 0; index < write_vector_size; index++) {
+  for (long index = 0; index < write_vector_length; index++) {
+    if (0 != write_vector[index]) {
+      BPTR base_ptr = first_partition_ptr + 
+	(index * MIN_GROUP_SIZE * BITS_PER_LONG);
+      for (long bit = 0; bit < BITS_PER_LONG; bit = bit + 1) {
+	unsigned long mask = 1L << bit;
+	if (0 != (write_vector[index] & mask)) {
+	  GCPTR gcptr = (GCPTR) (base_ptr + (bit * MIN_GROUP_SIZE));
+	  mark_count = mark_count + 1;
+	  if (WHITEP(gcptr)) {
+	    RTmake_object_gray(gcptr, (BPTR) -1);
+	  }
+	}
+      }
+    }
+    write_vector[index] = 0;
+  }
+  //printf("mark_count is %d\n", mark_count);
+  return(mark_count);
+}
+
+static
+void mark_write_vector(GCPTR gcptr) {
+  long ptr_offset = ((BPTR) gcptr - first_partition_ptr);
+  long long_index = ptr_offset / (MIN_GROUP_SIZE * BITS_PER_LONG);
+  int bit = (ptr_offset % (MIN_GROUP_SIZE * BITS_PER_LONG)) / MIN_GROUP_SIZE;
+  unsigned long bit_mask = 1L << bit;
+  assert(0 != bit_mask);
+  //pthread_mutex_lock(&wb_lock);
+  locked_long_or(write_vector + long_index, bit_mask);
+  //write_vector[long_index] = write_vector[long_index] | bit_mask;
+  //pthread_mutex_unlock(&wb_lock);
+}
+#else
+static
+int scan_write_vector() {
+  int mark_count = 0;
+  for (long index = 0; index < write_vector_length; index++) {
     if (1 == write_vector[index]) {
       GCPTR gcptr = (GCPTR) (first_partition_ptr + (index * MIN_GROUP_SIZE));
       write_vector[index] = 0;
@@ -156,9 +194,10 @@ int scan_write_vector() {
 
 static
 void mark_write_vector(GCPTR gcptr) {
-  int index = ((BPTR) gcptr - first_partition_ptr) / MIN_GROUP_SIZE;
+  long index = ((BPTR) gcptr - first_partition_ptr) / MIN_GROUP_SIZE;
   write_vector[index] = 1;
 }
+#endif
 
 // Snapshot-at-gc-start write barrier.
 // This is really just a version of scan_memory_segment on a single pointer.
@@ -589,7 +628,7 @@ void full_gc() {
     scan_gray_set();
     mark_count = scan_write_vector();
   } while (mark_count > 0);
-  
+
   enable_write_barrier = 0;
   recycle_all_garbage();
   // moved this into stop_all_mutators_and_save_state.
@@ -631,6 +670,7 @@ void init_realtime_gc() {
   last_gc_state = "<initial state>";
   pthread_mutex_init(&total_threads_lock, NULL);
   pthread_mutex_init(&empty_pages_lock, NULL);
+  pthread_mutex_init(&wb_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);
   init_signals_for_rtgc();
   //counter_init(&stacks_copied_counter);

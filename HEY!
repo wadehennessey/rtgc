@@ -188,6 +188,11 @@ in /etc/fstab add:
 
 cleanup
 -------
-support md, no classes in first slot of object
+support md
+fix clearing of md after install
+
+
 
 test memory_segment_write_barrier
+
+      

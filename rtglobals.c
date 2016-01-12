@@ -38,8 +38,12 @@ BPTR last_static_ptr;
 BPTR first_partition_ptr;
 BPTR last_partition_ptr;
 
+#if USE_BIT_WRITE_BARRIER
+LPTR write_vector;
+#else
 BPTR write_vector;
-size_t write_vector_size;
+#endif
+size_t write_vector_length;
 
 long total_partition_pages;
 int unmarked_color;
@@ -55,6 +59,7 @@ pthread_key_t thread_index_key;
 pthread_mutex_t total_threads_lock;
 pthread_mutex_t empty_pages_lock;
 pthread_mutex_t global_roots_lock;
+pthread_mutex_t wb_lock;
 
 COUNTER stacks_copied_counter;
 sem_t gc_semaphore;

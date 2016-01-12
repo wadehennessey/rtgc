@@ -545,10 +545,20 @@ void RTinit_heap(size_t first_segment_bytes, int static_size) {
   segments = malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
   threads = malloc(sizeof(THREAD_INFO) * MAX_THREADS);
   global_roots = malloc(sizeof(char **) * MAX_GLOBAL_ROOTS);
-  write_vector_size = (total_partition_pages * 
+#if USE_BIT_WRITE_BARRIER  
+  write_vector_length = 
+    total_partition_pages * (BYTES_PER_PAGE / (MIN_GROUP_SIZE * BITS_PER_LONG));
+  write_vector = RTbig_malloc(write_vector_length * sizeof(long));
+  memset(write_vector, 0, write_vector_length * sizeof(long));
+  printf("using bit write barrier, ");
+#else
+  write_vector_length = (total_partition_pages * 
 		       (BYTES_PER_PAGE / MIN_GROUP_SIZE));
-  printf("write_vector_size is %ld\n", write_vector_size);
-  write_vector = RTbig_malloc(write_vector_size);
+  write_vector = RTbig_malloc(write_vector_length);
+  memset(write_vector, 0, write_vector_length);
+  printf("using byte write barrier, ");
+#endif
+  printf("write_vector_length is %ld\n", write_vector_length);
   if ((pages == 0) || (groups == 0) || (segments == 0) || 
       (threads == 0) || (global_roots == 0) || (write_vector == 0)) {
     out_of_memory("Heap Memory tables", 0);
@@ -573,7 +583,6 @@ void RTinit_heap(size_t first_segment_bytes, int static_size) {
   marked_color = GENERATION0;
   unmarked_color = GENERATION1;
   init_group_info();
-  memset(write_vector, 0, write_vector_size); // init write_vector
   init_realtime_gc();
 }
 

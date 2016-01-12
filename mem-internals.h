@@ -44,6 +44,9 @@ extern BPTR last_static_ptr;
 #define LONG_ALIGNMENT (sizeof(long) - 1)
 #define ROUND_UPTO_LONG_ALIGNMENT(n) (((((n) - 1)) & ~LONG_ALIGNMENT) + \
                                      sizeof(long)) 
+#define BITS_PER_BYTE 8
+#define BITS_PER_LONG (BITS_PER_BYTE * sizeof(long))
+
 
 #define METADATAP(ptr) (((void *) ptr)  > RTpointers)
 
@@ -152,7 +155,8 @@ void counter_init(COUNTER *c);
 int counter_zero(COUNTER *c);
 int counter_increment(COUNTER *c);
 void counter_wait_threshold(COUNTER *c, int threshold);
-void locked_byte_or(unsigned char *b, unsigned char mask);
+void locked_byte_or(unsigned char *x, unsigned char y);
+void locked_long_or(unsigned long *x, unsigned long y);
 
 extern GROUP_INFO *groups;
 extern PAGE_INFO *pages;
@@ -188,11 +192,16 @@ extern int total_global_roots;
 extern pthread_mutex_t total_threads_lock;
 extern pthread_mutex_t empty_pages_lock;
 extern pthread_mutex_t global_roots_lock;
+extern pthread_mutex_t wb_lock;
 extern sem_t gc_semaphore;
 extern int run_gc;
 extern int atomic_gc;
+#if USE_BIT_WRITE_BARRIER
+extern LPTR write_vector;
+#else
 extern BPTR write_vector;
-extern size_t write_vector_size;
+#endif
+extern size_t write_vector_length;
 #define ENABLE_LOCKING 1
 
 #if ENABLE_LOCKING
