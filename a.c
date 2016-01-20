@@ -28,17 +28,24 @@ typedef struct node {
   struct node *greater;
 } NODE;
 
+/*
 RT_METADATA NODE_md[] = {sizeof(NODE),
 			 offsetof(NODE, word),
 			 offsetof(NODE, lesser),
 			 offsetof(NODE, greater),
-			 -1};
+			 (long *) -1};
+*/
+
+long NODE_md[] = {offsetof(NODE, word),
+		  offsetof(NODE, lesser),
+		  offsetof(NODE, greater),
+		  -1};
 
 NODE *roots[100];
 
 NODE *new_node(char *word, NODE *lesser, NODE *greater) {
-  //NODE *node = (NODE *) RTallocate(RTpointers, sizeof(NODE));
-  NODE *node = (NODE *) RTallocate(NODE_md, 1);
+  NODE *node = (NODE *) RTallocate(RTpointers, sizeof(NODE));
+  //NODE *node = (NODE *) RTallocate(NODE_md, 1);
   node->word = word;
   node->count = 1;
   setf_init(node->lesser, lesser);

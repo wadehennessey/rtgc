@@ -2,8 +2,8 @@
 
 /* Interface to the memory manager */
 
-#define RTnopointers ((void *) 0)
-#define RTpointers   ((void *) 1)
+#define RTnopointers ((void *) SC_NOPOINTERS)
+#define RTpointers   ((void *) SC_POINTERS)
 
 #define RTbeerBash(lhs, rhs) ((lhs) = (rhs))
 #define setf_init(lhs, rhs) ((lhs) = (rhs))

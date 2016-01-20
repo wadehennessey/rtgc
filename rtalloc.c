@@ -271,9 +271,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
 }
 
 static
-GPTR allocation_group(int *metadata, int size,
-		      int *return_data_size, int *return_real_size, 
-		      void *return_metadata) {
+GPTR allocation_group(int *metadata, int size, int *return_real_size) {
   int data_size, real_size;
 
   if (size >= 0) {
@@ -300,10 +298,7 @@ GPTR allocation_group(int *metadata, int size,
     } else {
       group = &(groups[group_index]);
     }
-    *return_data_size = data_size;
     *return_real_size = real_size;
-    //*((RTobject *) return_metadata) = (RTobject) metadata;
-    *((int **) return_metadata) = (int *) metadata;
     return(group);
   } else {
     printf("Negative object size\n");
@@ -314,10 +309,7 @@ static
 void initialize_object_body(void *void_base,
 			    int total_size, int real_size) {
   LPTR base = void_base;
-  GCPTR gcptr = (GCPTR) base;
-  int limit = ((DETECT_INVALID_REFS) ?
-	       ((real_size / sizeof(LPTR)) + ((real_size % sizeof(LPTR)) != 0)) :
-	       total_size / sizeof(LPTR));
+  int limit =  total_size / sizeof(LPTR);
 
   for (int i = 2; i < limit; i++) {
     *(base + i) = 0;
@@ -325,46 +317,29 @@ void initialize_object_body(void *void_base,
 }
 
 static
-LPTR initialize_object_metadata(void *metadata, void *void_base,
-				int total_size, int real_size) {
-  LPTR base = void_base;
-  GCPTR gcptr = (GCPTR) base;
-
+void initialize_object_metadata(void *metadata, GCPTR gcptr, GPTR group) {
   switch ((long) metadata) {
   case (long) RTnopointers:
     SET_STORAGE_CLASS(gcptr,SC_NOPOINTERS);
-    base = base + 2;
     break;
   case (long) RTpointers:
     SET_STORAGE_CLASS(gcptr,SC_POINTERS);
-    base = base + 2;
     break;    
   default:
-    if (METADATAP(metadata)) {
-      LPTR last_ptr = base + (total_size / sizeof(LPTR)) - 1;
-      SET_STORAGE_CLASS(gcptr,SC_METADATA);
-      *last_ptr = (long) metadata;
-      base = base + 2;
-    } else {
-      /*
-      SET_STORAGE_CLASS(gcptr,SC_INSTANCE);
-      ((GCMDPTR) gcptr)->metadata = metadata;
-      base = base + 2;
-      */
-      Debugger("Unsupported metadata\n");
-    }
+    SET_STORAGE_CLASS(gcptr,SC_METADATA);
+      //LPTR last_ptr = base + (group->size / sizeof(LPTR)) - 1;
+      //*last_ptr = (long) metadata;
     break;
   }
-  return(base);
 }
 
 void *RTallocate(void *metadata, int size) {
-  int i, data_size, real_size, limit;
+  int real_size;
   GCPTR new;
   LPTR base;
   GPTR group;
 
-  group = allocation_group(metadata,size,&data_size,&real_size,&metadata);
+  group = allocation_group(metadata,size,&real_size);
   pthread_mutex_lock(&(group->free_lock));
   if (group->free == NULL) {
     init_pages_for_group(group,1);
@@ -377,13 +352,11 @@ void *RTallocate(void *metadata, int size) {
   group->green_count = group->green_count - 1;
   WITH_LOCK(group->black_count_lock,
 	    group->black_count = group->black_count + 1;)
-
   // No need for an explicit flip lock here. During a flip the gc will
-  // hold the green lock for each group, so no allocator can get here
+  // hold the green lock for every group, so no allocator can get here
   // when the marked_color is being changed.
   SET_COLOR(new,marked_color);	/* Must allocate black! */
 
-  //verify_group(group);
   {
     int page_index = PTR_TO_PAGE_INDEX(new);
     PPTR page = &pages[page_index];
@@ -394,10 +367,21 @@ void *RTallocate(void *metadata, int size) {
     }
   }
 
-  base = initialize_object_metadata(metadata, new, group->size, real_size);
-  // Unlock after initialization because storage class is set without a lock
-  // and gc recyling garbage may affect locked next ptr read, set, and
-  // store.
+  long mdptr;
+  if (((long) metadata) <= SC_POINTERS) {
+    SET_STORAGE_CLASS(new, (long) metadata); 
+    mdptr = 0;
+  } else {
+    SET_STORAGE_CLASS(new, SC_METADATA);
+    mdptr = (long) metadata;
+  }
+  
+  //initialize_object_metadata(metadata, new, group);
+
+
+  base = (LPTR) (new + 1);
+  // Unlock only after storage class initialization because
+  // gc recyling garbage can read and write next ptr
   pthread_mutex_unlock(&(group->free_lock));
   initialize_object_body(new, group->size, real_size);
 

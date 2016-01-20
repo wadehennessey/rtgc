@@ -40,8 +40,7 @@ typedef GC_HEADER * GCPTR;
 #define SC_NOPOINTERS     0
 #define SC_POINTERS       1
 #define SC_METADATA       2
-#define SC_INSTANCE       3
- 
+
 #define GENERATION0       0
 #define GENERATION1       1
 #define GRAY              2

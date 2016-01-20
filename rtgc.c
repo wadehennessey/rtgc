@@ -153,10 +153,14 @@ int scan_write_vector() {
 	  if (WHITEP(gcptr)) {
 	    RTmake_object_gray(gcptr, (BPTR) -1);
 	  }
+	  mask = ~mask;
+	  // Must clear only the bit we just found set.
+	  // Clearing entire long at end of bit scan
+	  // creates a race condition with the mark_write_vector.
+	  locked_long_and(write_vector + index, mask);
 	}
       }
     }
-    write_vector[index] = 0;
   }
   //printf("mark_count is %d\n", mark_count);
   return(mark_count);
@@ -371,10 +375,6 @@ void scan_object(GCPTR ptr, int total_size) {
   case SC_METADATA:
     scan_memory_segment_with_metadata(low, high, 0);
     break;
-  case SC_INSTANCE:
-    /* instance_metadata((RTobject) low); */
-    scan_memory_segment_with_metadata(low,high,0);
-    break;
   default: Debugger(0);
   }
 }
@@ -536,11 +536,12 @@ void recycle_group_garbage(GPTR group) {
 
     SET_COLOR(next,GREEN);
     if (DETECT_INVALID_REFS) {
-      memset((BPTR) next + sizeof(GC_HEADER), INVALID_ADDRESS, group->size);
+      memset((BPTR) next + sizeof(GC_HEADER), 
+	     INVALID_ADDRESS,
+	     (group->size - sizeof(GC_HEADER)));
     }
     last = next;
     next = GET_LINK_POINTER(next->next);
-    assert(count >= 0);
     count = count + 1;
     MAYBE_PAUSE_GC;
   }
