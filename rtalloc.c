@@ -271,9 +271,8 @@ void init_pages_for_group(GPTR group, int min_pages) {
 }
 
 static
-GPTR allocation_group(int *metadata, int size, int *return_real_size) {
+GPTR allocation_group(int *metadata, int size) {
   int data_size, real_size;
-
   if (size >= 0) {
     switch ((long) metadata) {
     case (long) RTnopointers:
@@ -298,7 +297,6 @@ GPTR allocation_group(int *metadata, int size, int *return_real_size) {
     } else {
       group = &(groups[group_index]);
     }
-    *return_real_size = real_size;
     return(group);
   } else {
     printf("Negative object size\n");
@@ -306,8 +304,7 @@ GPTR allocation_group(int *metadata, int size, int *return_real_size) {
 }
 
 static
-void initialize_object_body(void *void_base,
-			    int total_size, int real_size) {
+void initialize_object_body(void *void_base, int total_size) {
   LPTR base = void_base;
   int limit =  total_size / sizeof(LPTR);
 
@@ -334,12 +331,11 @@ void initialize_object_metadata(void *metadata, GCPTR gcptr, GPTR group) {
 }
 
 void *RTallocate(void *metadata, int size) {
-  int real_size;
   GCPTR new;
   LPTR base;
   GPTR group;
 
-  group = allocation_group(metadata,size,&real_size);
+  group = allocation_group(metadata,size);
   pthread_mutex_lock(&(group->free_lock));
   if (group->free == NULL) {
     init_pages_for_group(group,1);
@@ -383,7 +379,7 @@ void *RTallocate(void *metadata, int size) {
   // Unlock only after storage class initialization because
   // gc recyling garbage can read and write next ptr
   pthread_mutex_unlock(&(group->free_lock));
-  initialize_object_body(new, group->size, real_size);
+  initialize_object_body(new, group->size); // , real_size);
 
   return(base);
 }

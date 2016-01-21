@@ -1,4 +1,4 @@
-m-x gud-gdb to switch *dedicated* window
+shelm-x gud-gdb to switch *dedicated* window
 
 c-x c-a c-b to set breakpoint at point line. Who changed this and why?
 
@@ -173,60 +173,10 @@ cleanup
 support md
 fix clearing of md after install
 
-remove real_size from allocation - never actually used
 finish merge of init_metadata and init_body into RTallocate directly
-
-change:
-int bit = (ptr_offset % (MIN_GROUP_SIZE * BITS_PER_LONG)) / MIN_GROUP_SIZE;
-to
-int bit = ptr_offset % BITS_PER_LONG;
-
-in a.c change:
- node->word = word;
-to
-setf_init(node->word, word)
+HEY! for SXpointers, must init to 0 all of object body, not just actual size
 ---------------------------------------------
 break Debugger
 break __assert
 
-set conditional break points in 2 steps instead of 1:
--------------------------------
-break location
-condition <break-num> (condition)
 
-[rr 20839 150835515]Infinite recursion!
-
-thread tid ==  3
-gc_count = 67
-
-in start_word_count i == 2 in all 3 mutators
-
-**********
-word is "uncongenial"
-greater is "lead"
-  0x00000000004016c7 in walk_word_tree (n=0x7f2576602c50, verbose=0) at a.c:16
-8
-(rr) p r
-$8 = 9
-(rr) p *n
-$9 = {word = 0x7f25766e1210 "uncongenial", count = 1, lesser = 0x0, greater = 0x
-7f25766c1210}
-(rr) p (n->greater)->word
-$10 = 0x7f2576661430 "lead"
-(rr)
-"lead" turns green
-
-
-"find" finds only ptr to "lead" is 0x7f25766c1210, which is a node
-gcptr is 0x7f25766c1200, node is also green, so of course "lead" is too
-
-"find" finds only ptr to node is 0x7f2576602c68 (greater ptr)
-gcptr is 0x7f2576602c40 which is black!
-
-so wb didn't catch pointer overwrite of 0x7f2576602c68
-
-at time 121182904 wb is called ptr to 0x7f25766c1210 is going to get overwritten
-mark write vector at index 618 bit 16
-
-at same time, gc is paused scanning write_vector at index 618 bit 19!
-*************

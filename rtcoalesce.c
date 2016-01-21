@@ -1,8 +1,22 @@
 // (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
-// rtgc.c page coalescing code. 
-// moved here for now to reduce clutter 
-// until a concurrent collector is working well
+// rtgc page coalescing code. 
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <assert.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <semaphore.h>
+#include <pthread.h>
+#include <signal.h>
+#include "mem-config.h"
+#include "infoBits.h"
+#include "mem-internals.h"
+#include "vizmem.h"
+#include "allocate.h"
 
 static
 void remove_object_from_free_list(GPTR group, GCPTR object) {
@@ -91,7 +105,6 @@ void coalesce_segment_free_pages(int segment) {
   }
 }
 
-static
 void coalesce_all_free_pages() {
   for (int segment = 0; segment < total_segments; segment++) {
     if (segments[segment].type == HEAP_SEGMENT) {

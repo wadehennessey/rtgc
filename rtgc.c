@@ -589,8 +589,7 @@ void recycle_all_garbage() {
     recycle_group_garbage(&groups[i]);
   }
   //verify_all_groups();
-
-  //coalesce_all_free_pages();
+  coalesce_all_free_pages();
 }
 
 static 
