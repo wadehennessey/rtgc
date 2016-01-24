@@ -614,7 +614,6 @@ int new_thread(void *(*start_func) (void *), void *args) {
 
   pthread_mutex_lock(&total_threads_lock);
   if (total_threads < MAX_THREADS) {
-    // HEY! this isn't thread safe! need a mutex for total_threads
     int index = total_threads;
     total_threads = total_threads + 1;
     pthread_mutex_unlock(&total_threads_lock);

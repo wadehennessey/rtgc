@@ -57,9 +57,8 @@ char *last_gc_state;
 pthread_key_t thread_index_key;
 
 pthread_mutex_t total_threads_lock;
-pthread_mutex_t empty_pages_lock;
 pthread_mutex_t global_roots_lock;
-pthread_mutex_t wb_lock;
+pthread_mutex_t empty_pages_lock;
 
 COUNTER stacks_copied_counter;
 sem_t gc_semaphore;

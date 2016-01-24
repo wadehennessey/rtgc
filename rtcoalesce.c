@@ -59,11 +59,9 @@ void convert_free_to_empty_pages(int first_page, int page_count) {
     GPTR group = pages[next_page_index].group;
     int total_pages = MAX(1,group->size / BYTES_PER_PAGE);
     int object_count = (total_pages * BYTES_PER_PAGE) / group->size;
-    int i;
-    GCPTR next;
 
-    next = (GCPTR) PAGE_INDEX_TO_PTR(next_page_index);
-    for (i = 0; i < object_count; i++) {
+    GCPTR next = (GCPTR) PAGE_INDEX_TO_PTR(next_page_index);
+    for (int i = 0; i < object_count; i++) {
       remove_object_from_free_list(group, next);
       next = (GCPTR) ((BPTR) next + group->size);
     }
@@ -82,7 +80,7 @@ void coalesce_segment_free_pages(int segment) {
   int contig_count = 0;
   int next_page_index = PTR_TO_PAGE_INDEX(segments[segment].first_segment_ptr);
   int last_page_index = PTR_TO_PAGE_INDEX(segments[segment].last_segment_ptr);
-  while (next_page_index < last_page_index) {
+  while (next_page_index < last_page_index) { 
     GPTR group = pages[next_page_index].group;
     int total_pages = (group > 0) ?
                       MAX(1, group->size / BYTES_PER_PAGE) :
@@ -105,10 +103,66 @@ void coalesce_segment_free_pages(int segment) {
   }
 }
 
-void coalesce_all_free_pages() {
-  for (int segment = 0; segment < total_segments; segment++) {
-    if (segments[segment].type == HEAP_SEGMENT) {
-      coalesce_segment_free_pages(segment);
+//************************************************
+// new coalescer now that we don't have a giant implicit lock
+// and we don't want to maintain page_bytes
+
+// identify free pages and turn back into SYSTEM_PAGEs
+
+static
+int all_green_page(int page, GPTR group) {
+  // handle groups bigger than a page separately
+  if ((group > EXTERNAL_PAGE) && (group->size <= BYTES_PER_PAGE)) {
+    int all_green = 1;
+    BPTR page_base = PAGE_INDEX_TO_PTR(page);
+    BPTR next_object = page_base;
+    while (all_green && (next_object < (page_base + BYTES_PER_PAGE))) {
+      GCPTR gcptr = (GCPTR) next_object;
+      if (all_green && GREENP(gcptr)) {
+	next_object = next_object + group->size;
+      } else {
+	all_green = 0;
+      }
+    }
+    return(all_green);
+  } else {
+    return(0);
+  }
+}
+
+int syscnt = 0;
+static
+void identify_free_pages() {
+  for (int page = 0; page < total_partition_pages; page++) {
+    GPTR group = pages[page].group;
+    if (all_green_page(page, group)) {
+      pthread_mutex_lock(&(group->free_lock));
+      if (all_green_page(page, group)) {
+	// remove all objects on page from free list
+	int object_count = BYTES_PER_PAGE / group->size;
+	GCPTR next = (GCPTR) PAGE_INDEX_TO_PTR(page);
+	for (int i = 0; i < object_count; i++) {
+	  remove_object_from_free_list(group, next);
+	  next = (GCPTR) ((BPTR) next + group->size);
+	}
+	pages[page].group = SYSTEM_PAGE;
+	syscnt = syscnt + 1;
+	//printf("gc_count %d, syscnt %d\n", gc_count, syscnt);
+	printf("syscnt %d\n", syscnt);
+      }
+      pthread_mutex_unlock(&(group->free_lock));
     }
   }
 }
+
+void coalesce_all_free_pages() {
+  identify_free_pages();
+}
+
+
+	
+	
+	
+	
+      
+    

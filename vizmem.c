@@ -46,14 +46,15 @@ void Debugger(char *msg) {
   debug = 1 / zero;
 }
 
+static size_t len = 8000;
+static char *src;
+static char *dest;
 
 void copy_test() {
   struct timeval start_tv, end_tv;
-  int len = 1000000;
-  //char src[len], dest[len];
-  char *src = malloc(len);
-  char *dest = malloc(len);
-
+  src = malloc(len);
+  dest = malloc(len);
+  
   gettimeofday(&start_tv, 0);
   memcpy(dest, src, len);
   gettimeofday(&end_tv, 0);

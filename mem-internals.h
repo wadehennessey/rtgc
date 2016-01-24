@@ -2,9 +2,10 @@
 
 /* Other parts of the system like to use IN_HEAP and IN_GLOBALS */
 #define EMPTY_PAGE     ((GPTR) 0)
-#define SYSTEM_PAGE    ((GPTR) 1)
-#define STATIC_PAGE    ((GPTR) 2)
-#define EXTERNAL_PAGE  ((GPTR) 3)
+#define FREE_PAGE      ((GPTR) 1
+#define SYSTEM_PAGE    ((GPTR) 2)
+#define STATIC_PAGE    ((GPTR) 3)
+#define EXTERNAL_PAGE  ((GPTR) 4)
 
 #define HEAP_SEGMENT 0
 #define STATIC_SEGMENT 1
@@ -158,6 +159,7 @@ void counter_wait_threshold(COUNTER *c, int threshold);
 void locked_byte_or(unsigned char *x, unsigned char y);
 void locked_long_or(unsigned long *x, unsigned long y);
 void locked_long_and(unsigned long *x, unsigned long y);
+void locked_long_inc(unsigned long *x);
 void coalesce_all_free_pages();
 
 extern GROUP_INFO *groups;
@@ -194,7 +196,6 @@ extern int total_global_roots;
 extern pthread_mutex_t total_threads_lock;
 extern pthread_mutex_t empty_pages_lock;
 extern pthread_mutex_t global_roots_lock;
-extern pthread_mutex_t wb_lock;
 extern sem_t gc_semaphore;
 extern int run_gc;
 extern int atomic_gc;

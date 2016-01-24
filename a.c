@@ -195,10 +195,9 @@ void *start_word_count(void *arg) {
   exit(1);
 }
 
+void copy_test();
+
 int main(int argc, char *argv[]) {
-  unsigned long x = 0b101;
-  unsigned long y = 0b010;
-  locked_long_or(&x, y);
   //RTinit_heap((1L << 36), 0);
   RTinit_heap((1L << 22), 0);
   for (long i = 1; i <= 3; i++) {

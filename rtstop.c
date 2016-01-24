@@ -49,6 +49,8 @@ New method using sig_atomic_t flags.
 
 */
 
+long copied_stack_count = 0;
+
 // integers safe to read and set in signal handler
 // could probaly just haved use a normal int.
 static volatile sig_atomic_t mutators_may_proceed = 0;
@@ -178,6 +180,11 @@ int stop_all_mutators_and_save_state() {
       Debugger("pthread_kill failed!");
     }
   }
+
+  // Busy wait to start gc cycle until all thread stack are copied
+  // while (copied_stack_count != total_threads);
+  copied_stack_count = 0;
+  
   // all stacks and registers should be copied at this point
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;

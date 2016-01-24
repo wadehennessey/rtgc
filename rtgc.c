@@ -173,10 +173,7 @@ void mark_write_vector(GCPTR gcptr) {
   int bit = (ptr_offset % (MIN_GROUP_SIZE * BITS_PER_LONG)) / MIN_GROUP_SIZE;
   unsigned long bit_mask = 1L << bit;
   assert(0 != bit_mask);
-  //pthread_mutex_lock(&wb_lock);
   locked_long_or(write_vector + long_index, bit_mask);
-  //write_vector[long_index] = write_vector[long_index] | bit_mask;
-  //pthread_mutex_unlock(&wb_lock);
 }
 #else
 static
@@ -589,6 +586,7 @@ void recycle_all_garbage() {
     recycle_group_garbage(&groups[i]);
   }
   //verify_all_groups();
+
   coalesce_all_free_pages();
 }
 
@@ -670,7 +668,6 @@ void init_realtime_gc() {
   last_gc_state = "<initial state>";
   pthread_mutex_init(&total_threads_lock, NULL);
   pthread_mutex_init(&empty_pages_lock, NULL);
-  pthread_mutex_init(&wb_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);
   init_signals_for_rtgc();
   //counter_init(&stacks_copied_counter);
