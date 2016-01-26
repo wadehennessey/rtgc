@@ -489,8 +489,13 @@ void flip() {
   // we can safely do this without an explicit lock because we're holding
   // all the free_locks right now, and the write barrier is off.
   assert(0 == enable_write_barrier);
-  SWAP(marked_color,unmarked_color);
-
+  //enable_write_barrier = 1;
+  //SWAP(marked_color,unmarked_color);
+  int tmp = unmarked_color;
+  unmarked_color = marked_color;
+  enable_write_barrier = 1;
+  marked_color = tmp;
+    
   gettimeofday(&start_tv, 0);
   stop_all_mutators_and_save_state();
   gettimeofday(&end_tv, 0);

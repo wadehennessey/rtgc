@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 #include <sys/time.h>
 #include <semaphore.h>
 #include <signal.h>
@@ -49,12 +50,10 @@ New method using sig_atomic_t flags.
 
 */
 
-long copied_stack_count = 0;
-
 // integers safe to read and set in signal handler
-// could probaly just haved use a normal int.
-static volatile sig_atomic_t mutators_may_proceed = 0;
-static volatile sig_atomic_t handler_done[100]; //  = 0;
+// Should we use this instead? static volatile sig_atomic_t
+static long entered_handler_count = 0;
+static long copied_stack_count = 0;
 
 // see /usr/include/sys/ucontext.h for more details
 void print_registers(gregset_t *gregs) {
@@ -102,6 +101,7 @@ void print_registers(gregset_t *gregs) {
 void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
   int thread_index;
 
+  locked_long_inc(&entered_handler_count);
   // we cannot be in the middle of an allocation at this point because
   // the gc holds all the group free_locks
   if (0 == (thread_index =  (long) pthread_getspecific(thread_index_key))) {
@@ -130,19 +130,8 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
 	   live_stack_size);
     threads[thread_index].saved_stack_size = live_stack_size;
 
-    handler_done[thread_index] = 1;
-    //if (1 != counter_increment(&stacks_copied_counter)) {
-    //  Debugger("error, counter_increment failed!\n");
-    //} 
-
-    //printf("about to wait on may_proceed\n");
-    // Wait until all threads have stopped, and the write barrier
-    // has been turned back on
-    while (0 == mutators_may_proceed) {
-      sched_yield();
-    }
+    locked_long_inc(&copied_stack_count);
     // indicate mutator is proceeding
-    handler_done[thread_index] = -1;
     //printf("Resuming after signal\n");
   }
 }
@@ -167,12 +156,12 @@ void init_signals_for_rtgc() {
 // Return total number of mutators stopped
 int stop_all_mutators_and_save_state() {  
   // stop the world and copy all stack and register state in each live thread
+  entered_handler_count = 0;
+  copied_stack_count = 0;
   pthread_mutex_lock(&total_threads_lock);
   int total_threads_to_halt = total_threads - 1; /* omit gc thread */
-  mutators_may_proceed = 0;
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;		// skip 0 - gc thread
-    handler_done[thread] = 0;
     threads[thread].saved_stack_size = 0;
     int err = pthread_kill(threads[thread].pthread, FLIP_SIGNAL);
     if (0 != err) {
@@ -180,27 +169,19 @@ int stop_all_mutators_and_save_state() {
       Debugger("pthread_kill failed!");
     }
   }
-
-  // Busy wait to start gc cycle until all thread stack are copied
-  // while (copied_stack_count != total_threads);
-  copied_stack_count = 0;
   
+  while (entered_handler_count != total_threads_to_halt) {
+    sched_yield();
+  }
+  // enable_write_barrier = 1;
+  // Can release all group locks here!
+
+  // Busy wait to start gc cycle until all thread stacks are copied
+  while (copied_stack_count != total_threads_to_halt) {
+    sched_yield();
+  }
   // all stacks and registers should be copied at this point
-  for (int i = 0; i < total_threads_to_halt; i++) {
-    int thread = i + 1;
-    while (0 == handler_done[thread]);
-    if (0 == threads[thread].saved_stack_size) {
-      Debugger("Stack copy problem!");
-    }
-  }
-  //printf("***All stacks copied!*****\n");
-  enable_write_barrier = 1;
-  mutators_may_proceed = 1;
-  //printf("mutators_may_proceed is now %d\n", mutators_may_proceed);
-  for (int i = 0; i < total_threads_to_halt; i++) {
-    int thread = i + 1;
-    while (-1 != handler_done[thread]);
-  }
+  assert(total_threads_to_halt == copied_stack_count);
   pthread_mutex_unlock(&total_threads_lock);
   //usleep(100000);
 }
