@@ -82,19 +82,18 @@ void RTmake_object_gray(GCPTR current, BPTR raw) {
     SET_LINK_POINTER(current->prev, NULL);
     GCPTR gray = group->gray;
     if (gray == NULL) {
-      WITH_LOCK((group->black_and_last_lock),
-		SET_LINK_POINTER(current->next, group->black);
-		if (group->black == NULL) {
-		  assert(NULL == group->free);
+      SET_LINK_POINTER(current->next, group->black);
+      if (group->black == NULL) {
+	assert(NULL == group->free);
+	WITH_LOCK(group->black_and_last_lock,
 		  group->black = current;
-		  group->free_last = current;
-		} else {
-		  // looks like a race with alloc setting storage class on 
-		  // black->prev. Should use a more specific lock than free.
-		  pthread_mutex_lock(&(group->free_lock));  
-		  SET_LINK_POINTER((group->black)->prev, current);
-		  pthread_mutex_unlock(&(group->free_lock));  
-		});
+		  group->free_last = current;);
+      } else {
+	// looks like a race with alloc setting color on 
+	// black->prev. Should use a more specific lock than free.
+	WITH_LOCK(group->free_lock,
+		  SET_LINK_POINTER((group->black)->prev, current););
+      }
     } else {
       SET_LINK_POINTER(current->next, gray);
       SET_LINK_POINTER(gray->prev, current);
