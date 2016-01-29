@@ -488,18 +488,21 @@ void flip() {
   // we can safely do this without an explicit lock because we're holding
   // all the free_locks right now, and the write barrier is off.
   assert(0 == enable_write_barrier);
+  // This worked ok, never understood how it could. Moved to rtstop.c.
+  //
   //enable_write_barrier = 1;
   //SWAP(marked_color,unmarked_color);
-  int tmp = unmarked_color;
-  unmarked_color = marked_color;
-  enable_write_barrier = 1;
-  marked_color = tmp;
+
+  //  int tmp = unmarked_color;
+  //  unmarked_color = marked_color;
+  //  enable_write_barrier = 1;
+  //  marked_color = tmp;
     
   gettimeofday(&start_tv, 0);
   stop_all_mutators_and_save_state();
   gettimeofday(&end_tv, 0);
 
-  unlock_all_free_locks();
+  //unlock_all_free_locks();
   timersub(&end_tv, &start_tv, &flip_tv);
   timeradd(&total_flip_tv, &flip_tv, &total_flip_tv);
   if timercmp(&flip_tv, &max_flip_tv, >) {

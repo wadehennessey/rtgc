@@ -159,7 +159,7 @@ void counter_wait_threshold(COUNTER *c, int threshold);
 void locked_byte_or(unsigned char *x, unsigned char y);
 void locked_long_or(unsigned long *x, unsigned long y);
 void locked_long_and(unsigned long *x, unsigned long y);
-void locked_long_inc(unsigned long *x);
+void locked_long_inc(volatile unsigned long *x);
 void coalesce_all_free_pages();
 
 extern GROUP_INFO *groups;

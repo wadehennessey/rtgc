@@ -170,8 +170,6 @@ in /etc/fstab add:
 
 cleanup
 -------
-Try turning on wb just before swapping marked color
-
 support md
 fix clearing of md after install
 

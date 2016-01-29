@@ -52,8 +52,10 @@ New method using sig_atomic_t flags.
 
 // integers safe to read and set in signal handler
 // Should we use this instead? static volatile sig_atomic_t
-static long entered_handler_count = 0;
-static long copied_stack_count = 0;
+// volatile is ESSENTIAL, or -O2 optimizaions break things
+static volatile long entered_handler_count = 0;
+static volatile long copied_stack_count = 0;
+static volatile long mutators_may_proceed = 0;
 
 // see /usr/include/sys/ucontext.h for more details
 void print_registers(gregset_t *gregs) {
@@ -131,6 +133,9 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
     threads[thread_index].saved_stack_size = live_stack_size;
 
     locked_long_inc(&copied_stack_count);
+    while (0 == mutators_may_proceed) {
+      sched_yield();
+    }
     // indicate mutator is proceeding
     //printf("Resuming after signal\n");
   }
@@ -153,11 +158,22 @@ void init_signals_for_rtgc() {
   sigaction(FLIP_SIGNAL, &signal_action, 0);
 }
 
+
+static
+void unlock_all_free_locks() {
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    GPTR group = &groups[i];
+    pthread_mutex_unlock(&(group->free_lock));
+    //sched_yield();
+  }
+}
+
 // Return total number of mutators stopped
 int stop_all_mutators_and_save_state() {  
   // stop the world and copy all stack and register state in each live thread
   entered_handler_count = 0;
   copied_stack_count = 0;
+  mutators_may_proceed = 0;
   pthread_mutex_lock(&total_threads_lock);
   int total_threads_to_halt = total_threads - 1; /* omit gc thread */
   for (int i = 0; i < total_threads_to_halt; i++) {
@@ -173,8 +189,15 @@ int stop_all_mutators_and_save_state() {
   while (entered_handler_count != total_threads_to_halt) {
     sched_yield();
   }
-  // enable_write_barrier = 1;
-  // Can release all group locks here!
+
+  // BIG change for swap and resume alloc! This used to be in rtgc.c in
+  // what looked like an unsafe place. It always worked though..
+  int tmp = unmarked_color;
+  unmarked_color = marked_color;
+  enable_write_barrier = 1;
+  marked_color = tmp;
+  mutators_may_proceed = 1;
+  unlock_all_free_locks();
 
   // Busy wait to start gc cycle until all thread stacks are copied
   while (copied_stack_count != total_threads_to_halt) {
