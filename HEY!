@@ -1,4 +1,4 @@
-shelm-x gud-gdb to switch *dedicated* window
+m-x gud-gdb to switch *dedicated* window
 
 c-x c-a c-b to set breakpoint at point line. Who changed this and why?
 
@@ -17,8 +17,6 @@ use #define _GNU_SOURCE for weird compile problems not seeing decls
 
 
 gdb> info signals
-
-
 use next instead of continue to switch to diff thread break points
 
 Semaphores
@@ -55,22 +53,6 @@ wmctrl -r "emacs" -e 1,-1,-1,770,1010
 
 Ideas
 -------
-try  partition bit vector for write barrier record?
-each bit reperesents the start of a 32 byte segment of the partition
-each 8 bytes (word) represents 64*32bytes = 2048 bytes of the partition
-so bit vector is 1/256 the size of the entire partition, which
-is about .4% overhead.
-
-clear bit vector or recyling memory and write barrier is off
-scan vector each time scan_gray_set runs out of gray object.
-when gray runs out and scan vector produces no more gray, we're done
-and can turn write barrier off recycle garbage, and clear bit vector.
-
-will need a lock to set bit, there is no test and set BIT.
-If we use a byte vector instead, then don't need a lock. Just test-and-set
-a byte. However, then we'll need a byte vector that's 1/32 the size
-of the partition. That's still only 3% overhead though.
-
 Could try copy on write stacks on flip? no memcpy that way
 would involve MAP_PRIVATE each stack to a file?
 
@@ -108,8 +90,6 @@ taskset 0x10 ./a
 
 # rr traces are stored in /home/wade/.local/share/rr/
 
-
-
 gdb tui mode in xterm: c-x a
 
 too see event numbers and start at a specific event number:
@@ -120,7 +100,7 @@ run again jumps to event time immediately on future runs
 
 
 try gdb cmds:
-
+-------------
 checkpoint
 info checkpoints - not implemented
 restart <cp-id>
@@ -135,8 +115,6 @@ rr record -c 2500 ./a
 
 # I think I recorded "the bug" with this (compile "make debug")
 rr record -c 5 ./a
-
-s1, s2, and s5 hit bug. s1 hit at gc count 67
 
 # to see record options
 rr record -h
@@ -170,6 +148,17 @@ in /etc/fstab add:
 
 cleanup
 -------
+200ns for the "null" signal and return time. Includes double the "system" time.
+Mean 5000 "null" signal and returns per 1ms.
+
+Time for 1,000,000 "null" kill signal and returns 
+real	0m0.209s
+user	0m0.029s
+sys	0m0.389s
+
+
+use struct timespec for nanosecond timing on handler 
+
 support md
 fix clearing of md after install
 

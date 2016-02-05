@@ -13,6 +13,7 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/time.h>
 #include "mem-config.h"
 #include "infoBits.h"
 #include "mem-internals.h"
@@ -596,6 +597,8 @@ void *rtalloc_start_thread(void *arg) {
   threads[thread_index].stack_base = stackaddr;
   threads[thread_index].stack_size = stacksize;
   threads[thread_index].stack_bottom = (char *)  &stacksize;
+  timerclear(&(threads[thread_index].max_pause_tv));
+  timerclear(&(threads[thread_index].total_pause_tv));
   fflush(stdout);
 
   if (0 != pthread_setspecific(thread_index_key, (void *) thread_index)) {

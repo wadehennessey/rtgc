@@ -198,6 +198,13 @@ void *start_word_count(void *arg) {
 void copy_test();
 
 int main(int argc, char *argv[]) {
+  struct timespec res, start_time, end_time;
+  if (0 == clock_getres(CLOCK_REALTIME, &res)) {
+    clock_gettime(CLOCK_REALTIME, &start_time);
+    clock_gettime(CLOCK_REALTIME, &end_time);
+    printf("got nano times!\n");
+  }
+  
   //RTinit_heap((1L << 36), 0);
   RTinit_heap((1L << 22), 0);
   for (long i = 1; i <= 3; i++) {

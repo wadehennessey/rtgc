@@ -55,7 +55,6 @@ New method using sig_atomic_t flags.
 // volatile is ESSENTIAL, or -O2 optimizaions break things
 static volatile long entered_handler_count = 0;
 static volatile long copied_stack_count = 0;
-static volatile long mutators_may_proceed = 0;
 
 // see /usr/include/sys/ucontext.h for more details
 void print_registers(gregset_t *gregs) {
@@ -102,7 +101,9 @@ void print_registers(gregset_t *gregs) {
  */
 void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
   int thread_index;
+  struct timeval start_tv, end_tv, pause_tv;
 
+  gettimeofday(&start_tv, 0);
   locked_long_inc(&entered_handler_count);
   // we cannot be in the middle of an allocation at this point because
   // the gc holds all the group free_locks
@@ -133,9 +134,21 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
     threads[thread_index].saved_stack_size = live_stack_size;
 
     locked_long_inc(&copied_stack_count);
+    /*    
     while (0 == mutators_may_proceed) {
       sched_yield();
     }
+    */
+
+    gettimeofday(&end_tv, 0);
+    timersub(&end_tv, &start_tv, &pause_tv);
+    timeradd(&(threads[thread_index].total_pause_tv),
+	     &pause_tv,
+	     &(threads[thread_index].total_pause_tv));
+    if timercmp(&pause_tv, &(threads[thread_index].max_pause_tv), >) {
+    	threads[thread_index].max_pause_tv = pause_tv;
+      }
+
     // indicate mutator is proceeding
     //printf("Resuming after signal\n");
   }
@@ -173,7 +186,6 @@ int stop_all_mutators_and_save_state() {
   // stop the world and copy all stack and register state in each live thread
   entered_handler_count = 0;
   copied_stack_count = 0;
-  mutators_may_proceed = 0;
   pthread_mutex_lock(&total_threads_lock);
   int total_threads_to_halt = total_threads - 1; /* omit gc thread */
   for (int i = 0; i < total_threads_to_halt; i++) {
@@ -185,18 +197,17 @@ int stop_all_mutators_and_save_state() {
       Debugger("pthread_kill failed!");
     }
   }
-  
+
   while (entered_handler_count != total_threads_to_halt) {
     sched_yield();
   }
-
+  
   // BIG change for swap and resume alloc! This used to be in rtgc.c in
   // what looked like an unsafe place. It always worked though..
   int tmp = unmarked_color;
   unmarked_color = marked_color;
   enable_write_barrier = 1;
   marked_color = tmp;
-  mutators_may_proceed = 1;
   unlock_all_free_locks();
 
   // Busy wait to start gc cycle until all thread stacks are copied

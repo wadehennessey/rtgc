@@ -31,7 +31,7 @@ struct timeval start_gc_cycle_time;
 double last_cycle_ms;
 double last_gc_ms;
 double last_write_barrier_ms;
-struct timeval start_tv, end_tv, flip_tv, max_flip_tv, total_flip_tv;
+struct timeval max_flip_tv, total_flip_tv;
 
 
 static
@@ -497,7 +497,8 @@ void flip() {
   //  unmarked_color = marked_color;
   //  enable_write_barrier = 1;
   //  marked_color = tmp;
-    
+
+  struct timeval start_tv, end_tv, flip_tv;
   gettimeofday(&start_tv, 0);
   stop_all_mutators_and_save_state();
   gettimeofday(&end_tv, 0);
