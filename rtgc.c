@@ -447,13 +447,8 @@ void flip() {
   last_gc_state = "Flip";
   // No allocation allowed during a flip
   lock_all_free_locks();
-
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     GPTR group = &groups[i];
-
-    //verify_white_count(group);
-    
-    group->gray = NULL;
     GCPTR free = group->free;
     if (free != NULL) {
       GCPTR prev = GET_LINK_POINTER(free->prev);
@@ -468,42 +463,27 @@ void flip() {
       }
       group->free_last = NULL;
     }
-    GCPTR black = group->black;
-    if (black == NULL) {
-      // black can be NULL during 1st gc cycle, or if all white objects
-      // are garbage and no allocation occurred during this cycle.
-      group->white = NULL;
-    } else {
-      group->white = (GREENP(black) ? NULL : black);
-    }
-    
-    group->black = group->free;
-    assert(group->black_count >= 0); 
 
+    group->white = group->black;
+    group->black = group->free;
+    group->gray = NULL;
+
+    assert(group->black_count >= 0); 
     group->white_count = group->black_count;
     group->black_count = 0;
-    // verify_white_count(group);
   }
 
-  // we can safely do this without an explicit lock because we're holding
-  // all the free_locks right now, and the write barrier is off.
   assert(0 == enable_write_barrier);
-  // This worked ok, never understood how it could. Moved to rtstop.c.
-  //
+  // We do this in rtstop.c now. Should we move it back here? It shouldn't
+  // matter because we hold all free locks in each place
   //enable_write_barrier = 1;
   //SWAP(marked_color,unmarked_color);
-
-  //  int tmp = unmarked_color;
-  //  unmarked_color = marked_color;
-  //  enable_write_barrier = 1;
-  //  marked_color = tmp;
 
   struct timeval start_tv, end_tv, flip_tv;
   gettimeofday(&start_tv, 0);
   stop_all_mutators_and_save_state();
   gettimeofday(&end_tv, 0);
 
-  //unlock_all_free_locks();
   timersub(&end_tv, &start_tv, &flip_tv);
   timeradd(&total_flip_tv, &flip_tv, &total_flip_tv);
   if timercmp(&flip_tv, &max_flip_tv, >) {
@@ -566,11 +546,13 @@ void recycle_group_garbage(GPTR group) {
     if (group->free == NULL) {
       group->free = group->white;
     }
-    // No additional locking needed here. We hold group->free lock, so
-    // we can use black, free_last, and green_count without conflict
+
+    /*
     if (group->black == NULL) {
       group->black = group->white;
     }
+    */
+    
     if (group->free_last != NULL) {
       SET_LINK_POINTER((group->free_last)->next, group->white);
     }
@@ -595,7 +577,10 @@ void recycle_all_garbage() {
   }
   //verify_all_groups();
 
-  coalesce_all_free_pages();
+  // get "alloc out ran gc" msgs if you run long enough
+  // turn back on when freed pages get added back to empty_pages
+  // right now that are just left as FREE_PAGE are not usable again
+  //coalesce_all_free_pages();
 }
 
 static 

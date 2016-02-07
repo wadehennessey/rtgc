@@ -204,10 +204,15 @@ int stop_all_mutators_and_save_state() {
   
   // BIG change for swap and resume alloc! This used to be in rtgc.c in
   // what looked like an unsafe place. It always worked though..
+  enable_write_barrier = 1;
+  SWAP(marked_color,unmarked_color);
+  /*
   int tmp = unmarked_color;
   unmarked_color = marked_color;
   enable_write_barrier = 1;
   marked_color = tmp;
+  */
+  
   unlock_all_free_locks();
 
   // Busy wait to start gc cycle until all thread stacks are copied
