@@ -78,11 +78,13 @@ void RTinit_empty_pages(int first_page, int page_count, int type) {
   }
 
   if (type == HEAP_SEGMENT) {
+    pthread_mutex_lock(&empty_pages_lock);
     /* Add the pages to the front of the empty page list */
     HOLE_PTR new_hole = (HOLE_PTR) PAGE_INDEX_TO_PTR(first_page);
     new_hole->page_count = page_count;
     new_hole->next = empty_pages;
     empty_pages = new_hole;
+    pthread_mutex_unlock(&empty_pages_lock);
   } else {
     /* HEY! fix this to allow more than 1 static segment */
     last_static_ptr = segments[0].last_segment_ptr;
@@ -216,11 +218,10 @@ void init_pages_for_group(GPTR group, int min_pages) {
     int actual_bytes = allocate_segment(MAX(DEFAULT_HEAP_SEGMENT_SIZE,
 					    page_count * BYTES_PER_PAGE),
 					HEAP_SEGMENT);
-    assert(0 == actual_bytes);	// while we only have 1 segement
+    assert(0 == actual_bytes);	// while we only have 1 segment
     if (actual_bytes < byte_count) {
       // atomic and concurrent gc can't flip without
       // unlocking all group free locks
-      memory_mutex = 0;
       pthread_mutex_unlock(&(group->free_lock));
       if (atomic_gc) {
 	// atomic gc
@@ -239,9 +240,12 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	assert(NULL != group->free);
       }
       pthread_mutex_lock(&(group->free_lock));
-      memory_mutex = 1;
     }
-    base = allocate_empty_pages(page_count, min_page_count, group);
+    if (NULL == group->free) {
+      base = allocate_empty_pages(page_count, min_page_count, group);
+    } else {
+      // printf("full_gc added to empty free list, gc_count = %d\n", gc_count);
+    }
   }
 
   if (base != NULL) {
@@ -283,7 +287,8 @@ GPTR allocation_group(int *metadata, int size) {
     default:
       if (METADATAP(metadata)) {
 	/* We count the metadata ptr in data_size for compat with instance */
-	data_size = (size * (((RT_METADATA *) metadata)->size)) + sizeof(void *);
+	//data_size = (size * (((RT_METADATA *) metadata)->size)) + sizeof(void *);
+	data_size = size + sizeof(void *);
 	real_size = data_size + sizeof(GC_HEADER);
       } else {
 	Debugger("Error - you may not allocate instances\n");
@@ -406,7 +411,23 @@ GCPTR interior_to_gcptr(BPTR ptr) {
   return(gcptr);
 }
 
-void verify_group(GPTR group) {
+
+void verify_group_white(GPTR group) {
+  int white_count = 0;
+  GCPTR ptr = group->white;
+
+  while (ptr != 0) {
+    white_count = white_count + 1;
+    ptr = GET_LINK_POINTER(ptr->next);
+  }
+  if (white_count != group->white_count) {
+    Debugger("Group white count is wrong!");
+  } else {
+    printf("group white is good!\n");
+  }
+}
+
+void verify_group_black(GPTR group) {
   int black_count = 0;
   GCPTR next = group->black;
 
@@ -424,6 +445,10 @@ void verify_group(GPTR group) {
   } else {
     Debugger("Group black counts do not match!!!\n");
   }
+}
+
+void verify_group(GPTR group) {
+  verify_group_white(group);
 }
 
 // could try using SIGSTOP and SIGCONT to stop black changes instead
@@ -527,21 +552,21 @@ void RTinit_heap(size_t first_segment_bytes, int static_size) {
   threads = malloc(sizeof(THREAD_INFO) * MAX_THREADS);
   global_roots = malloc(sizeof(char **) * MAX_GLOBAL_ROOTS);
 #if USE_BIT_WRITE_BARRIER  
-  write_vector_length = 
+  RTwrite_vector_length = 
     total_partition_pages * (BYTES_PER_PAGE / (MIN_GROUP_SIZE * BITS_PER_LONG));
-  write_vector = RTbig_malloc(write_vector_length * sizeof(long));
-  memset(write_vector, 0, write_vector_length * sizeof(long));
+  RTwrite_vector = RTbig_malloc(RTwrite_vector_length * sizeof(long));
+  memset(RTwrite_vector, 0, RTwrite_vector_length * sizeof(long));
   printf("using bit write barrier, ");
 #else
-  write_vector_length = (total_partition_pages * 
+  RTwrite_vector_length = (total_partition_pages * 
 		       (BYTES_PER_PAGE / MIN_GROUP_SIZE));
-  write_vector = RTbig_malloc(write_vector_length);
-  memset(write_vector, 0, write_vector_length);
+  RTwrite_vector = RTbig_malloc(RTwrite_vector_length);
+  memset(RTwrite_vector, 0, RTwrite_vector_length);
   printf("using byte write barrier, ");
 #endif
-  printf("write_vector_length is %ld\n", write_vector_length);
+  printf("RTwrite_vector_length is %ld\n", RTwrite_vector_length);
   if ((pages == 0) || (groups == 0) || (segments == 0) || 
-      (threads == 0) || (global_roots == 0) || (write_vector == 0)) {
+      (threads == 0) || (global_roots == 0) || (RTwrite_vector == 0)) {
     out_of_memory("Heap Memory tables", 0);
   }
 

@@ -2,7 +2,7 @@
 
 /* Other parts of the system like to use IN_HEAP and IN_GLOBALS */
 #define EMPTY_PAGE     ((GPTR) 0)
-#define FREE_PAGE      ((GPTR) 1
+#define FREE_PAGE      ((GPTR) 1)
 #define SYSTEM_PAGE    ((GPTR) 2)
 #define STATIC_PAGE    ((GPTR) 3)
 #define EXTERNAL_PAGE  ((GPTR) 4)
@@ -127,7 +127,6 @@ typedef struct counter {
   pthread_cond_t cond;
 } COUNTER;
 
-void scan_memory_segment(BPTR low, BPTR high);
 void scan_object(GCPTR ptr, int total_size);
 GCPTR interior_to_gcptr(BPTR ptr);
 void RTinit_empty_pages(int first_page, int page_count, int type);
@@ -146,7 +145,7 @@ int stop_all_mutators_and_save_state();
 
 //int RTallocationTrueSize(void * metadata, int size);
 void RTinit_heap(size_t default_heap_bytes, int static_size);
-void RTinit_realtime_gc(void);
+void init_realtime_gc(void);
 void Debugger(char *msg);
 void * RTbig_malloc(size_t size);
 void RTcopy_regs_to_stack(BPTR regptr);
@@ -176,7 +175,6 @@ extern THREAD_INFO *threads;
 extern int total_threads;
 
 extern long total_partition_pages;
-extern int memory_mutex;
 extern int unmarked_color;
 extern int marked_color;
 extern int enable_write_barrier;
@@ -197,14 +195,14 @@ extern pthread_mutex_t total_threads_lock;
 extern pthread_mutex_t empty_pages_lock;
 extern pthread_mutex_t global_roots_lock;
 extern sem_t gc_semaphore;
-extern int run_gc;
+extern volatile int run_gc;
 extern int atomic_gc;
 #if USE_BIT_WRITE_BARRIER
-extern LPTR write_vector;
+extern LPTR RTwrite_vector;
 #else
-extern BPTR write_vector;
+extern BPTR RTwrite_vector;
 #endif
-extern size_t write_vector_length;
+extern size_t RTwrite_vector_length;
 #define ENABLE_LOCKING 1
 
 #if ENABLE_LOCKING

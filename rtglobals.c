@@ -39,17 +39,16 @@ BPTR first_partition_ptr;
 BPTR last_partition_ptr;
 
 #if USE_BIT_WRITE_BARRIER
-LPTR write_vector;
+LPTR RTwrite_vector;
 #else
-BPTR write_vector;
+BPTR RTwrite_vector;
 #endif
-size_t write_vector_length;
+size_t RTwrite_vector_length;
 
 long total_partition_pages;
 int unmarked_color;
 int marked_color;
 int enable_write_barrier;
-int memory_mutex;
 
 int visual_memory_on;
 char *last_gc_state;
@@ -62,5 +61,5 @@ pthread_mutex_t empty_pages_lock;
 
 COUNTER stacks_copied_counter;
 sem_t gc_semaphore;
-int run_gc = 0;
+volatile int run_gc = 0;
 int atomic_gc = 1;

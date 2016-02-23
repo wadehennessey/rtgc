@@ -21,7 +21,7 @@
 void *RTbig_malloc(size_t bytes) {
   BPTR p = (mmap(0,
 		 bytes,
-		 PROT_READ | PROT_WRITE, /* leave out PROT_EXEC */
+		 PROT_EXEC | PROT_READ | PROT_WRITE,
 		 MAP_PRIVATE | MAP_ANONYMOUS,
 		 0,
 		 0));

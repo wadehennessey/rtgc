@@ -2,8 +2,12 @@
 
 /* Interface to the memory manager */
 
-#define RTnopointers ((void *) SC_NOPOINTERS)
-#define RTpointers   ((void *) SC_POINTERS)
+// Requires more than just this header to work
+//#define RTnopointers ((void *) SC_NOPOINTERS)
+//#define RTpointers   ((void *) SC_POINTERS)
+
+#define RTnopointers ((void *) 0)
+#define RTpointers   ((void *) 1)
 
 #define RTbeerBash(lhs, rhs) ((lhs) = (rhs))
 #define setf_init(lhs, rhs) ((lhs) = (rhs))
@@ -41,9 +45,11 @@ int RTtrueSize(void *ptr);
 
 //LPTR RTinitializeObject(void *metadata, void *base, int total_size, int real);
 
-void init_realtime_gc();
+void RTinit_heap(size_t first_segment_bytes, int static_size);
 
 int new_thread(void *(*start_func) (void *), void *args);
 
 int rtgc_count(void);
+
+void RTregister_root_scanner(void (*root_scanner)());
 

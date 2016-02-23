@@ -21,7 +21,13 @@
 
 /* http://www.textfiles.com/etext/AUTHORS/DOYLE/ for text files */
 
+// tmp stub to avoid linking problems
+void *wcl_get_closure_env(void *ptr) {
+  return(0);
+}
+
 typedef struct node {
+  char bloat[4196];
   char *word;
   int count;
   struct node *lesser;
@@ -185,7 +191,7 @@ void *start_word_count(void *arg) {
   while (i < 5000000) {
     char top;
     NODE *root = build_word_tree("redhead.txt");
-    RTwrite_barrier(&(roots[tid]), root); 
+    RTwrite_barrier(&(roots[tid]), root);
     assert(9317 == walk_word_tree(roots[tid], 0));
     if (0 == (i % 25)) {
       printf("[%d] %d word counts\n", tid, i);
@@ -204,9 +210,10 @@ int main(int argc, char *argv[]) {
     clock_gettime(CLOCK_REALTIME, &end_time);
     printf("got nano times!\n");
   }
-  
+
   //RTinit_heap((1L << 36), 0);
-  RTinit_heap((1L << 22), 0);
+  //RTinit_heap((1L << 22), 0);
+  RTinit_heap((1L << 30), 0);
   for (long i = 1; i <= 3; i++) {
     new_thread(&start_word_count, (void *) i);
   }

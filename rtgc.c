@@ -34,16 +34,27 @@ double last_write_barrier_ms;
 struct timeval max_flip_tv, total_flip_tv;
 
 
+static int verify_count = 0;
+
 static
 void verify_white_count(GPTR group) {
-  GCPTR next = group->white;
+  GCPTR ptr = group->white;
   int count = 0;
-  while (next != NULL) {
+  while (ptr != NULL) {
+    if (group->size < BYTES_PER_PAGE) {
+      if ((((long) (GET_LINK_POINTER(ptr->prev)) % group->size) != 0) ||
+	  (((long) (GET_LINK_POINTER(ptr->next)) % group->size) != 0)) {
+	Debugger("Bad gchdr\n");
+      }
+    }
+    ptr = GET_LINK_POINTER(ptr->next);
     count = count + 1;
-    next = GET_LINK_POINTER(next->next);    
   }
   if (group->white_count != count) {
     Debugger("incorrect white_count\n");
+  } else {
+    verify_count = verify_count + 1;
+    printf("Verify_white_count passed! %d\n", verify_count);
   }
 }
 
@@ -57,11 +68,13 @@ void verify_white_counts() {
 
 static
 void RTmake_object_gray(GCPTR current, BPTR raw) {
+  // verify_white_count(groups + 5);
+
   GPTR group = PTR_TO_GROUP(current);
   BPTR header = (BPTR) current + sizeof(GC_HEADER);
-
-  /* Only allow interior pointers to retain objects <= 1 page in size */
-  if ((group->size <= INTERIOR_PTR_RETENTION_LIMIT) ||
+  long delta = raw - header;
+  
+  if ((delta < 32) || 
       (((long) raw) == -1) || (raw == header)) {
     GCPTR prev = GET_LINK_POINTER(current->prev);
     GCPTR next = GET_LINK_POINTER(current->next);
@@ -104,9 +117,12 @@ void RTmake_object_gray(GCPTR current, BPTR raw) {
     assert(group->white_count > 0); // no lock needed, white_count is gc only
     group->white_count = group->white_count - 1;
   }
+
+  // verify_white_count(groups + 5);
 }
 
 /* Scan memory looking for *possible* pointers */
+static
 void scan_memory_segment(BPTR low, BPTR high) {
   /* if GC_POINTER_ALIGNMENT is < 4, avoid scanning potential pointers that
      extend past the end of this object */
@@ -131,8 +147,20 @@ void scan_memory_segment(BPTR low, BPTR high) {
   }
 }
 
+extern void *wcl_get_closure_env(void *ptr);
+
 static
 void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
+  BPTR env = wcl_get_closure_env(low + sizeof(long));
+  //printf("closure env is %p\n", env);
+  GCPTR gcptr = interior_to_gcptr(env); 
+  if WHITEP(gcptr) {
+      RTmake_object_gray(gcptr, env);
+    }
+}
+
+// Public version
+void RTscan_memory_segment(BPTR low, BPTR high) {
   scan_memory_segment(low, high);
 }
 
@@ -140,13 +168,13 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
 static
 int scan_write_vector() {
   int mark_count = 0;
-  for (long index = 0; index < write_vector_length; index++) {
-    if (0 != write_vector[index]) {
+  for (long index = 0; index < RTwrite_vector_length; index++) {
+    if (0 != RTwrite_vector[index]) {
       BPTR base_ptr = first_partition_ptr + 
 	(index * MIN_GROUP_SIZE * BITS_PER_LONG);
       for (long bit = 0; bit < BITS_PER_LONG; bit = bit + 1) {
 	unsigned long mask = 1L << bit;
-	if (0 != (write_vector[index] & mask)) {
+	if (0 != (RTwrite_vector[index] & mask)) {
 	  GCPTR gcptr = (GCPTR) (base_ptr + (bit * MIN_GROUP_SIZE));
 	  mark_count = mark_count + 1;
 	  if (WHITEP(gcptr)) {
@@ -155,8 +183,8 @@ int scan_write_vector() {
 	  mask = ~mask;
 	  // Must clear only the bit we just found set.
 	  // Clearing entire long at end of bit scan
-	  // creates a race condition with the mark_write_vector.
-	  locked_long_and(write_vector + index, mask);
+	  // creates a race condition with the mark_RTwrite_vector.
+	  locked_long_and(RTwrite_vector + index, mask);
 	}
       }
     }
@@ -172,16 +200,16 @@ void mark_write_vector(GCPTR gcptr) {
   int bit = (ptr_offset % (MIN_GROUP_SIZE * BITS_PER_LONG)) / MIN_GROUP_SIZE;
   unsigned long bit_mask = 1L << bit;
   assert(0 != bit_mask);
-  locked_long_or(write_vector + long_index, bit_mask);
+  locked_long_or(RTwrite_vector + long_index, bit_mask);
 }
 #else
 static
 int scan_write_vector() {
   int mark_count = 0;
-  for (long index = 0; index < write_vector_length; index++) {
-    if (1 == write_vector[index]) {
+  for (long index = 0; index < RTwrite_vector_length; index++) {
+    if (1 == RTwrite_vector[index]) {
       GCPTR gcptr = (GCPTR) (first_partition_ptr + (index * MIN_GROUP_SIZE));
-      write_vector[index] = 0;
+      RTwrite_vector[index] = 0;
       mark_count = mark_count + 1;
       if (WHITEP(gcptr)) {
 	RTmake_object_gray(gcptr, (BPTR) -1);
@@ -195,13 +223,13 @@ int scan_write_vector() {
 static
 void mark_write_vector(GCPTR gcptr) {
   long index = ((BPTR) gcptr - first_partition_ptr) / MIN_GROUP_SIZE;
-  write_vector[index] = 1;
+  RTwrite_vector[index] = 1;
 }
 #endif
 
 // Snapshot-at-gc-start write barrier.
 // This is really just a version of scan_memory_segment on a single pointer.
-// It marks the write_vector instead of immediately making white 
+// It marks the RTwrite_vector instead of immediately making white 
 // objects become gray.
 void *RTwrite_barrier(void *lhs_address, void *rhs) {
   if (enable_write_barrier) {
@@ -344,6 +372,14 @@ void scan_static_space() {
   }
 }
 
+int total_root_scanners = 0;
+void (*root_scanners[10])();
+
+void RTregister_root_scanner(void (*root_scanner)()) {
+  root_scanners[0] = root_scanner;
+  total_root_scanners = total_root_scanners + 1;
+}
+
 static
 void scan_root_set() {
   last_gc_state = "Scan Threads";
@@ -355,6 +391,9 @@ void scan_root_set() {
   last_gc_state = "Scan Statics";
   UPDATE_VISUAL_STATE();
   scan_static_space();
+  for (int i = 0; i < total_root_scanners; i++) {
+    (*root_scanners[i])();
+  }
 }
 
 void scan_object(GCPTR ptr, int total_size) {
@@ -537,7 +576,7 @@ void recycle_group_garbage(GPTR group) {
     //verify_all_groups();
     printf("group->white_count is %d, actual count is %d\n", 
 	   group->white_count, count);
-    //Debugger("group->white_count of doesn't equal actual count\n");
+    Debugger("group->white_count doesn't equal actual count\n");
   }
 
   if (last != NULL) {
@@ -580,7 +619,7 @@ void recycle_all_garbage() {
   // get "alloc out ran gc" msgs if you run long enough
   // turn back on when freed pages get added back to empty_pages
   // right now that are just left as FREE_PAGE are not usable again
-  //coalesce_all_free_pages();
+  coalesce_all_free_pages();
 }
 
 static 
@@ -655,6 +694,7 @@ void init_realtime_gc() {
   }
 
   atomic_gc = 0;
+  printf((atomic_gc ? "Atomic gc\n" : "Real-time gc\n"));
   total_global_roots = 0;
   gc_count = 0;
   visual_memory_on = 0;
@@ -663,7 +703,6 @@ void init_realtime_gc() {
   pthread_mutex_init(&empty_pages_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);
   init_signals_for_rtgc();
-  //counter_init(&stacks_copied_counter);
   timerclear(&max_flip_tv);
   timerclear(&total_flip_tv);
 }
