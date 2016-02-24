@@ -68,8 +68,6 @@ void verify_white_counts() {
 
 static
 void RTmake_object_gray(GCPTR current, BPTR raw) {
-  // verify_white_count(groups + 5);
-
   GPTR group = PTR_TO_GROUP(current);
   BPTR header = (BPTR) current + sizeof(GC_HEADER);
   long delta = raw - header;
@@ -117,8 +115,6 @@ void RTmake_object_gray(GCPTR current, BPTR raw) {
     assert(group->white_count > 0); // no lock needed, white_count is gc only
     group->white_count = group->white_count - 1;
   }
-
-  // verify_white_count(groups + 5);
 }
 
 /* Scan memory looking for *possible* pointers */
@@ -674,6 +670,7 @@ void rtgc_loop() {
   while (1) {
     if (1 == atomic_gc) while (0 == run_gc);
     full_gc();
+    full_gc();
     if (0 == (gc_count % 25)) {
       printf("gc end - gc_count %d\n", gc_count);
       fflush(stdout);
@@ -693,7 +690,7 @@ void init_realtime_gc() {
     printf("thread_index_key create failed!\n");
   }
 
-  atomic_gc = 0;
+  atomic_gc = 1;
   printf((atomic_gc ? "Atomic gc\n" : "Real-time gc\n"));
   total_global_roots = 0;
   gc_count = 0;

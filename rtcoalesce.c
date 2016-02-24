@@ -70,10 +70,7 @@ void convert_free_to_empty_pages(int first_page, int page_count) {
   RTinit_empty_pages(first_page, page_count, HEAP_SEGMENT);
 }
 
-// Need to hold the group free lock so mutators do not allocate on
-// a page that we've identified as free here. Maybe mutators should do this
-// themselves before deciding they need a full_gc to get memory.
-// They already must have the free lock to be allocating
+// Can't use this anymore because we don't want to maintain pages[p].bytes_used
 static
 void coalesce_segment_free_pages(int segment) {
   int first_page_index = -1;
@@ -154,12 +151,11 @@ int all_green_page(int page, GPTR group) {
       }
       return(all_green);
     } else {
-      return(0);
       // Use this code to enable large object recycle
       // currently crashes after a bit of run time
-      //
-      //GCPTR gcptr = (GCPTR) next_object;
-      //return(GREENP(gcptr));
+      GCPTR gcptr = (GCPTR) next_object;
+      return(GREENP(gcptr));
+      //return(0);
     }
   } else {
     return(0);
@@ -176,10 +172,10 @@ void identify_free_pages() {
     if (all_green_page(page, group)) {
       pthread_mutex_lock(&(group->free_lock));
       if (all_green_page(page, group)) {
+	GCPTR next = (GCPTR) PAGE_INDEX_TO_PTR(page);
 	if (group->size < BYTES_PER_PAGE) {
 	  // remove all objects on page from free list
 	  int object_count = BYTES_PER_PAGE / group->size;
-	  GCPTR next = (GCPTR) PAGE_INDEX_TO_PTR(page);
 	  for (int i = 0; i < object_count; i++) {
 	    remove_object_from_free_list(group, next);
 	    next = (GCPTR) ((BPTR) next + group->size);
@@ -187,17 +183,17 @@ void identify_free_pages() {
 	  // HEY! Remove this clear page - just here to catch bugs
 	  memset(PAGE_INDEX_TO_PTR(page), 0, BYTES_PER_PAGE);
 	  pages[page].group = FREE_PAGE;
-	  page = page + 1;
 	} else {
 	  // set all freed pages to FREE_PAGE
 	  int num_pages = group->size / BYTES_PER_PAGE;
+	  remove_object_from_free_list(group, next);
 	  for (int i = 0; i < num_pages; i++) {
 	    pages[page + i].base = 0;
 	    pages[page + i].group = FREE_PAGE;
 	    // HEY! Remove this clear page - just here to catch bugs
 	    memset(PAGE_INDEX_TO_PTR(page + i), 0, BYTES_PER_PAGE);
 	  }
-	  page = page + num_pages;
+	  page = page + num_pages - 1;
 	}
       }
       pthread_mutex_unlock(&(group->free_lock));
