@@ -126,12 +126,10 @@ void coalesce_free_pages() {
     }
     next_page = next_page + 1;
   }
-  /*
   if (-1 != hole) {
-    printf("Adding hole start = %d contig = %d\n", hole, contig_count);
-    RTinit_empty_pages(hole, contig_count, HEAP_SEGMENT);
+    //printf("Adding hole start = %d page_count = %d\n", hole, contig_count);
+    RTinit_empty_pages(hole, page_count, HEAP_SEGMENT);
   }
-  */
 }
 
 static

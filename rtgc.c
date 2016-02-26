@@ -690,8 +690,8 @@ void init_realtime_gc() {
     printf("thread_index_key create failed!\n");
   }
 
-  atomic_gc = 1;
-  printf((atomic_gc ? "Atomic gc\n" : "Real-time gc\n"));
+  atomic_gc = 0;
+  printf((atomic_gc ? "***ATOMIC GC***\n" : "***REAL-TIME GC***\n"));
   total_global_roots = 0;
   gc_count = 0;
   visual_memory_on = 0;
