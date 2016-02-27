@@ -670,14 +670,14 @@ void full_gc() {
 
 void rtgc_loop() {
   while (1) {
-    if (1 == atomic_gc) while (0 == run_gc);
+    if (1 == RTatomic_gc) while (0 == run_gc);
     full_gc();
     full_gc();
     if (0 == (gc_count % 25)) {
       printf("gc end - gc_count %d\n", gc_count);
       fflush(stdout);
     }
-    if (1 == atomic_gc) run_gc = 0;
+    if (1 == RTatomic_gc) run_gc = 0;
   }
 }
 
@@ -692,8 +692,7 @@ void init_realtime_gc() {
     printf("thread_index_key create failed!\n");
   }
 
-  atomic_gc = 0;
-  printf((atomic_gc ? "***ATOMIC GC***\n" : "***REAL-TIME GC***\n"));
+  printf((RTatomic_gc ? "***ATOMIC GC***\n" : "***REAL-TIME GC***\n"));
   total_global_roots = 0;
   gc_count = 0;
   visual_memory_on = 0;

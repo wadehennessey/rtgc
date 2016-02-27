@@ -223,7 +223,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
       // atomic and concurrent gc can't flip without
       // unlocking all group free locks
       pthread_mutex_unlock(&(group->free_lock));
-      if (atomic_gc) {
+      if (RTatomic_gc) {
 	// atomic gc
 	run_gc = 1;
 	while (1 == run_gc);

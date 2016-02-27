@@ -62,4 +62,4 @@ pthread_mutex_t empty_pages_lock;
 COUNTER stacks_copied_counter;
 sem_t gc_semaphore;
 volatile int run_gc = 0;
-int atomic_gc = 1;
+volatile int RTatomic_gc = 0;

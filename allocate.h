@@ -53,3 +53,4 @@ int rtgc_count(void);
 
 void RTregister_root_scanner(void (*root_scanner)());
 
+extern volatile int RTatomic_gc;

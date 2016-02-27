@@ -196,7 +196,7 @@ extern pthread_mutex_t empty_pages_lock;
 extern pthread_mutex_t global_roots_lock;
 extern sem_t gc_semaphore;
 extern volatile int run_gc;
-extern int atomic_gc;
+//extern int atomic_gc;
 #if USE_BIT_WRITE_BARRIER
 extern LPTR RTwrite_vector;
 #else
