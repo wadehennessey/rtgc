@@ -251,10 +251,9 @@ void init_pages_for_group(GPTR group, int min_pages) {
   if (base != NULL) {
     GCPTR next = base;
     assert(NULL == group->free);
-    group->free = next;
     WITH_LOCK((group->black_and_last_lock),
-	      // HEY! lock less here by moving free_last assignment higher up
 	      GCPTR current = group->free_last;
+	      group->free = next;
 	      if (current == NULL) { 	/* No gray, black, or green objects? */
 		group->black = next;
 	      } else {
@@ -269,6 +268,8 @@ void init_pages_for_group(GPTR group, int min_pages) {
 		SET_COLOR(current,GREEN);
 	      }
 	      SET_LINK_POINTER(current->next,NULL);
+	      // HEY! lock less moving this free_last assignment higher
+	      // up above for loop creating objects.
 	      group->free_last = current;);
     group->green_count = group->green_count + num_objects;
     group->total_object_count = group->total_object_count + num_objects;
