@@ -170,6 +170,3 @@ break __assert
 
 try gcc -mcmodel=large to avoid dlopen relocation problems in wcl
 
-no coalesce: 8652.953u 2476.790s 47:13.43 392.8%	0+0k 0+0io 0pf+0w
-
-Coalesce   :15664.842u 6875.628s 2:10:37.51 287.5%	0+0k 0+0io 0pf+0w
