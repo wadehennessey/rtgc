@@ -177,7 +177,6 @@ void unlock_all_free_locks() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     GPTR group = &groups[i];
     pthread_mutex_unlock(&(group->free_lock));
-    //sched_yield();
   }
 }
 

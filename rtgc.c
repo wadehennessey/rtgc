@@ -23,7 +23,7 @@
    mistake them for mutator pointers and save them! Hence we
    malloc some structures */
 
-int gc_count;
+volatile long gc_count;
 double total_gc_time_in_cycle;
 double max_increment_in_cycle;
 double total_write_barrier_time_in_cycle;
@@ -126,7 +126,7 @@ void scan_memory_segment(BPTR low, BPTR high) {
      extend past the end of this object */
   high = high - sizeof(LPTR) + 1;
   for (BPTR next = low; next < high; next = next + GC_POINTER_ALIGNMENT) {
-    MAYBE_PAUSE_GC;
+    MAYBE_YIELD;
     BPTR ptr = *((BPTR *) next);
     if (IN_PARTITION(ptr)) {
       int page_index = PTR_TO_PAGE_INDEX(ptr);
@@ -439,7 +439,7 @@ void scan_gray_set() {
 	current = GET_LINK_POINTER(current->prev);
       }
       while (current != NULL) {
-	MAYBE_PAUSE_GC;
+	MAYBE_YIELD;
 	scan_object_with_group(current,group);
 	scan_count = scan_count + 1;
 	current = GET_LINK_POINTER(current->prev);
@@ -454,7 +454,7 @@ void scan_gray_set() {
       rescan_all_groups = 0;
     }
   } while (rescan_all_groups == 1);
-  MAYBE_PAUSE_GC;
+  MAYBE_YIELD;
 }
 
 static
@@ -470,13 +470,12 @@ void unlock_all_free_locks() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     GPTR group = &groups[i];
     pthread_mutex_unlock(&(group->free_lock));
-    //sched_yield();
   }
 }
   
 static
 void flip() {
-  MAYBE_PAUSE_GC;
+  MAYBE_YIELD;
   // Originally at this point all mutator threads are stopped, and none of
   // them is in the middle of an RTallocate. We got this for free by being
   // single threaded and implicity locking by yielding only when we chose to.
@@ -565,7 +564,7 @@ void recycle_group_garbage(GPTR group) {
     last = next;
     next = GET_LINK_POINTER(next->next);
     count = count + 1;
-    MAYBE_PAUSE_GC;
+    MAYBE_YIELD;
   }
 
   /* HEY! could unlink free obj on pages where count is 0. Then hook remaining
@@ -600,7 +599,6 @@ void recycle_group_garbage(GPTR group) {
   group->white = NULL;
   group->white_count = 0; // no lock needed, white_count is gc only
   pthread_mutex_unlock(&(group->free_lock));
-  sched_yield();
 }
 
 static 
@@ -612,11 +610,6 @@ void recycle_all_garbage() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     recycle_group_garbage(&groups[i]);
   }
-  //verify_all_groups();
-
-  // get "alloc out ran gc" msgs if you run long enough
-  // turn back on when freed pages get added back to empty_pages
-  // right now that are just left as FREE_PAGE are not usable again
   coalesce_all_free_pages();
 }
 
@@ -673,7 +666,7 @@ void rtgc_loop() {
     if (1 == RTatomic_gc) while (0 == run_gc);
     full_gc();
     full_gc();
-    if (0 == (gc_count % 25)) {
+    if (0 == (gc_count % 50)) {
       printf("gc end - gc_count %d\n", gc_count);
       fflush(stdout);
     }

@@ -3,10 +3,11 @@
 a:	a.c
 	gcc -o a -Og -g a.c -L/home/wade/rtgc -lrtgc -lpthread -lc -lm -ldl
 
-# Which is faster: -fpic or -fPIC?
+opt-a:	a.c
+	gcc -o a -O2 -g a.c -L/home/wade/rtgc -lrtgc -lpthread -lc -lm -ldl
+
 lib:
 	gcc -shared -fPIC -o librtgc.so -g rtglobals.c rtalloc.c rtgc.c rtstop.c vizmem.c atomic_booleans.s rtcoalesce.c 
-#	gcc -shared -fPIC -o librtgc.so -Og -g rtglobals.c rtalloc.c rtgc.c rtstop.c vizmem.c atomic_booleans.s rtcoalesce.c 
 
 opt-lib:
 	gcc -shared -fPIC -o librtgc.so -O2 -g rtglobals.c rtalloc.c rtgc.c rtstop.c vizmem.c atomic_booleans.s rtcoalesce.c 

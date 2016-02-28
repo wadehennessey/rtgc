@@ -235,6 +235,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	printf("alloc out ran gc, sync collect\n");
 	int current_gc_count = gc_count;
 	while (gc_count < (current_gc_count + 2)) {
+	  // Should be able to remove this sched_yield now that gc_count is declared volatile
 	  sched_yield();
 	}
 	assert(NULL != group->free);
@@ -665,6 +666,7 @@ int new_thread(void *(*start_func) (void *), void *args) {
       while (0 == threads[index].saved_stack_base) {
 	// YOW! without this explicit sched_yield(), we hang in this
 	// loop when compiled with -O1 and-O2
+	// declaring saved_stack_base volatile doesn't seem to help
 	sched_yield();
       }
       return(index);

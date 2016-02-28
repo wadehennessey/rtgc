@@ -188,7 +188,7 @@ void *start_word_count(void *arg) {
 
   long tid = (long) arg;
   register_global_root(&(roots[tid]));
-  while (i < 5000000) {
+  while (i < 100) {
     char top;
     NODE *root = build_word_tree("redhead.txt");
     RTwrite_barrier(&(roots[tid]), root);
@@ -213,7 +213,7 @@ int main(int argc, char *argv[]) {
 
   //RTinit_heap((1L << 36), 0);
   //RTinit_heap((1L << 22), 0);
-  RTatomic_gc = 1;
+  RTatomic_gc = 0;
   RTinit_heap((1L << 30), 0);
   for (long i = 1; i <= 3; i++) {
     new_thread(&start_word_count, (void *) i);

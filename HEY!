@@ -168,15 +168,8 @@ HEY! for SXpointers, must init to 0 all of object body, not just actual size
 break Debugger
 break __assert
 
-compile for shared:
-gcc -xc -pipe -g -fPIC -c -c    memory.c
+try gcc -mcmodel=large to avoid dlopen relocation problems in wcl
 
-make shared lib:
-"ld -dy -G -o /home/wade/xwcl//lib/libcom.so  ../compiler/globals.o  ../compiler/macros.o  ../compiler/configurations.o  ../compiler/function-info.o  ../compiler/type-dispatch.o  ../compiler/line-numbers.o  ../compiler/analyze.o  ../compiler/beta.o  ../compiler/tree-nsubst.o  ../compiler/improve.o  ../compiler/name-mangle.o  ../compiler/emit-code.o  ../compiler/emit-data.o  ../compiler/compiler-init.o  ../compiler/compile.o  ../compiler/symbol-table.o  ../compiler/library.o  ../compiler/link.o  /tmp/com-preds.o /tmp/com-data.o -lgmp -lc -lm -ldl -lnsl
+no coalesce: 8652.953u 2476.790s 47:13.43 392.8%	0+0k 0+0io 0pf+0w
 
-to link app with lib:
-gcc -pipe  -o ../../bin/eval /tmp/19756-157preds.o /tmp/eval-data.o ../main/eval.o  -L/home/wade/xwcl//lib -lcl -lc -lm -ldl  -lm")
-
-try gcc -mcmodel=large to avoid
-
-gcc -pipe  -o ../../bin/eval /tmp/23422-157preds.o /tmp/eval-data.o ../main/eval.o  -L/home/wade/xwcl//lib -lcl -lc -lm -ldl  -lm -L/home/wade/rtgc -lrtgc
+Coalesce   :15664.842u 6875.628s 2:10:37.51 287.5%	0+0k 0+0io 0pf+0w

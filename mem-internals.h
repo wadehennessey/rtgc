@@ -51,7 +51,8 @@ extern BPTR last_static_ptr;
 
 #define METADATAP(ptr) (((void *) ptr)  > RTpointers)
 
-#define MAYBE_PAUSE_GC sched_yield();
+// This really slows the gc down if sched_yield is done
+#define MAYBE_YIELD // sched_yield()
 
 #define MIN(x,y) ((x < y) ? x : y)
 #define MAX(x,y) ((x > y) ? x : y)
@@ -164,8 +165,7 @@ void coalesce_all_free_pages();
 extern GROUP_INFO *groups;
 extern PAGE_INFO *pages;
 
-extern int gc_count;
-extern int gc_increment;
+extern volatile long gc_count;
 extern int visual_memory_on;
 
 extern SEGMENT *segments;
