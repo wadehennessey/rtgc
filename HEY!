@@ -164,9 +164,17 @@ fix clearing of md after install
 
 finish merge of init_metadata and init_body into RTallocate directly
 HEY! for SXpointers, must init to 0 all of object body, not just actual size
+don't init SXnopointers memory!
 ---------------------------------------------
 break Debugger
 break __assert
 
 try gcc -mcmodel=large to avoid dlopen relocation problems in wcl
 
+remove all uses of pages bytes_used field
+
+split group->black_count into 2: 
+black_count == black_scanned_count + black_new_count
+remove black_count_lock with count_lock for conditional debugging 
+
+change group->free_last to just group->last?

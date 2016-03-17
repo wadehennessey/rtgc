@@ -24,15 +24,20 @@ void remove_object_from_free_list(GPTR group, GCPTR object) {
   GCPTR next = GET_LINK_POINTER(object->next);
 
   if (object == group->free) {
+    // we end up here a lot
+    
     // caller must hold green lock from group to save
     // us from repeatedly locking and unlocking for a page of objects
     group->free = next;	       // must be locked
   }
+
+  assert(object != group->black);
   if (object == group->black) {
     group->black = next;       // safe to not lock
   }
 
   if (object == group->free_last) {
+    // we end up here a lot
     group->free_last = ((next == NULL) ? prev : next);
   }
 
