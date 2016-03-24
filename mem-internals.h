@@ -203,6 +203,10 @@ extern LPTR RTwrite_vector;
 extern BPTR RTwrite_vector;
 #endif
 extern size_t RTwrite_vector_length;
+
+extern long *RTno_write_barrier_state_ptr;
+extern long saved_no_write_barrier_state;
+
 #define ENABLE_LOCKING 1
 
 #if ENABLE_LOCKING

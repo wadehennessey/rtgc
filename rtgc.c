@@ -329,6 +329,11 @@ void scan_threads() {
   for (int next_thread = 1; next_thread < total_threads; next_thread++) {
     scan_thread(next_thread);
   }
+  if (0 != saved_no_write_barrier_state) {
+    BPTR low =  (BPTR) &saved_no_write_barrier_state;;
+    BPTR high = ((BPTR) low + sizeof(long));
+    scan_memory_segment(low, high);
+  }
 }
   
 static
@@ -370,12 +375,16 @@ void scan_static_space() {
   }
 }
 
-int total_root_scanners = 0;
-void (*root_scanners[10])();
+static int total_root_scanners = 0;
+static void (*root_scanners[10])();
 
 void RTregister_root_scanner(void (*root_scanner)()) {
   root_scanners[0] = root_scanner;
   total_root_scanners = total_root_scanners + 1;
+}
+
+void RTregister_no_write_barrier_state(void *start, int len) {
+  RTno_write_barrier_state_ptr = start;
 }
 
 static

@@ -63,3 +63,7 @@ COUNTER stacks_copied_counter;
 sem_t gc_semaphore;
 volatile int run_gc = 0;
 volatile int RTatomic_gc = 0;
+
+long *RTno_write_barrier_state_ptr = 0;
+long saved_no_write_barrier_state = 0;
+

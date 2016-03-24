@@ -197,6 +197,10 @@ int stop_all_mutators_and_save_state() {
     }
   }
 
+  if (0 != RTno_write_barrier_state_ptr) {
+    saved_no_write_barrier_state = *RTno_write_barrier_state_ptr;
+  }
+  
   while (entered_handler_count != total_threads_to_halt) {
     sched_yield();
   }
