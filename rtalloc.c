@@ -301,7 +301,8 @@ GPTR allocation_group(int *metadata, int size) {
     GPTR group;
     int group_index = size_to_group_index(real_size);
     if (group_index > MAX_GROUP_INDEX) {
-      printf("%d exceeds the maximum object size\n", real_size);
+      printf("%d", real_size);
+      Debugger(" exceeds the maximum object size\n");
     } else {
       group = &(groups[group_index]);
     }
