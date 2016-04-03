@@ -553,9 +553,8 @@ void RTinit_heap(size_t first_segment_bytes, int static_size) {
   segments = malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
   threads = malloc(sizeof(THREAD_INFO) * MAX_THREADS);
   global_roots = malloc(sizeof(char **) * MAX_GLOBAL_ROOTS);
-#if USE_BIT_WRITE_BARRIER  
-  RTwrite_vector_length = 
-    total_partition_pages * (BYTES_PER_PAGE / (MIN_GROUP_SIZE * BITS_PER_LONG));
+#if USE_BIT_WRITE_BARRIER
+  RTwrite_vector_length = first_segment_bytes / (MIN_GROUP_SIZE * BITS_PER_LONG);
   RTwrite_vector = RTbig_malloc(RTwrite_vector_length * sizeof(long));
   memset(RTwrite_vector, 0, RTwrite_vector_length * sizeof(long));
   printf("using bit write barrier, ");

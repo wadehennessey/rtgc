@@ -13,7 +13,7 @@ opt-lib:
 	gcc -shared -fPIC -o librtgc.so -O2 -g rtglobals.c rtalloc.c rtgc.c rtstop.c vizmem.c atomic_booleans.s rtcoalesce.c 
 
 all:
-	gcc -Og -g -o a a.c rtglobals.c rtalloc.c rtgc.c rtstop.c vizmem.c atomic_booleans.s rtcoalesce.c  -lpthread
+	gcc -g -o a a.c rtglobals.c rtalloc.c rtgc.c rtstop.c vizmem.c atomic_booleans.s rtcoalesce.c  -lpthread
 
 debug:	
 	gcc -g -o a a.c rtglobals.c rtalloc.c rtgc.c rtstop.c vizmem.c atomic_booleans.s rtcoalesce.c -lpthread
