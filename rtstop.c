@@ -167,7 +167,7 @@ void init_signals_for_rtgc() {
   
   memset(&signal_action, 0, sizeof(signal_action));
   signal_action.sa_sigaction = gc_flip_action_func;
-  signal_action.sa_flags = SA_SIGINFO;
+  signal_action.sa_flags = SA_SIGINFO | SA_RESTART;
   sigaction(FLIP_SIGNAL, &signal_action, 0);
 }
 

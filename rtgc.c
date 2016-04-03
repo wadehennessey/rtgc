@@ -670,12 +670,16 @@ void full_gc() {
   //UPDATE_VISUAL_STATE();
 }
 
+void RTfull_gc() {
+  full_gc();
+}
+
 void rtgc_loop() {
   while (1) {
     if (1 == RTatomic_gc) while (0 == run_gc);
     full_gc();
     full_gc();
-    if (0 == (gc_count % 50)) {
+    if (0 == (gc_count % 5000)) {
       printf("gc end - gc_count %d\n", gc_count);
       fflush(stdout);
     }

@@ -55,4 +55,6 @@ void RTregister_root_scanner(void (*root_scanner)());
 
 void RTregister_no_write_barrier_state(void *start, int len);
 
+void RTfull_gc();
+
 extern volatile int RTatomic_gc;
