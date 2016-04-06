@@ -680,8 +680,8 @@ void rtgc_loop() {
     full_gc();
     full_gc();
     if (0 == (gc_count % 5000)) {
-      printf("gc end - gc_count %d\n", gc_count);
-      fflush(stdout);
+      //printf("gc end - gc_count %d\n", gc_count);
+      //fflush(stdout);
     }
     if (1 == RTatomic_gc) run_gc = 0;
   }

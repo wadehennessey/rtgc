@@ -33,7 +33,7 @@ extern BPTR first_static_ptr;
 extern BPTR last_static_ptr;
 
 #define MIN_GROUP_INDEX 5	/* yields min 32 byte objects on x86_64 */
-#define MAX_GROUP_INDEX 22	/* yields max 4 megabyte objects */
+#define MAX_GROUP_INDEX 24	/* yields max 16 megabyte objects */
 #define MIN_GROUP_SIZE (1 << MIN_GROUP_INDEX)
 #define MAX_GROUP_SIZE ( 1 << MAX_GROUP_INDEX)
 #define NUMBER_OF_GROUPS (MAX_GROUP_INDEX - MIN_GROUP_INDEX + 1)
