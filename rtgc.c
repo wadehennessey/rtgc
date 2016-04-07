@@ -533,13 +533,14 @@ void flip() {
   timeradd(&total_flip_tv, &flip_tv, &total_flip_tv);
   if timercmp(&flip_tv, &max_flip_tv, >) {
       max_flip_tv = flip_tv;
-      printf("max_flip_tv is %d.%06d, avg is %f, saved stack is %d bytes\n", 
+      /*      printf("max_flip_tv is %d.%06d, avg is %f, saved stack is %d bytes\n", 
 	     max_flip_tv.tv_sec, 
 	     max_flip_tv.tv_usec,
 	     ((total_flip_tv.tv_sec * 1.0) + 
 	      (total_flip_tv.tv_usec / 1000000.0))
 	     / (gc_count + 1), 
 	     threads[1].saved_stack_size);
+      */
   }
 }
 

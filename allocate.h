@@ -58,3 +58,7 @@ void RTregister_no_write_barrier_state(void *start, int len);
 void RTfull_gc();
 
 extern volatile int RTatomic_gc;
+
+extern int RTpage_power;
+
+extern int RTpage_size;

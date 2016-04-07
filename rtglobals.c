@@ -22,6 +22,8 @@
 GROUP_INFO *groups;
 PAGE_INFO *pages;
 
+int RTpage_power = PAGE_POWER;
+int RTpage_size = BYTES_PER_PAGE;  
 SEGMENT *segments;
 int total_segments;
 
