@@ -25,7 +25,6 @@ void remove_object_from_free_list(GPTR group, GCPTR object) {
 
   if (object == group->free) {
     // we end up here a lot
-    
     // caller must hold green lock from group to save
     // us from repeatedly locking and unlocking for a page of objects
     group->free = next;	       // must be locked
@@ -53,62 +52,8 @@ void remove_object_from_free_list(GPTR group, GCPTR object) {
   group->total_object_count = group->total_object_count - 1;
 }
 
-static
-void convert_free_to_empty_pages(int first_page, int page_count) {
-  int next_page_index = first_page;
-  int end_page = first_page + page_count;
-  HOLE_PTR new;
-
-  /* Remove objects on pages from their respective free lists */
-  while (next_page_index < end_page) {
-    GPTR group = pages[next_page_index].group;
-    int total_pages = MAX(1,group->size / BYTES_PER_PAGE);
-    int object_count = (total_pages * BYTES_PER_PAGE) / group->size;
-
-    GCPTR next = (GCPTR) PAGE_INDEX_TO_PTR(next_page_index);
-    for (int i = 0; i < object_count; i++) {
-      remove_object_from_free_list(group, next);
-      next = (GCPTR) ((BPTR) next + group->size);
-    }
-    next_page_index = next_page_index + total_pages;
-  }
-  RTinit_empty_pages(first_page, page_count, HEAP_SEGMENT);
-}
-
-// Can't use this anymore because we don't want to maintain pages[p].bytes_used
-static
-void coalesce_segment_free_pages(int segment) {
-  int first_page_index = -1;
-  int contig_count = 0;
-  int next_page_index = PTR_TO_PAGE_INDEX(segments[segment].first_segment_ptr);
-  int last_page_index = PTR_TO_PAGE_INDEX(segments[segment].last_segment_ptr);
-  while (next_page_index < last_page_index) { 
-    GPTR group = pages[next_page_index].group;
-    int total_pages = (group > 0) ?
-                      MAX(1, group->size / BYTES_PER_PAGE) :
-                      1;
-    int count_free_page = (group != EMPTY_PAGE) &&
-                          (pages[next_page_index].bytes_used == 0);
-    if (count_free_page) {
-      if (first_page_index == -1) {
-	first_page_index = next_page_index;
-      }
-      contig_count = contig_count + total_pages;
-    }
-    next_page_index = next_page_index + total_pages;
-    if ((!count_free_page || next_page_index == last_page_index) &&
-	(first_page_index != -1)) {
-      convert_free_to_empty_pages(first_page_index, contig_count);
-      first_page_index = -1;
-      contig_count = 0;
-    }
-  }
-}
-
-//************************************************
 // new coalescer now that we don't have a giant implicit lock
 // and we don't want to maintain page_bytes
-
 void coalesce_free_pages() {
   long next_page = 0;
   long hole = -1;
@@ -157,15 +102,13 @@ int all_green_page(int page, GPTR group) {
       // Use this code to enable large object recycle
       // currently crashes after a bit of run time
       GCPTR gcptr = (GCPTR) next_object;
-      return(GREENP(gcptr));
-      //return(0);
+      //return(GREENP(gcptr));
+      return(0);
     }
   } else {
     return(0);
   }
 }
-
-int freecnt = 0;
 
 static
 void identify_free_pages() {

@@ -86,9 +86,7 @@ void RTinit_empty_pages(int first_page, int page_count, int type) {
     empty_pages = new_hole;
     pthread_mutex_unlock(&empty_pages_lock);
   } else {
-    /* HEY! fix this to allow more than 1 static segment */
-    last_static_ptr = segments[0].last_segment_ptr;
-    first_static_ptr = last_static_ptr;
+    Debugger("Can only init heap pages");
   }
 }
 
@@ -110,24 +108,28 @@ long allocate_segment(size_t desired_bytes, int type) {
       segment_page_count = actual_bytes / BYTES_PER_PAGE;
       segments[segment].first_segment_ptr = first_segment_ptr;
       last_segment_ptr = first_segment_ptr +
-	                 (segment_page_count * BYTES_PER_PAGE);
+	(segment_page_count * BYTES_PER_PAGE);
       segments[segment].last_segment_ptr = last_segment_ptr;
       segments[segment].segment_page_count = segment_page_count;
       segments[segment].type = type;
 
-      // for now we only support a single segment
-      if (0 == segment) {
+      // for now we only support a single static segment and
+      // a single heap segment
+      switch (type) {
+      case HEAP_SEGMENT:
 	first_partition_ptr = first_segment_ptr;
 	last_partition_ptr = last_segment_ptr;
-      } else {
-	total_partition_pages = ((last_partition_ptr - first_partition_ptr) /
-				 BYTES_PER_PAGE);
-	printf("Need code to adjust partition ptrs and size!\n");
-	Debugger(0);
+	first_segment_page = PTR_TO_PAGE_INDEX(first_segment_ptr);
+	RTinit_empty_pages(first_segment_page, segment_page_count, type);
+	break;
+      case STATIC_SEGMENT:
+	last_static_ptr = segments[0].last_segment_ptr;
+	first_static_ptr = last_static_ptr;
+	break;
+      default: break;
       }
-      
-      first_segment_page = PTR_TO_PAGE_INDEX(first_segment_ptr);
-      RTinit_empty_pages(first_segment_page, segment_page_count, type);
+    } else {
+      Debugger("Add support for more than 2 segments");
     }
   }
   return(actual_bytes);
@@ -579,10 +581,8 @@ void RTinit_heap(size_t first_segment_bytes, int static_size) {
   
   if ((static_size > 0) &&
       (allocate_segment(static_size, STATIC_SEGMENT) == 0)) {
-    out_of_memory("Heap Memory Initialization", static_size/1024);
+    out_of_memory("Static Memory Initialization", static_size/1024);
   }
-  last_static_ptr = segments[0].last_segment_ptr;
-  first_static_ptr = last_static_ptr;
 
   if (allocate_segment(first_segment_bytes, HEAP_SEGMENT) == 0) {
     out_of_memory("Heap Memory allocation", first_segment_bytes/1024);

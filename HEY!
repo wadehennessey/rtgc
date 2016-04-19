@@ -178,3 +178,14 @@ black_count == black_scanned_count + black_new_count
 remove black_count_lock with count_lock for conditional debugging 
 
 change group->free_last to just group->last?
+
+
+
+commit static changes after test passes
+then try page size 64? do we crash faster?
+
+add back INTERIOR retention limit
+
+remove page->bytes_used
+remove green count and total_object_count
+
