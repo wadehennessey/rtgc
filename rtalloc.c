@@ -202,7 +202,7 @@ GCPTR allocate_empty_pages(int required_page_count,
   return(base);
 }
 
-// The gc counter part to this function is recycle_group_garbage.
+// The gc counterpart to this function is recycle_group_garbage.
 // We could try to unify the small common part.
 // Whoever calls this function has to be holding the group->free_lock.
 // So far only RTallocate calls this.

@@ -8,10 +8,15 @@ systemctl enable sshd.service
 
 
 git clone https://github.com/wadehennessey/rtgc.git
+or
+git checkout <commit hash> 
+
 
 git commit -am "blah"
 # then must push commit
 git push
+
+
 
 use #define _GNU_SOURCE for weird compile problems not seeing decls
 
@@ -181,11 +186,18 @@ change group->free_last to just group->last?
 
 
 
-commit static changes after test passes
-then try page size 64? do we crash faster?
+
+commit changes
+try all page size from 64 - 2k
+add .gdbinit to rtgc as link to ~/.gdbinit, commit it
+test against wcl again
+
 
 add back INTERIOR retention limit
 
 remove page->bytes_used
 remove green count and total_object_count
+--------------
+rr -M replay -g 4145
+break identify_free_pages
 
