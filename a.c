@@ -211,9 +211,9 @@ int main(int argc, char *argv[]) {
     printf("got nano times!\n");
   }
 
+  RTatomic_gc = 0;
   //RTinit_heap((1L << 36), 0);
   //RTinit_heap((1L << 22), 0);
-  RTatomic_gc = 0;
   RTinit_heap((1L << 30), 1L << 20);
   for (long i = 1; i <= 3; i++) {
     new_thread(&start_word_count, (void *) i);

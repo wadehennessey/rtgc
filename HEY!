@@ -187,7 +187,6 @@ change group->free_last to just group->last?
 
 
 
-commit changes
 try all page size from 64 - 2k
 add .gdbinit to rtgc as link to ~/.gdbinit, commit it
 test against wcl again
@@ -198,6 +197,6 @@ add back INTERIOR retention limit
 remove page->bytes_used
 remove green count and total_object_count
 --------------
-rr -M replay -g 4145
-break identify_free_pages
+
+rr -M replay -g 251157
 

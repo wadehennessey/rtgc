@@ -20,7 +20,7 @@
 
 // new coalescer now that we don't have a giant implicit lock
 // and we don't want to maintain page_bytes
-void coalesce_free_pages() {
+static void coalesce_free_pages() {
   long next_page = 0;
   long hole = -1;
   long page_count;
@@ -49,8 +49,7 @@ void coalesce_free_pages() {
 }
 
 
-static
-void remove_object_from_free_list(GPTR group, GCPTR object) {
+static void remove_object_from_free_list(GPTR group, GCPTR object) {
   GCPTR prev = GET_LINK_POINTER(object->prev);
   GCPTR next = GET_LINK_POINTER(object->next);
 
@@ -83,72 +82,89 @@ void remove_object_from_free_list(GPTR group, GCPTR object) {
   group->total_object_count = group->total_object_count - 1;
 }
 
-static
-int all_green_page(int page, GPTR group) {
-  if (group > EXTERNAL_PAGE) {
-    BPTR page_base = PAGE_INDEX_TO_PTR(page);
-    BPTR next_object = page_base;
-    if (group->size < BYTES_PER_PAGE) {
-      int all_green = 1;
-      while (all_green && (next_object < (page_base + BYTES_PER_PAGE))) {
-	GCPTR gcptr = (GCPTR) next_object;
-	if (all_green && GREENP(gcptr)) {
-	  next_object = next_object + group->size;
-	} else {
-	  all_green = 0;
-	}
-      }
-      return(all_green);
-    } else {
-      // Use this code to enable large object recycle
-      // currently crashes after a bit of run time
+static int all_green_page(int page, GPTR group) {
+  BPTR page_base = PAGE_INDEX_TO_PTR(page);
+  BPTR next_object = page_base;
+  // HEY! remove this test eventually
+  if (group->size <= BYTES_PER_PAGE) {
+    int all_green = 1;
+    while (all_green && (next_object < (page_base + BYTES_PER_PAGE))) {
       GCPTR gcptr = (GCPTR) next_object;
-      assert(pages[page].base == gcptr);
-      return(GREENP(gcptr));
-      //return(0);
+      if (all_green && GREENP(gcptr)) {
+	next_object = next_object + group->size;
+      } else {
+	all_green = 0;
+      }
     }
+    return(all_green);
   } else {
-    return(0);
+    Debugger("all_green_page: Group size is too large\n");
   }
 }
 
-static
+static void identify_single_free_page(int page, GPTR group) {
+  if (all_green_page(page, group)) {
+    pthread_mutex_lock(&(group->free_lock));
+    if (all_green_page(page, group)) {
+      GCPTR next = (GCPTR) PAGE_INDEX_TO_PTR(page);
+      // HEY! remove this test - should always be true
+      if (group->size < BYTES_PER_PAGE) {
+	// remove all objects on page from free list
+	int object_count = BYTES_PER_PAGE / group->size;
+	for (int i = 0; i < object_count; i++) {
+	  remove_object_from_free_list(group, next);
+	  next = (GCPTR) ((BPTR) next + group->size);
+	}
+	// HEY! conditionalize this clear page - just here to catch bugs
+	memset(PAGE_INDEX_TO_PTR(page), 0, BYTES_PER_PAGE);
+	pages[page].group = FREE_PAGE;
+      }
+    }
+    pthread_mutex_unlock(&(group->free_lock));
+  }
+}
+
+// Return base page index, even if page is somewhere in the middle of object.
+static int identify_multiple_free_pages(int page, GPTR group) {
+  BPTR page_base = PAGE_INDEX_TO_PTR(page);
+  GCPTR gcptr = (GCPTR) page_base;
+  if (pages[page].base == gcptr) {
+    // Getting here means we've found the start of a multi-page object
+    if (GREENP(gcptr)) {
+      pthread_mutex_lock(&(group->free_lock));
+      if (GREENP(gcptr)) {
+	int num_pages = group->size / BYTES_PER_PAGE;
+	remove_object_from_free_list(group, gcptr);
+	for (int i = 0; i < num_pages; i++) {
+	  pages[page + i].base = 0;
+	  pages[page + i].group = FREE_PAGE;
+	  // HEY! conditionalize this clear page - just here to catch bugs
+	  memset(PAGE_INDEX_TO_PTR(page + i), 0, BYTES_PER_PAGE);
+	}
+      }
+      pthread_mutex_unlock(&(group->free_lock));
+    }
+  } else {
+    // Getting here means we've run into a race condition with a multi-page
+    // object allocation. We passed the base page when the page was still
+    // empty, but the object got allocated and now we need to jump past it.
+    assert(pages[page].base < gcptr);
+    printf("mapping race page %d to base ptr %p\n", page, pages[page].base);
+    page = PTR_TO_PAGE_INDEX(pages[page].base);
+  }
+  return(page);
+}
+
 void identify_free_pages() {
   int page = 0;
   while (page < total_partition_pages) {
     GPTR group = pages[page].group;
     if (group > EXTERNAL_PAGE) {
-      if (all_green_page(page, group)) {
-	pthread_mutex_lock(&(group->free_lock));
-	if (all_green_page(page, group)) {
-	  GCPTR next = (GCPTR) PAGE_INDEX_TO_PTR(page);
-	  if (group->size < BYTES_PER_PAGE) {
-	    // remove all objects on page from free list
-	    int object_count = BYTES_PER_PAGE / group->size;
-	    for (int i = 0; i < object_count; i++) {
-	      remove_object_from_free_list(group, next);
-	      next = (GCPTR) ((BPTR) next + group->size);
-	    }
-	    // HEY! Remove this clear page - just here to catch bugs
-	    memset(PAGE_INDEX_TO_PTR(page), 0, BYTES_PER_PAGE);
-	    pages[page].group = FREE_PAGE;
-	  } else {
-	    // set all freed pages to FREE_PAGE
-	    int num_pages = group->size / BYTES_PER_PAGE;
-	    remove_object_from_free_list(group, next);
-	    for (int i = 0; i < num_pages; i++) {
-	      pages[page + i].base = 0;
-	      pages[page + i].group = FREE_PAGE;
-	      // HEY! Remove this clear page - just here to catch bugs
-	      memset(PAGE_INDEX_TO_PTR(page + i), 0, BYTES_PER_PAGE);
-	    }
-	  }
-	}
-	pthread_mutex_unlock(&(group->free_lock));
-      }
-      if (group->size < BYTES_PER_PAGE) {
+      if (group->size <= BYTES_PER_PAGE) {
+	identify_single_free_page(page, group);
 	page = page + 1;
       } else {
+	page = identify_multiple_free_pages(page, group);
 	page = page + (group->size / BYTES_PER_PAGE);
       }
     } else {
