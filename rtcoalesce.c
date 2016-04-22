@@ -85,21 +85,16 @@ static void remove_object_from_free_list(GPTR group, GCPTR object) {
 static int all_green_page(int page, GPTR group) {
   BPTR page_base = PAGE_INDEX_TO_PTR(page);
   BPTR next_object = page_base;
-  // HEY! remove this test eventually
-  if (group->size <= BYTES_PER_PAGE) {
-    int all_green = 1;
-    while (all_green && (next_object < (page_base + BYTES_PER_PAGE))) {
-      GCPTR gcptr = (GCPTR) next_object;
-      if (all_green && GREENP(gcptr)) {
-	next_object = next_object + group->size;
-      } else {
-	all_green = 0;
-      }
+  int all_green = 1;
+  while (all_green && (next_object < (page_base + BYTES_PER_PAGE))) {
+    GCPTR gcptr = (GCPTR) next_object;
+    if (all_green && GREENP(gcptr)) {
+      next_object = next_object + group->size;
+    } else {
+      all_green = 0;
     }
-    return(all_green);
-  } else {
-    Debugger("all_green_page: Group size is too large\n");
   }
+  return(all_green);
 }
 
 static void identify_single_free_page(int page, GPTR group) {
@@ -107,18 +102,15 @@ static void identify_single_free_page(int page, GPTR group) {
     pthread_mutex_lock(&(group->free_lock));
     if (all_green_page(page, group)) {
       GCPTR next = (GCPTR) PAGE_INDEX_TO_PTR(page);
-      // HEY! remove this test - should always be true
-      if (group->size < BYTES_PER_PAGE) {
-	// remove all objects on page from free list
-	int object_count = BYTES_PER_PAGE / group->size;
-	for (int i = 0; i < object_count; i++) {
-	  remove_object_from_free_list(group, next);
-	  next = (GCPTR) ((BPTR) next + group->size);
-	}
-	// HEY! conditionalize this clear page - just here to catch bugs
-	memset(PAGE_INDEX_TO_PTR(page), 0, BYTES_PER_PAGE);
-	pages[page].group = FREE_PAGE;
+      // remove all objects on page from free list
+      int object_count = BYTES_PER_PAGE / group->size;
+      for (int i = 0; i < object_count; i++) {
+	remove_object_from_free_list(group, next);
+	next = (GCPTR) ((BPTR) next + group->size);
       }
+      // HEY! conditionalize this clear page - just here to catch bugs
+      memset(PAGE_INDEX_TO_PTR(page), 0, BYTES_PER_PAGE);
+      pages[page].group = FREE_PAGE;
     }
     pthread_mutex_unlock(&(group->free_lock));
   }
@@ -164,8 +156,9 @@ void identify_free_pages() {
 	identify_single_free_page(page, group);
 	page = page + 1;
       } else {
-	page = identify_multiple_free_pages(page, group);
-	page = page + (group->size / BYTES_PER_PAGE);
+	//page = identify_multiple_free_pages(page, group);
+	//page = page + (group->size / BYTES_PER_PAGE);
+	page = page + 1;
       }
     } else {
       page = page + 1;
