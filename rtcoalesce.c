@@ -18,6 +18,51 @@
 #include "vizmem.h"
 #include "allocate.h"
 
+static
+void lock_all_free_locks() {
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    GPTR group = &groups[i];
+    pthread_mutex_lock(&(group->free_lock));
+  }
+}
+
+static
+void unlock_all_free_locks() {
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    GPTR group = &groups[i];
+    pthread_mutex_unlock(&(group->free_lock));
+  }
+}
+
+static void verify_heap() {
+  lock_all_free_locks();
+  int page = 0;
+  while (page < total_partition_pages) {
+    GPTR group = pages[page].group;
+    if (group > EXTERNAL_PAGE) {
+      if (group->size <= BYTES_PER_PAGE) {
+	//identify_single_free_page(page, group);
+	page = page + 1;
+      } else {
+	//page = identify_multiple_free_pages(page, group);
+	//page = page + (group->size / BYTES_PER_PAGE);
+	BPTR page_base = PAGE_INDEX_TO_PTR(page);
+	GCPTR gcptr = (GCPTR) page_base;
+	if (gcptr->prev > (GCPTR) 16) {
+	  assert(gcptr->prev >= (GCPTR) first_partition_ptr);
+	}
+	if (gcptr->next > (GCPTR) 16) {
+	  assert(gcptr->next >= (GCPTR) first_partition_ptr);
+	}
+	page = page + (group->size / BYTES_PER_PAGE);
+      }
+    } else {
+      page = page + 1;
+    }
+  }
+  unlock_all_free_locks();
+}
+
 // new coalescer now that we don't have a giant implicit lock
 // and we don't want to maintain page_bytes
 static void coalesce_free_pages() {
@@ -156,9 +201,9 @@ void identify_free_pages() {
 	identify_single_free_page(page, group);
 	page = page + 1;
       } else {
-	//page = identify_multiple_free_pages(page, group);
-	//page = page + (group->size / BYTES_PER_PAGE);
-	page = page + 1;
+	page = identify_multiple_free_pages(page, group);
+	page = page + (group->size / BYTES_PER_PAGE);
+	//page = page + 1;
       }
     } else {
       page = page + 1;
@@ -169,6 +214,7 @@ void identify_free_pages() {
 void coalesce_all_free_pages() {
   identify_free_pages();
   coalesce_free_pages();
+  verify_heap();
 }
 
 

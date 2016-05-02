@@ -197,6 +197,14 @@ add back INTERIOR retention limit
 remove page->bytes_used
 remove green count and total_object_count
 --------------
+HEY!
+move RTinit_empty_pages into section of file where things are
+run AFTER RTinit_heap_time
 
-rr -M replay -g 251157
+Also, we should turn adjacent holes into one bigger whole as the last
+step in coalescer.
 
+(defvar *proc* (run-program "/usr/bin/rr" `("record" "a") :output t :wait nil))
+
+
+(process-kill *proc* 9 :pid)

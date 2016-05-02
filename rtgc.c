@@ -54,7 +54,7 @@ void verify_white_count(GPTR group) {
     Debugger("incorrect white_count\n");
   } else {
     verify_count = verify_count + 1;
-    printf("Verify_white_count passed! %d\n", verify_count);
+    //printf("Verify_white_count passed! %d\n", verify_count);
   }
 }
 
@@ -75,6 +75,7 @@ void RTmake_object_gray(GCPTR current, BPTR raw) {
   if ((delta < 32) || 
       (((long) raw) == -1) || (raw == header)) {
     GCPTR prev = GET_LINK_POINTER(current->prev);
+    assert(prev != (GCPTR) 0x80);
     GCPTR next = GET_LINK_POINTER(current->next);
 
     /* Remove current from WHITE space */
