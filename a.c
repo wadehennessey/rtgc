@@ -27,7 +27,7 @@ void *wcl_get_closure_env(void *ptr) {
 }
 
 typedef struct node {
-  char bloat[4196];
+  char bloat[1024];
   char *word;
   int count;
   struct node *lesser;
@@ -213,8 +213,7 @@ int main(int argc, char *argv[]) {
 
   RTatomic_gc = 0;
   //RTinit_heap((1L << 36), 0);
-  //RTinit_heap((1L << 22), 0);
-  RTinit_heap((1L << 30), 1L << 20);
+  RTinit_heap((1L << 25), 1L << 20);
   for (long i = 1; i <= 3; i++) {
     new_thread(&start_word_count, (void *) i);
   }

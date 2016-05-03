@@ -154,7 +154,7 @@ static void identify_single_free_page(int page, GPTR group) {
 	next = (GCPTR) ((BPTR) next + group->size);
       }
       // HEY! conditionalize this clear page - just here to catch bugs
-      memset(PAGE_INDEX_TO_PTR(page), 0, BYTES_PER_PAGE);
+      //memset(PAGE_INDEX_TO_PTR(page), 0, BYTES_PER_PAGE);
       pages[page].group = FREE_PAGE;
     }
     pthread_mutex_unlock(&(group->free_lock));
@@ -176,7 +176,7 @@ static int identify_multiple_free_pages(int page, GPTR group) {
 	  pages[page + i].base = 0;
 	  pages[page + i].group = FREE_PAGE;
 	  // HEY! conditionalize this clear page - just here to catch bugs
-	  memset(PAGE_INDEX_TO_PTR(page + i), 0, BYTES_PER_PAGE);
+	  //memset(PAGE_INDEX_TO_PTR(page + i), 0, BYTES_PER_PAGE);
 	}
       }
       pthread_mutex_unlock(&(group->free_lock));
@@ -214,7 +214,7 @@ void identify_free_pages() {
 void coalesce_all_free_pages() {
   identify_free_pages();
   coalesce_free_pages();
-  verify_heap();
+  //  verify_heap();
 }
 
 

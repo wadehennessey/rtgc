@@ -183,6 +183,8 @@ GCPTR allocate_empty_pages(int required_page_count,
     }
     base = (GCPTR) best;
   }
+
+  base->prev = (GCPTR) 0xdeadbeef3;
   
   /* Initialize page table entries */
   if (base != NULL) {
@@ -258,7 +260,8 @@ void init_pages_for_group(GPTR group, int min_pages) {
       GCPTR prev = current;
       current = next;
       next = (GCPTR) ((BPTR) current + group->size);
-      current->prev = prev;
+      //current->prev = prev;
+      SET_LINK_POINTER(current->prev, prev);
       current->next = next;
       SET_COLOR(current,GREEN);
     }

@@ -89,7 +89,7 @@ typedef struct segment {
 } SEGMENT;
 
 typedef struct hole {
-  int page_count;		/* only used in rtalloc */
+  long page_count;		/* only used in rtalloc */
   struct hole *next;		/* only used in rtalloc */
 } HOLE;
 
