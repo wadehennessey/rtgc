@@ -361,7 +361,6 @@ void *RTallocate(void *metadata, int size) {
   
   //initialize_object_metadata(metadata, new, group);
 
-
   base = (LPTR) (new + 1);
   // Unlock only after storage class initialization because
   // gc recyling garbage can read and write next ptr
@@ -369,74 +368,6 @@ void *RTallocate(void *metadata, int size) {
   initialize_object_body(new, group->size); // , real_size);
 
   return(base);
-}
- 
-// HEY! Make this an inline function for speed
-// and at least pass in the group ptr!
-GCPTR interior_to_gcptr(BPTR ptr) {
-  PPTR page = &pages[PTR_TO_PAGE_INDEX(ptr)];
-  GPTR group = page->group;
-  GCPTR gcptr;
-
-  if (group > EXTERNAL_PAGE) {
-    if (group->size >= BYTES_PER_PAGE) {
-      gcptr = page->base;
-    } else {
-      // This only works because first_partition_ptr is BYTES_PER_Page aligned 
-      gcptr = (GCPTR) ((long) ptr & (-1 << group->index));
-    }
-  } else {
-    printf("ERROR! Found IN_HEAP pointer with NULL group!\n");
-  }
-  return(gcptr);
-}
-
-
-void verify_group_white(GPTR group) {
-  int white_count = 0;
-  GCPTR ptr = group->white;
-
-  while (ptr != 0) {
-    white_count = white_count + 1;
-    ptr = GET_LINK_POINTER(ptr->next);
-  }
-  if (white_count != group->white_count) {
-    Debugger("Group white count is wrong!");
-  } else {
-    printf("group white is good!\n");
-  }
-}
-
-void verify_group_black(GPTR group) {
-  int black_count = 0;
-  GCPTR next = group->black;
-
-  while ((next != group->free) && (next != group->free_last)) {
-    black_count = black_count + 1;
-    next = GET_LINK_POINTER(next->next);
-  }
-  if ((group->free != group->free_last) && (group->free_last == next)) {
-    // free is the next object after the last black object.
-    // free is the last black object, so we count it here.
-    black_count = black_count + 1;
-  }
-  if (black_count == group->black_count) {
-    //printf("G %d, black count matches: %d\n", group->size, black_count);
-  } else {
-    Debugger("Group black counts do not match!!!\n");
-  }
-}
-
-void verify_group(GPTR group) {
-  verify_group_white(group);
-}
-
-// GC thread caller of this should own all the free locks
-void verify_all_groups(void) {
-  // iterate over all groups and verify each one
-  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    verify_group(&groups[i]);
-  }
 }
 
 int RTtotalFreeHeapSpace() {

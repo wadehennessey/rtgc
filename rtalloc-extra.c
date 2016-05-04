@@ -4,8 +4,7 @@
 // moved here for now to reduce clutter since we aren't
 // usinig this stuff now
 
-
-void * RTstaticAllocate(void * metadata, int size) {
+void *RTstaticAllocate(void * metadata, int size) {
   int real_size, data_size;
   LPTR base;
   GPTR group;
@@ -45,7 +44,7 @@ void * RTstaticAllocate(void * metadata, int size) {
   return(base);
 }
 
-static void * copy_object(LPTR src, int storage_class, int current_size,
+static void *copy_object(LPTR src, int storage_class, int current_size,
 			  int new_size, int group_size) {
   BPTR new; LPTR new_base; LPTR src_base; int i;
   int limit = current_size / sizeof(LPTR);
@@ -82,7 +81,7 @@ static void * copy_object(LPTR src, int storage_class, int current_size,
   return(new);
 }
 
-void * RTreallocate(void *ptr, int new_size) {
+void *RTreallocate(void *ptr, int new_size) {
   GCPTR current;
   GPTR group;
   int storage_class;
@@ -122,27 +121,3 @@ void * RTreallocate(void *ptr, int new_size) {
   }
 }
 
-
-// seems to never be used
-int RTstackAllocationSize(void * metadata, int size) {
-  int data_size, real_size;
-  GPTR group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
-  return(real_size);
-}
-
-// seems to never be used
-int RTallocationTrueSize(void * metadata, int size) {
-  int data_size, real_size;
-
-  GPTR group = allocationGroup(metadata,size,&data_size,&real_size,&metadata);
-  int md_size = ((metadata > RTpointers) ? 4 : 0);
-  return(group->size - sizeof(GC_HEADER) - md_size);
-}
-
-// seems to never be used
-int RTtrueSize(void *ptr) {
-  GPTR group = PTR_TO_GROUP(ptr);
-  GCPTR gcptr = interior_to_gcptr(ptr);
-  int md_size = ((GET_STORAGE_CLASS(gcptr) > SC_POINTERS) ? 4 : 0);
-  return(group->size - sizeof(GC_HEADER) - md_size);
-}

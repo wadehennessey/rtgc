@@ -115,6 +115,33 @@ void RTmake_object_gray(GCPTR current, BPTR raw) {
   }
 }
 
+
+// make this inline too
+static GCPTR interior_to_gcptr_with_group(BPTR ptr, GPTR group) {
+  Debugger("write me!");
+}
+
+// GCC can't handle inline functions which call inline functions I think
+// HEY! Make this an inline function for speed
+// and at least pass in the group ptr!
+static GCPTR interior_to_gcptr(BPTR ptr) {
+  PPTR page = &pages[PTR_TO_PAGE_INDEX(ptr)];
+  GPTR group = page->group;
+  GCPTR gcptr;
+
+  if (group > EXTERNAL_PAGE) {
+    if (group->size >= BYTES_PER_PAGE) {
+      gcptr = page->base;
+    } else {
+      // This only works because first_partition_ptr is BYTES_PER_Page aligned 
+      gcptr = (GCPTR) ((long) ptr & (-1 << group->index));
+    }
+  } else {
+    printf("ERROR! Found IN_HEAP pointer with NULL group!\n");
+  }
+  return(gcptr);
+}
+
 // Scan memory looking for *possible* pointers
 static
 void scan_memory_segment(BPTR low, BPTR high) {

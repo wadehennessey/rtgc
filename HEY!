@@ -176,7 +176,6 @@ break __assert
 
 try gcc -mcmodel=large to avoid dlopen relocation problems in wcl
 
-remove all uses of pages bytes_used field
 
 split group->black_count into 2: 
 black_count == black_scanned_count + black_new_count
@@ -194,4 +193,10 @@ remove green count and total_object_count
 Also, we should turn adjacent holes into one bigger whole as the last
 step in coalescer.
 
-remove visual_memory calls
+remove more visual_memory code
+
+make inlines:
+GCPTR interior_to_gcptr_with_group
+GCPTR interior_to_gcptr
+
+

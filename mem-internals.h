@@ -127,7 +127,6 @@ typedef struct counter {
 } COUNTER;
 
 void scan_object(GCPTR ptr, int total_size);
-GCPTR interior_to_gcptr(BPTR ptr);
 void RTinit_empty_pages(int first_page, int page_count, int type);
 void verify_total_object_count(void);
 void verify_header(GCPTR ptr);
