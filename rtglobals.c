@@ -1,6 +1,6 @@
 // (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
-/* State shared by rtalloc, rtgc, and vizmem goes here */
+// State shared by rtalloc, rtgc, and vizmem goes here
 
 #define _USE_GNU
 #define _GNU_SOURCE
@@ -33,7 +33,7 @@ int total_threads;
 char **global_roots;
 int total_global_roots;
 
-/* HEY! only 1 static segment while these are global! */
+// HEY! only 1 static segment while these are global!
 BPTR first_static_ptr;
 BPTR last_static_ptr;
 

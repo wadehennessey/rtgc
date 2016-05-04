@@ -11,13 +11,13 @@ void * RTstaticAllocate(void * metadata, int size) {
   GPTR group;
   BPTR new_static_ptr;
 
-  /* We don't care about the group, just the GCHDR compatible real size */
+  // We don't care about the group, just the GCHDR compatible real size
   group = allocationGroup(metadata, size, &data_size, &real_size, &metadata);
   data_size = ROUND_UPTO_LONG_ALIGNMENT(data_size);
   real_size = ROUND_UPTO_LONG_ALIGNMENT(real_size);
 
-  /* Static object headers are only 1 word long instead of 2 */
-  /* HEY! add 8 byte alignment??? */
+  // Static object headers are only 1 word long instead of 2 
+  // HEY! add 8 byte alignment???
   new_static_ptr = first_static_ptr - (real_size - sizeof(GCPTR));
   
   if (new_static_ptr >= segments[0].first_segment_ptr) {
@@ -33,14 +33,14 @@ void * RTstaticAllocate(void * metadata, int size) {
     }
     first_static_ptr = new_static_ptr;
   } else {
-    /* HEY! allow more than 1 static segment? for now */
-    /* just dynamically allocate after booting */
+    // HEY! allow more than 1 static segment? for now
+    // just dynamically allocate after booting
     return(RTallocate(metadata, size));
   }
 
   base = (LPTR) first_static_ptr;
   *base = (data_size << LINK_INFO_BITS);
-  base = (LPTR) (((BPTR) base) - sizeof(GCPTR)); /* make base GCHDR compat */
+  base = (LPTR) (((BPTR) base) - sizeof(GCPTR)); // make base GCHDR compat
   base = RTInitializeObject(metadata, base, real_size, real_size);
   return(base);
 }
@@ -57,7 +57,7 @@ static void * copy_object(LPTR src, int storage_class, int current_size,
     new = RTallocate(RTnopointers,new_size); break;
   case SC_METADATA:
     {
-      /* HEY! fix this to use current_size instead of group_size */
+      // HEY! fix this to use current_size instead of group_size
       LPTR last_ptr = src + (group_size / 4) - 1;
       void *md = (void*) *last_ptr;
       if (METADATAP(md)) {
@@ -75,7 +75,7 @@ static void * copy_object(LPTR src, int storage_class, int current_size,
   }
   new_base = (LPTR) HEAP_OBJECT_TO_GCPTR(new);
 
-  /* No need for write barrier calls since these are initializing writes */
+  // No need for write barrier calls since these are initializing writes
   for (i = 2; i < limit; i++) {
     *(new_base + i) = *(src + i);
   }
@@ -87,20 +87,17 @@ void * RTreallocate(void *ptr, int new_size) {
   GPTR group;
   int storage_class;
   
-  /* omitted debug message */
-  
   if (IN_HEAP(ptr)) {
     current = HEAP_OBJECT_TO_GCPTR(ptr);
     storage_class = GET_STORAGE_CLASS(current);
     group = pages[PTR_TO_PAGE_INDEX(current)].group;
 
-    /* HEY! subtrace only 8 if we don't have metadata */
+    // HEY! subtract only 8 if we don't have metadata
     if (new_size <= (group->size - 12)) {
-      /* HEY! If the object shrinks a lot, we should copy to a
-	 smaller group size. Then free the current object? Dangerous
-	 if other pointers to it exist. Maybe just let the GC find it.
-
-	 Also clear unused bits so we don't retain garbage! */
+      // HEY! If the object shrinks a lot, we should copy to a
+      // smaller group size. Then free the current object? Dangerous
+      // if other pointers to it exist. Maybe just let the GC find it.
+      // Also clear unused bits so we don't retain garbage!
       return(ptr);
     } else {
       return(copy_object((LPTR) current, storage_class, group->size, new_size,

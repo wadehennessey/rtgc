@@ -19,7 +19,7 @@
 #include "mem-internals.h"
 #include "allocate.h"
 
-/* http://www.textfiles.com/etext/AUTHORS/DOYLE/ for text files */
+// http://www.textfiles.com/etext/AUTHORS/DOYLE/ for text files
 
 // tmp stub to avoid linking problems
 void *wcl_get_closure_env(void *ptr) {
@@ -111,7 +111,7 @@ void insert_node(NODE *next, char *word, int level) {
 	    if (result < 0) {
 	      insert_node(next->lesser, word, level + 1);
 	    } else {
-	      /* Insert new node between next and lesser */
+	      // Insert new node between next and lesser
 	      NODE *new = new_node(word, next->lesser, 0);
 	      RTwrite_barrier(&(next->lesser), new);
 	    }
@@ -128,7 +128,7 @@ void insert_node(NODE *next, char *word, int level) {
 	    if (result > 0) {
 	      insert_node(next->greater, word, level + 1);
 	    } else {
-	      /* Insert new node between next and greater */
+	      // Insert new node between next and greater
 	      NODE *new = new_node(word, 0, next->greater);
 	      RTwrite_barrier(&(next->greater), new);
 	    }

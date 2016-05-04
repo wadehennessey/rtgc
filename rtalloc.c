@@ -1,6 +1,6 @@
 // (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
-/* Real time storage allocater */
+// Real time storage allocater
 
 #define _GNU_SOURCE
 
@@ -60,9 +60,7 @@ void init_group_info() {
 static 
 void init_page_info() {
   for (int i = 0; i < total_partition_pages; i++) {
-    /* Could put the next two in a per segment table to save memory */
     pages[i].base = NULL;
-    pages[i].bytes_used = 0;
     pages[i].group = SYSTEM_PAGE;
   }
 }
@@ -70,16 +68,14 @@ void init_page_info() {
 void RTinit_empty_pages(int first_page, int page_count, int type) {
   int last_page = first_page + page_count;
   for (int i = first_page; i < last_page; i++) {
-    /* Could put the next two in a per segment table to save memory */
     pages[i].base = NULL;
-    pages[i].bytes_used = 0;
     pages[i].group = EMPTY_PAGE;
     if (VISUAL_MEMORY_ON) RTupdate_visual_page(i);
   }
 
   if (type == HEAP_SEGMENT) {
     pthread_mutex_lock(&empty_pages_lock);
-    /* Add the pages to the front of the empty page list */
+    // Add the pages to the front of the empty page list
     HOLE_PTR new_hole = (HOLE_PTR) PAGE_INDEX_TO_PTR(first_page);
     new_hole->page_count = page_count;
     new_hole->next = empty_pages;
@@ -135,16 +131,9 @@ long allocate_segment(size_t desired_bytes, int type) {
   return(actual_bytes);
 }
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Everything above here should only be run at RTinit_heap time,
-// which completes before the gc ever gets a chance to start running.
-// Ignore locking issues until we decide to support more than 1 heap segment.
-
 static
-GCPTR allocate_empty_pages(int required_page_count,
-			   int min_page_count,
-			   GPTR group) {
-  int remaining_page_count, best_remaining_page_count, next_page_index;
+GCPTR allocate_empty_pages(int page_count) {
+  int remaining_page_count, best_remaining_page_count;
   GCPTR base = NULL;
   HOLE_PTR prev = NULL;
   HOLE_PTR best = NULL;
@@ -152,11 +141,11 @@ GCPTR allocate_empty_pages(int required_page_count,
 
   pthread_mutex_lock(&empty_pages_lock);
   HOLE_PTR next = empty_pages;
-  /* Search for a best fit hole */
+  // Search for a best fit hole
   best_remaining_page_count = total_partition_pages + 1;
   while ((best_remaining_page_count > 0) && (next != NULL)) {
-    if (next->page_count >= required_page_count) {
-      remaining_page_count = next->page_count - required_page_count;
+    if (next->page_count >= page_count) {
+      remaining_page_count = next->page_count - page_count;
       if (remaining_page_count < best_remaining_page_count) {
 	best_remaining_page_count = remaining_page_count;
 	best = next;
@@ -172,7 +161,7 @@ GCPTR allocate_empty_pages(int required_page_count,
     if (best_remaining_page_count == 0) {
       rest = best->next;
     } else {
-      rest = (HOLE_PTR) ((BPTR) best + (required_page_count * BYTES_PER_PAGE));
+      rest = (HOLE_PTR) ((BPTR) best + (page_count * BYTES_PER_PAGE));
       rest->page_count = best_remaining_page_count;
       rest->next = best->next;
     }
@@ -183,23 +172,6 @@ GCPTR allocate_empty_pages(int required_page_count,
     }
     base = (GCPTR) best;
   }
-
-  base->prev = (GCPTR) 0xdeadbeef3;
-  
-  /* Initialize page table entries */
-  if (base != NULL) {
-    int i;
-    next_page_index = PTR_TO_PAGE_INDEX(((BPTR) base));
-    for (i = 1; i <= required_page_count; i++) {
-      pages[next_page_index].base = base;
-      pages[next_page_index].group = group;
-      pages[next_page_index].bytes_used = 0;
-      next_page_index = next_page_index + 1;
-      /* commented out code omitted */
-    }
-  }
-  // HEY! should be able to move this to before page table init above
-  // just being safe/simple right now
   pthread_mutex_unlock(&empty_pages_lock);
   return(base);
 }
@@ -214,10 +186,8 @@ void init_pages_for_group(GPTR group, int min_pages) {
   int byte_count = MAX(pages_per_object,min_pages) * BYTES_PER_PAGE;
   int num_objects = byte_count >> group->index;
   int page_count = (num_objects * group->size) / BYTES_PER_PAGE;
-  int min_page_count = MAX(1, pages_per_object);
-  GCPTR base = allocate_empty_pages(page_count, min_page_count, group);
+  GCPTR base = allocate_empty_pages(page_count);
 
-  /* HEY! do this somewhere else? */
   if (base == NULL) {
     int actual_bytes = allocate_segment(MAX(DEFAULT_HEAP_SEGMENT_SIZE,
 					    page_count * BYTES_PER_PAGE),
@@ -239,7 +209,8 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	printf("alloc out ran gc, sync collect\n");
 	int current_gc_count = gc_count;
 	while (gc_count < (current_gc_count + 2)) {
-	  // Should be able to remove this sched_yield now that gc_count is declared volatile
+	  // Should be able to remove this sched_yield now that 
+	  // gc_count is declared volatile
 	  sched_yield();
 	}
 	assert(NULL != group->free);
@@ -247,7 +218,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
       pthread_mutex_lock(&(group->free_lock));
     }
     if (NULL == group->free) {
-      base = allocate_empty_pages(page_count, min_page_count, group);
+      base = allocate_empty_pages(page_count);
     } else {
       // printf("full_gc added to empty free list, gc_count = %d\n", gc_count);
     }
@@ -260,8 +231,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
       GCPTR prev = current;
       current = next;
       next = (GCPTR) ((BPTR) current + group->size);
-      //current->prev = prev;
-      SET_LINK_POINTER(current->prev, prev);
+      current->prev = prev;
       current->next = next;
       SET_COLOR(current,GREEN);
     }
@@ -270,7 +240,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
     WITH_LOCK((group->black_and_last_lock),
 	      GCPTR free_last = group->free_last;
 	      group->free = base;
-	      if (free_last == NULL) { 	/* No gray, black, or green objects? */
+	      if (free_last == NULL) { 	// No gray, black, or green objects?
 		group->black = base;
 	      } else {
 		SET_LINK_POINTER(base->prev, free_last);
@@ -279,6 +249,20 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	      group->free_last = current;);
     group->green_count = group->green_count + num_objects;
     group->total_object_count = group->total_object_count + num_objects;
+    // Only now can we initialize EMPTY page table entries.
+    // Doing it before object GCHDRs are correctly setup and colored green
+    // allows conservative pointers and exposed and uncleared
+    // dead pointers on the stack to incorrectly make_gray 
+    // random bits that look like white objects!
+    if (base != NULL) {
+      int i;
+      int next_page_index = PTR_TO_PAGE_INDEX(((BPTR) base));
+      for (i = 1; i <= page_count; i++) {
+	pages[next_page_index].base = base;
+	pages[next_page_index].group = group;
+	next_page_index = next_page_index + 1;
+      }
+    }
   }
 }
 
@@ -293,8 +277,8 @@ GPTR allocation_group(int *metadata, int size) {
       real_size = size + sizeof(GC_HEADER); break;
     default:
       if (METADATAP(metadata)) {
-	/* We count the metadata ptr in data_size for compat with instance */
-	//data_size = (size * (((RT_METADATA *) metadata)->size)) + sizeof(void *);
+	// We count the metadata ptr in data_size for compat with instance
+	// data_size = (size * (((RT_METADATA *) metadata)->size)) + sizeof(void *);
 	data_size = size + sizeof(void *);
 	real_size = data_size + sizeof(GC_HEADER);
       } else {
@@ -365,18 +349,7 @@ void *RTallocate(void *metadata, int size) {
   // No need for an explicit flip lock here. During a flip the gc will
   // hold the green lock for every group, so no allocator can get here
   // when the marked_color is being changed.
-  SET_COLOR(new,marked_color);	/* Must allocate black! */
-
-  {
-    int page_index = PTR_TO_PAGE_INDEX(new);
-    PPTR page = &pages[page_index];
-    int old_bytes_used = page->bytes_used;
-    page->bytes_used = page->bytes_used + group->size;
-    if (VISUAL_MEMORY_ON) {
-      RTmaybe_update_visual_page(page_index,old_bytes_used,page->bytes_used);
-    }
-  }
-
+  SET_COLOR(new,marked_color);	// Must allocate black!
   long mdptr;
   if (((long) metadata) <= SC_POINTERS) {
     SET_STORAGE_CLASS(new, (long) metadata); 
@@ -398,8 +371,8 @@ void *RTallocate(void *metadata, int size) {
   return(base);
 }
  
-/* HEY! make this a macro for speed eventually?
-   at least pass in the group ptr! */
+// HEY! Make this an inline function for speed
+// and at least pass in the group ptr!
 GCPTR interior_to_gcptr(BPTR ptr) {
   PPTR page = &pages[PTR_TO_PAGE_INDEX(ptr)];
   GPTR group = page->group;
@@ -409,8 +382,7 @@ GCPTR interior_to_gcptr(BPTR ptr) {
     if (group->size >= BYTES_PER_PAGE) {
       gcptr = page->base;
     } else {
-      /* This only works because first_partition_ptr is
-	 BYTES_PER_Page aligned */
+      // This only works because first_partition_ptr is BYTES_PER_Page aligned 
       gcptr = (GCPTR) ((long) ptr & (-1 << group->index));
     }
   } else {
@@ -444,8 +416,8 @@ void verify_group_black(GPTR group) {
     next = GET_LINK_POINTER(next->next);
   }
   if ((group->free != group->free_last) && (group->free_last == next)) {
-    /* free is the next object after the last black object
-       free is the last black object, so we count it here */
+    // free is the next object after the last black object.
+    // free is the last black object, so we count it here.
     black_count = black_count + 1;
   }
   if (black_count == group->black_count) {
@@ -458,9 +430,6 @@ void verify_group_black(GPTR group) {
 void verify_group(GPTR group) {
   verify_group_white(group);
 }
-
-// could try using SIGSTOP and SIGCONT to stop black changes instead
-// of locks.
 
 // GC thread caller of this should own all the free locks
 void verify_all_groups(void) {
@@ -511,11 +480,6 @@ int RTlargestFreeHeapBlock() {
   return(largest);
 }
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// Everything below here should run before the gc starts running
-// AS LONG AS WE HAVE ONLY 1 MUTATOR THREAD!
-
-
 // Thread 0 is considered the main stack that started this process.
 // The gc itself runs on Thread 0.
 void init_gc_thread() {
@@ -535,7 +499,6 @@ void init_gc_thread() {
   total_threads = 1;
 }
 
-
 void register_global_root(void *root) {
   pthread_mutex_lock(&global_roots_lock);
   if (total_global_roots == MAX_GLOBAL_ROOTS) {
@@ -550,9 +513,6 @@ void register_global_root(void *root) {
 void RTinit_heap(size_t first_segment_bytes, int static_size) {
   enable_write_barrier = 0;
 
-  /* We malloc vectors here so that they are NOT part of the global
-     data segment, and thus will not be scanned if we decide to 
-     scan it. We don't want the GC looking at itself! */
   total_partition_pages = first_segment_bytes / BYTES_PER_PAGE;
   groups = malloc(sizeof(GROUP_INFO) * (MAX_GROUP_INDEX + 1));
   pages = RTbig_malloc(sizeof(PAGE_INFO) * total_partition_pages);

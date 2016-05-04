@@ -1,6 +1,6 @@
 // (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
-/* Real time garbage collector running on one or more threads/cores */
+// Real time garbage collector running on one or more threads/cores
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,11 +17,6 @@
 #include "mem-internals.h"
 #include "vizmem.h"
 #include "allocate.h"
-
-/* Global GC variables follow. We do NOT want GC info containing
-   heap pointers in the global data section, or the GC will
-   mistake them for mutator pointers and save them! Hence we
-   malloc some structures */
 
 volatile long gc_count;
 double total_gc_time_in_cycle;
@@ -72,13 +67,13 @@ void RTmake_object_gray(GCPTR current, BPTR raw) {
   BPTR header = (BPTR) current + sizeof(GC_HEADER);
   long delta = raw - header;
   
-  if ((delta < 32) || 
+  if ((delta < INTERIOR_PTR_RETENTION_LIMIT) || 
       (((long) raw) == -1) || (raw == header)) {
     GCPTR prev = GET_LINK_POINTER(current->prev);
     assert(prev != (GCPTR) 0x80);
     GCPTR next = GET_LINK_POINTER(current->next);
 
-    /* Remove current from WHITE space */
+    // Remove current from WHITE space
     if (current == group->white) {
       group->white = next;
     }
@@ -89,8 +84,8 @@ void RTmake_object_gray(GCPTR current, BPTR raw) {
       SET_LINK_POINTER(next->prev, prev);
     }
 
-    /* Link current onto the end of the gray set. This give us a breadth
-       first search when scanning the gray set (not that it matters) */
+    // Link current onto the end of the gray set. This give us a breadth
+    // first search when scanning the gray set (not that it matters)
     SET_LINK_POINTER(current->prev, NULL);
     GCPTR gray = group->gray;
     if (gray == NULL) {
@@ -120,11 +115,11 @@ void RTmake_object_gray(GCPTR current, BPTR raw) {
   }
 }
 
-/* Scan memory looking for *possible* pointers */
+// Scan memory looking for *possible* pointers
 static
 void scan_memory_segment(BPTR low, BPTR high) {
-  /* if GC_POINTER_ALIGNMENT is < 4, avoid scanning potential pointers that
-     extend past the end of this object */
+  // if GC_POINTER_ALIGNMENT is < 4, avoid scanning potential pointers that
+  // extend past the end of this object
   high = high - sizeof(LPTR) + 1;
   for (BPTR next = low; next < high; next = next + GC_POINTER_ALIGNMENT) {
     MAYBE_YIELD;
@@ -133,7 +128,7 @@ void scan_memory_segment(BPTR low, BPTR high) {
       int page_index = PTR_TO_PAGE_INDEX(ptr);
       GPTR group = pages[page_index].group;
       if (group > EXTERNAL_PAGE) {
-	GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
+	GCPTR gcptr = interior_to_gcptr(ptr);
 	if WHITEP(gcptr) {
 	    RTmake_object_gray(gcptr, ptr);
 	}
@@ -263,7 +258,7 @@ void *RTsafe_setfInit(void * lhs_address, void * rhs) {
   if (CHECK_SETFINIT) {
     BPTR object = *((BPTR *) lhs_address);
     if (object != NULL) {
-      /* if ((int) object != rhs) */
+      // if ((int) object != rhs)
       Debugger("RTsafe_setfInit problem\n");
     }
   }
@@ -345,7 +340,7 @@ void scan_global_roots() {
       int page_index = PTR_TO_PAGE_INDEX(ptr);
       GPTR group = pages[page_index].group;
       if (group > EXTERNAL_PAGE) {
-	GCPTR gcptr = interior_to_gcptr(ptr); /* Map it ourselves here! */
+	GCPTR gcptr = interior_to_gcptr(ptr); 
 	if WHITEP(gcptr) {
 	    RTmake_object_gray(gcptr, ptr);
 	  }
@@ -431,7 +426,7 @@ void scan_object_with_group(GCPTR ptr, GPTR group) {
 	    group->black = ptr;);
 }
 
-/* HEY! Fix this up now that it's not continuation based... */
+// HEY! Fix this up now that it's not continuation based.
 static
 void scan_gray_set() {
   int i, scan_count, rescan_all_groups;
@@ -444,7 +439,7 @@ void scan_gray_set() {
     while (i <= MAX_GROUP_INDEX) {
       GPTR group = &groups[i];
       GCPTR current = group->black;
-      /* current could be gray, black, or green */
+      // current could be gray, black, or green
       if ((current != NULL ) && (!(GRAYP(current)))) {
 	current = GET_LINK_POINTER(current->prev);
       }
@@ -499,13 +494,13 @@ void flip() {
     if (free != NULL) {
       GCPTR prev = GET_LINK_POINTER(free->prev);
       if (prev != NULL) {
-	SET_LINK_POINTER(prev->next,NULL); /* end black set */
+	SET_LINK_POINTER(prev->next,NULL); // end black set
       }
       SET_LINK_POINTER(free->prev,NULL);
     } else {
       GCPTR free_last = group->free_last;
       if (free_last != NULL) {
-	SET_LINK_POINTER(free_last->next,NULL); /* end black set */
+	SET_LINK_POINTER(free_last->next,NULL); // end black set
       }
       group->free_last = NULL;
     }
@@ -545,10 +540,10 @@ void flip() {
   }
 }
 
-/* The alloc counterpart to this function is init_pages_for_group.
-   We need to change garbage color to green now so conservative
-   scanning in the next gc cycle doesn't start making free objects 
-   that look white turn gray! */
+// The alloc counterpart to this function is init_pages_for_group.
+// We need to change garbage color to green now so conservative
+// scanning in the next gc cycle doesn't start making free objects 
+// that look white turn gray!
 static
 void recycle_group_garbage(GPTR group) {
   int count = 0;
@@ -557,14 +552,7 @@ void recycle_group_garbage(GPTR group) {
 
   pthread_mutex_lock(&(group->free_lock));
   while (next != NULL) {
-    int page_index = PTR_TO_PAGE_INDEX(next);
-    PPTR page = &pages[page_index];
-    int old_bytes_used = page->bytes_used;
-    page->bytes_used = page->bytes_used - group->size;
-    if (VISUAL_MEMORY_ON) {
-      RTmaybe_update_visual_page(page_index,old_bytes_used,page->bytes_used);
-    }
-    /* Finalize code was here. Maybe add new finalize code some day */
+    // Finalize code was here. Need to add it back
 
     SET_COLOR(next,GREEN);
     if (DETECT_INVALID_REFS) {
@@ -578,8 +566,6 @@ void recycle_group_garbage(GPTR group) {
     MAYBE_YIELD;
   }
 
-  /* HEY! could unlink free obj on pages where count is 0. Then hook remaining
-     frag onto free list and coalesce 0 pages */
   if (count != group->white_count) { // no lock needed, white_count is gc only
     //verify_all_groups();
     printf("group->white_count is %d, actual count is %d\n", 

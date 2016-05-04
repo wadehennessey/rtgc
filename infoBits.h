@@ -1,8 +1,8 @@
 // (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
-/* Links are divided into a pointer and some low order info bits.
-   We could store object group indices in the info bits
-   if we wanted to for speed. */
+// Links are divided into a pointer and some low order info bits.
+// We could store object group indices in the info bits
+// if we wanted to for speed.
 
 typedef struct gc_header {
   struct gc_header * prev;
@@ -44,7 +44,7 @@ typedef GC_HEADER * GCPTR;
 #define GENERATION0       0
 #define GENERATION1       1
 #define GRAY              2
-#define GREEN             3    /* Could use GREEN=GRAY, but we've got room */
+#define GREEN             3    // Could use GREEN=GRAY, but we've got room
 
 #define WHITEP(p) (GET_COLOR(p) == unmarked_color)
 #define BLACKP(p) (GET_COLOR(p) == marked_color)

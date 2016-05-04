@@ -1,6 +1,5 @@
 // (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
-/* Other parts of the system like to use IN_HEAP and IN_GLOBALS */
 #define EMPTY_PAGE     ((GPTR) 0)
 #define FREE_PAGE      ((GPTR) 1)
 #define SYSTEM_PAGE    ((GPTR) 2)
@@ -32,8 +31,8 @@ extern BPTR last_partition_ptr;
 extern BPTR first_static_ptr;
 extern BPTR last_static_ptr;
 
-#define MIN_GROUP_INDEX 5	/* yields min 32 byte objects on x86_64 */
-#define MAX_GROUP_INDEX 24	/* yields max 16 megabyte objects */
+#define MIN_GROUP_INDEX 5	// yields min 32 byte objects on x86_64
+#define MAX_GROUP_INDEX 24	// yields max 16 megabyte objects
 #define MIN_GROUP_SIZE (1 << MIN_GROUP_INDEX)
 #define MAX_GROUP_SIZE ( 1 << MAX_GROUP_INDEX)
 #define NUMBER_OF_GROUPS (MAX_GROUP_INDEX - MIN_GROUP_INDEX + 1)
@@ -62,21 +61,21 @@ typedef struct group_info {
   int size;
   int index;
 
-  GCPTR free_last;		/* used in rtgc and rtalloc */
-  GCPTR free;			/* used in rtgc and rtalloc */
-  GCPTR gray;			/* only used in rtgc */
-  GCPTR black;			/* only used in rtgc and rtalloc */
-  GCPTR white;			/* only used in rtgc */
+  GCPTR free_last;		// used in rtgc and rtalloc
+  GCPTR free;			// used in rtgc and rtalloc
+  GCPTR gray;			// only used in rtgc
+  GCPTR black;			// only used in rtgc and rtalloc
+  GCPTR white;			// only used in rtgc
 
 
-  int total_object_count;	/* used in rtgc and rtalloc */
-  int white_count;		/* only used in rtgc */
-  int black_count;		/* used in rtgc and rtalloc */
-  int green_count;		/* used in rtgc and rtalloc */
+  int total_object_count;	// used in rtgc and rtalloc
+  int white_count;		// only used in rtgc
+  int black_count;		// used in rtgc and rtalloc
+  int green_count;		// used in rtgc and rtalloc
 
-  pthread_mutex_t free_lock;	/* used in rtgc and rtalloc */
-  pthread_mutex_t black_count_lock;	/* used in rtgc and rtalloc */
-  pthread_mutex_t black_and_last_lock;	/* used in rtgc and rtalloc */
+  pthread_mutex_t free_lock;	// used in rtgc and rtalloc
+  pthread_mutex_t black_count_lock;	// used in rtgc and rtalloc
+  pthread_mutex_t black_and_last_lock;	// used in rtgc and rtalloc
 } GROUP_INFO;
 
 typedef GROUP_INFO * GPTR;
@@ -89,8 +88,8 @@ typedef struct segment {
 } SEGMENT;
 
 typedef struct hole {
-  long page_count;		/* only used in rtalloc */
-  struct hole *next;		/* only used in rtalloc */
+  long page_count;		// only used in rtalloc
+  struct hole *next;		// only used in rtalloc
 } HOLE;
 
 typedef HOLE * HOLE_PTR;
@@ -98,18 +97,17 @@ typedef HOLE * HOLE_PTR;
 typedef struct page_info {
   GCPTR base;
   GPTR group;
-  int bytes_used;
 } PAGE_INFO;
 
 typedef PAGE_INFO * PPTR;
 
 typedef struct thread_info {
   pthread_t pthread;
-  gregset_t registers;		/* NREG is 23 on x86_64 */
-  long long *stack_base; /* This is the LOWEST addressable byte of the stack */
+  gregset_t registers;		// NREG is 23 on x86_64
+  long long *stack_base; // This is the LOWEST addressable byte of the stack
   int stack_size;
-  char *stack_bottom; 	/* HIGHEST address seen when thread started */
-  char *saved_stack_base;    /* This is the LOWEST addressable byte */
+  char *stack_bottom; 	// HIGHEST address seen when thread started
+  char *saved_stack_base;    // This is the LOWEST addressable byte
   int saved_stack_size;
   struct timeval max_pause_tv, total_pause_tv;
 } THREAD_INFO;

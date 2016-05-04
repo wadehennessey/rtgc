@@ -78,7 +78,7 @@ void print_registers(gregset_t *gregs) {
   printf("REG_RIP %llx\n", (*gregs)[REG_RIP]);
 
   printf("REG_EFL %llx\n", (*gregs)[REG_EFL]);
-  /* Actually short cs, gs, fs, __pad0.  */
+  // Actually short cs, gs, fs, __pad0.
   printf("REG_CSGSFS %llx\n", (*gregs)[REG_CSGSFS]);
   printf("REG_ERR %llx\n", (*gregs)[REG_ERR]);
   printf("REG_TRAPNO %llx\n", (*gregs)[REG_TRAPNO]);
@@ -186,7 +186,7 @@ int stop_all_mutators_and_save_state() {
   entered_handler_count = 0;
   copied_stack_count = 0;
   pthread_mutex_lock(&total_threads_lock);
-  int total_threads_to_halt = total_threads - 1; /* omit gc thread */
+  int total_threads_to_halt = total_threads - 1; // omit gc thread
   for (int i = 0; i < total_threads_to_halt; i++) {
     int thread = i + 1;		// skip 0 - gc thread
     threads[thread].saved_stack_size = 0;
