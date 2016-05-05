@@ -15,7 +15,6 @@
 #include "mem-config.h"
 #include "infoBits.h"
 #include "mem-internals.h"
-#include "vizmem.h"
 #include "allocate.h"
 
 static

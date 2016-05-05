@@ -16,7 +16,6 @@
 #include "mem-config.h"
 #include "mem-internals.h"
 #include "allocate.h"
-#include "vizmem.h"
 
 /*
 Tried using condition variables to synch handlers and gc. Always deadlocked after

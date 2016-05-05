@@ -17,7 +17,6 @@
 #include "mem-config.h"
 #include "infoBits.h"
 #include "mem-internals.h"
-#include "vizmem.h"
 #include "allocate.h"
 
 HOLE_PTR empty_pages;
@@ -70,7 +69,6 @@ void RTinit_empty_pages(int first_page, int page_count, int type) {
   for (int i = first_page; i < last_page; i++) {
     pages[i].base = NULL;
     pages[i].group = EMPTY_PAGE;
-    if (VISUAL_MEMORY_ON) RTupdate_visual_page(i);
   }
 
   if (type == HEAP_SEGMENT) {

@@ -15,7 +15,6 @@
 #include "mem-config.h"
 #include "infoBits.h"
 #include "mem-internals.h"
-#include "vizmem.h"
 #include "allocate.h"
 
 volatile long gc_count;
@@ -158,10 +157,6 @@ void scan_memory_segment(BPTR low, BPTR high) {
 	GCPTR gcptr = interior_to_gcptr(ptr);
 	if WHITEP(gcptr) {
 	    RTmake_object_gray(gcptr, ptr);
-	}
-      } else {
-	if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
-	  RTupdate_visual_fake_ptr_page(page_index);
 	}
       }
     }
@@ -371,10 +366,6 @@ void scan_global_roots() {
 	if WHITEP(gcptr) {
 	    RTmake_object_gray(gcptr, ptr);
 	  }
-      } else {
-	if (VISUAL_MEMORY_ON && (group == EMPTY_PAGE)) {
-	  RTupdate_visual_fake_ptr_page(page_index);
-	}
       }
     }
   }
@@ -412,14 +403,8 @@ void RTregister_no_write_barrier_state(void *start, int len) {
 
 static
 void scan_root_set() {
-  last_gc_state = "Scan Threads";
-  UPDATE_VISUAL_STATE();
   scan_threads();
-  last_gc_state = "Scan Globals";
-  UPDATE_VISUAL_STATE();
   scan_global_roots();
-  last_gc_state = "Scan Statics";
-  UPDATE_VISUAL_STATE();
   scan_static_space();
   for (int i = 0; i < total_root_scanners; i++) {
     (*root_scanners[i])();
@@ -458,8 +443,6 @@ static
 void scan_gray_set() {
   int i, scan_count, rescan_all_groups;
 
-  last_gc_state = "Scan Gray Set";
-  UPDATE_VISUAL_STATE();
   i = MIN_GROUP_INDEX;
   scan_count = 0;
   do {
@@ -512,7 +495,6 @@ void flip() {
   // them is in the middle of an RTallocate. We got this for free by being
   // single threaded and implicity locking by yielding only when we chose to.
   assert(0 == enable_write_barrier);
-  last_gc_state = "Flip";
   // No allocation allowed during a flip
   lock_all_free_locks();
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
@@ -627,8 +609,6 @@ void recycle_group_garbage(GPTR group) {
 
 static 
 void recycle_all_garbage() {
-  last_gc_state = "Recycle Garbage";
-  UPDATE_VISUAL_STATE();
   assert(0 == enable_write_barrier);
   //verify_all_groups();
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
@@ -637,33 +617,8 @@ void recycle_all_garbage() {
   coalesce_all_free_pages();
 }
 
-static 
-void reset_gc_cycle_stats() {
-  //total_allocation_this_cycle = 0;
-  total_gc_time_in_cycle = 0.0;
-  total_write_barrier_time_in_cycle = 0.0;
-  max_increment_in_cycle = 0.0;
-  if (ENABLE_GC_TIMING) {
-    gettimeofday(&start_gc_cycle_time, 0);
-  }
-}
-
-static 
-void summarize_gc_cycle_stats() {
-  double total_cycle_time;
-  
-  if (ENABLE_GC_TIMING) {
-    ELAPSED_MILLISECONDS(start_gc_cycle_time, total_cycle_time);
-    last_cycle_ms = total_cycle_time;
-    last_gc_ms = total_gc_time_in_cycle;
-    last_write_barrier_ms = total_write_barrier_time_in_cycle;
-  }
-  if (VISUAL_MEMORY_ON) RTdraw_visual_gc_stats();
-}
-
 static
 void full_gc() {
-  //reset_gc_cycle_stats();
   flip();
   assert(1 == enable_write_barrier);
   scan_root_set();
@@ -680,9 +635,6 @@ void full_gc() {
   // enable_write_barrier = 1;
 
   gc_count = gc_count + 1;
-  //summarize_gc_cycle_stats();
-  //last_gc_state = "Cycle Complete";
-  //UPDATE_VISUAL_STATE();
 }
 
 void RTfull_gc() {
@@ -717,7 +669,6 @@ void init_realtime_gc() {
   printf((RTatomic_gc ? "***ATOMIC GC***\n" : "***REAL-TIME GC***\n"));
   total_global_roots = 0;
   gc_count = 0;
-  visual_memory_on = 0;
   pthread_mutex_init(&total_threads_lock, NULL);
   pthread_mutex_init(&empty_pages_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);

@@ -52,9 +52,6 @@ int unmarked_color;
 int marked_color;
 int enable_write_barrier;
 
-int visual_memory_on;
-char *last_gc_state;
-
 pthread_key_t thread_index_key;
 
 pthread_mutex_t total_threads_lock;

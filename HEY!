@@ -193,8 +193,6 @@ remove green count and total_object_count
 Also, we should turn adjacent holes into one bigger whole as the last
 step in coalescer.
 
-remove more visual_memory code
-
 make inlines:
 GCPTR interior_to_gcptr_with_group
 GCPTR interior_to_gcptr

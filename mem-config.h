@@ -29,14 +29,7 @@
 #define END_CODE_TIMING(total) ELAPSED_MILLISECONDS(start_time, time); \
     total = total + time; }
 
-#define ENABLE_VISUAL_MEMORY 0
-#define VISUAL_MEMORY_ON (ENABLE_VISUAL_MEMORY && visual_memory_on)
-#define VISUAL_MEMORY_DEFAULT_ON 0
-#define UPDATE_VISUAL_STATE() {if (VISUAL_MEMORY_ON) { \
-                               RTdraw_visual_gc_state(); }}
-#define ENABLE_GC_TIMING 1
 #define DETECT_INVALID_REFS 0
-
 #define USE_BIT_WRITE_BARRIER 1
 
 

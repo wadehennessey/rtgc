@@ -28,7 +28,6 @@ void *RTstaticAllocate(void * metadata, int size) {
 	 index < last_static_page_index; 
 	 index++) {
       pages[index].group = STATIC_PAGE;
-      if (VISUAL_MEMORY_ON) RTupdate_visual_page(index);
     }
     first_static_ptr = new_static_ptr;
   } else {

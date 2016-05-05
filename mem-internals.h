@@ -163,7 +163,6 @@ extern GROUP_INFO *groups;
 extern PAGE_INFO *pages;
 
 extern volatile long gc_count;
-extern int visual_memory_on;
 
 extern SEGMENT *segments;
 extern int total_segments;
@@ -181,7 +180,6 @@ extern int total_requested_allocation;
 extern int total_requested_objects;
 extern int total_allocation_this_cycle;
 
-extern char *last_gc_state;
 extern double last_cycle_ms;
 extern double last_gc_ms;
 extern double last_write_barrier_ms;
