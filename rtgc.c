@@ -718,7 +718,6 @@ void init_realtime_gc() {
   total_global_roots = 0;
   gc_count = 0;
   visual_memory_on = 0;
-  last_gc_state = "<initial state>";
   pthread_mutex_init(&total_threads_lock, NULL);
   pthread_mutex_init(&empty_pages_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);
