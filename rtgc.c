@@ -154,15 +154,11 @@ void scan_memory_segment(BPTR low, BPTR high) {
   // extend past the end of this object
   high = high - sizeof(LPTR) + 1;
   for (BPTR next = low; next < high; next = next + GC_POINTER_ALIGNMENT) {
-    MAYBE_YIELD;
     BPTR ptr = *((BPTR *) next);
     if (IN_PARTITION(ptr)) {
-      //int page_index = PTR_TO_PAGE_INDEX(ptr);
-      //GPTR group = pages[page_index].group;
       PPTR page = pages + PTR_TO_PAGE_INDEX(ptr);
       GPTR group = page->group;
       if (group > EXTERNAL_PAGE) {
-	//GCPTR gcptr = interior_to_gcptr(ptr);
 	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group);
 	if WHITEP(gcptr) {
 	    RTmake_object_gray(gcptr, ptr);
@@ -369,8 +365,6 @@ void scan_global_roots() {
   for (int i = 0; i < total_global_roots; i++) {
     BPTR ptr =  *((BPTR *) *(global_roots + i));
     if (IN_PARTITION(ptr)) {
-      //int page_index = PTR_TO_PAGE_INDEX(ptr);
-      //GPTR group = pages[page_index].group;
       PPTR page = pages + PTR_TO_PAGE_INDEX(ptr);
       GPTR group = page->group;
       if (group > EXTERNAL_PAGE) {
@@ -466,7 +460,6 @@ void scan_gray_set() {
 	current = GET_LINK_POINTER(current->prev);
       }
       while (current != NULL) {
-	MAYBE_YIELD;
 	scan_object_with_group(current,group);
 	scan_count = scan_count + 1;
 	current = GET_LINK_POINTER(current->prev);
@@ -481,7 +474,6 @@ void scan_gray_set() {
       rescan_all_groups = 0;
     }
   } while (rescan_all_groups == 1);
-  MAYBE_YIELD;
 }
 
 static
@@ -502,7 +494,6 @@ void unlock_all_free_locks() {
   
 static
 void flip() {
-  MAYBE_YIELD;
   // Originally at this point all mutator threads are stopped, and none of
   // them is in the middle of an RTallocate. We got this for free by being
   // single threaded and implicity locking by yielding only when we chose to.
@@ -584,7 +575,6 @@ void recycle_group_garbage(GPTR group) {
     last = next;
     next = GET_LINK_POINTER(next->next);
     count = count + 1;
-    MAYBE_YIELD;
   }
 
   if (count != group->white_count) { // no lock needed, white_count is gc only

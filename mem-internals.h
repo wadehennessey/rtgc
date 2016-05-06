@@ -46,7 +46,6 @@ typedef unsigned char * BPTR;
 #define METADATAP(ptr) (((void *) ptr)  > RTpointers)
 
 // This really slows the gc down if sched_yield is done
-#define MAYBE_YIELD // sched_yield()
 
 #define MIN(x,y) ((x < y) ? x : y)
 #define MAX(x,y) ((x > y) ? x : y)

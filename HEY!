@@ -196,7 +196,7 @@ step in coalescer.
 remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
 
 rename infoBits.h
-remove MAYBE_YIELD
+done - remove MAYBE_YIELD
 
 
 // HEY! this is a total hack for wcl - fix this!
