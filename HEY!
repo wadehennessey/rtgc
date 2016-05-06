@@ -193,8 +193,13 @@ remove green count and total_object_count
 Also, we should turn adjacent holes into one bigger whole as the last
 step in coalescer.
 
-make inlines:
-GCPTR interior_to_gcptr_with_group
-GCPTR interior_to_gcptr
+remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
 
+rename infoBits.h
+remove MAYBE_YIELD
+
+
+// HEY! this is a total hack for wcl - fix this!
+static
+void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
 

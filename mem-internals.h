@@ -26,11 +26,6 @@ typedef unsigned char * BPTR;
 #define ROUND_DOWN_TO_PAGE(ptr) ((BPTR) (((long) ptr & ~PAGE_ALIGNMENT_MASK)))
 #define ROUND_UP_TO_PAGE(ptr) (ROUND_DOWN_TO_PAGE(ptr) + BYTES_PER_PAGE)
 
-extern BPTR first_partition_ptr;
-extern BPTR last_partition_ptr;
-extern BPTR first_static_ptr;
-extern BPTR last_static_ptr;
-
 #define MIN_GROUP_INDEX 5	// yields min 32 byte objects on x86_64
 #define MAX_GROUP_INDEX 24	// yields max 16 megabyte objects
 #define MIN_GROUP_SIZE (1 << MIN_GROUP_INDEX)
@@ -66,7 +61,6 @@ typedef struct group_info {
   GCPTR gray;			// only used in rtgc
   GCPTR black;			// only used in rtgc and rtalloc
   GCPTR white;			// only used in rtgc
-
 
   int total_object_count;	// used in rtgc and rtalloc
   int white_count;		// only used in rtgc
@@ -158,6 +152,11 @@ void locked_long_or(unsigned long *x, unsigned long y);
 void locked_long_and(unsigned long *x, unsigned long y);
 void locked_long_inc(volatile unsigned long *x);
 void coalesce_all_free_pages();
+
+extern BPTR first_partition_ptr;
+extern BPTR last_partition_ptr;
+extern BPTR first_static_ptr;
+extern BPTR last_static_ptr;
 
 extern GROUP_INFO *groups;
 extern PAGE_INFO *pages;

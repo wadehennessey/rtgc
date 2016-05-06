@@ -114,17 +114,23 @@ void RTmake_object_gray(GCPTR current, BPTR raw) {
   }
 }
 
-
-// make this inline too
-static GCPTR interior_to_gcptr_with_group(BPTR ptr, GPTR group) {
-  Debugger("write me!");
+static inline GCPTR interior_to_gcptr_3(BPTR ptr, PPTR page, GPTR group) {
+  GCPTR gcptr;
+  if (group > EXTERNAL_PAGE) {
+    if (group->size >= BYTES_PER_PAGE) {
+      gcptr = page->base;
+    } else {
+      // This only works because first_partition_ptr is BYTES_PER_PAGE aligned 
+      gcptr = (GCPTR) ((long) ptr & (-1 << group->index));
+    }
+  } else {
+    printf("ERROR! Found IN_HEAP pointer with NULL group!\n");
+  }
+  return(gcptr);
 }
 
-// GCC can't handle inline functions which call inline functions I think
-// HEY! Make this an inline function for speed
-// and at least pass in the group ptr!
-static GCPTR interior_to_gcptr(BPTR ptr) {
-  PPTR page = &pages[PTR_TO_PAGE_INDEX(ptr)];
+static inline GCPTR interior_to_gcptr(BPTR ptr) {
+  PPTR page = pages + PTR_TO_PAGE_INDEX(ptr);
   GPTR group = page->group;
   GCPTR gcptr;
 
@@ -151,10 +157,13 @@ void scan_memory_segment(BPTR low, BPTR high) {
     MAYBE_YIELD;
     BPTR ptr = *((BPTR *) next);
     if (IN_PARTITION(ptr)) {
-      int page_index = PTR_TO_PAGE_INDEX(ptr);
-      GPTR group = pages[page_index].group;
+      //int page_index = PTR_TO_PAGE_INDEX(ptr);
+      //GPTR group = pages[page_index].group;
+      PPTR page = pages + PTR_TO_PAGE_INDEX(ptr);
+      GPTR group = page->group;
       if (group > EXTERNAL_PAGE) {
-	GCPTR gcptr = interior_to_gcptr(ptr);
+	//GCPTR gcptr = interior_to_gcptr(ptr);
+	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group);
 	if WHITEP(gcptr) {
 	    RTmake_object_gray(gcptr, ptr);
 	}
@@ -165,6 +174,7 @@ void scan_memory_segment(BPTR low, BPTR high) {
 
 extern void *wcl_get_closure_env(void *ptr);
 
+// HEY! this is a total hack for wcl - fix this!
 static
 void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
   BPTR env = wcl_get_closure_env(low + sizeof(long));
@@ -359,10 +369,12 @@ void scan_global_roots() {
   for (int i = 0; i < total_global_roots; i++) {
     BPTR ptr =  *((BPTR *) *(global_roots + i));
     if (IN_PARTITION(ptr)) {
-      int page_index = PTR_TO_PAGE_INDEX(ptr);
-      GPTR group = pages[page_index].group;
+      //int page_index = PTR_TO_PAGE_INDEX(ptr);
+      //GPTR group = pages[page_index].group;
+      PPTR page = pages + PTR_TO_PAGE_INDEX(ptr);
+      GPTR group = page->group;
       if (group > EXTERNAL_PAGE) {
-	GCPTR gcptr = interior_to_gcptr(ptr); 
+	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group); 
 	if WHITEP(gcptr) {
 	    RTmake_object_gray(gcptr, ptr);
 	  }
