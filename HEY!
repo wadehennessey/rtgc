@@ -196,7 +196,9 @@ step in coalescer.
 remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
 
 rename infoBits.h
-done - remove MAYBE_YIELD
+
+put back valid_interor test outside of make_gray
+
 
 
 // HEY! this is a total hack for wcl - fix this!

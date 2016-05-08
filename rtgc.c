@@ -60,58 +60,56 @@ void verify_white_counts() {
   }
 }
 
+static inline int valid_interior_ptr(GCPTR gcptr, BPTR interior_ptr) {
+  long delta = interior_ptr - (BPTR) gcptr;
+  return(delta < (INTERIOR_PTR_RETENTION_LIMIT + sizeof(GC_HEADER)));
+}
+
 static
-void RTmake_object_gray(GCPTR current, BPTR raw) {
+void RTmake_object_gray(GCPTR current) {
   GPTR group = PTR_TO_GROUP(current);
-  BPTR header = (BPTR) current + sizeof(GC_HEADER);
-  long delta = raw - header;
-  
-  if ((delta < INTERIOR_PTR_RETENTION_LIMIT) || 
-      (((long) raw) == -1) || (raw == header)) {
-    GCPTR prev = GET_LINK_POINTER(current->prev);
-    assert(prev != (GCPTR) 0x80);
-    GCPTR next = GET_LINK_POINTER(current->next);
+  GCPTR prev = GET_LINK_POINTER(current->prev);
+  GCPTR next = GET_LINK_POINTER(current->next);
 
-    // Remove current from WHITE space
-    if (current == group->white) {
-      group->white = next;
-    }
-    if (prev != NULL) {
-      SET_LINK_POINTER(prev->next, next);
-    }
-    if (next != NULL) {
-      SET_LINK_POINTER(next->prev, prev);
-    }
-
-    // Link current onto the end of the gray set. This give us a breadth
-    // first search when scanning the gray set (not that it matters)
-    SET_LINK_POINTER(current->prev, NULL);
-    GCPTR gray = group->gray;
-    if (gray == NULL) {
-      pthread_mutex_lock(&(group->black_and_last_lock));
-      SET_LINK_POINTER(current->next, group->black);
-      if (group->black == NULL) {
-	assert(NULL == group->free);
-	group->black = current;
-	group->free_last = current;
-	pthread_mutex_unlock(&(group->black_and_last_lock));
-      } else {
-	pthread_mutex_unlock(&(group->black_and_last_lock));
-	// looks like a race with alloc setting color on 
-	// black->prev. Should use a more specific lock than free.
-	WITH_LOCK(group->free_lock,
-		  SET_LINK_POINTER((group->black)->prev, current););
-      }
-    } else {
-      SET_LINK_POINTER(current->next, gray);
-      SET_LINK_POINTER(gray->prev, current);
-    }
-    assert(WHITEP(current));
-    SET_COLOR(current, GRAY);
-    group->gray = current;
-    assert(group->white_count > 0); // no lock needed, white_count is gc only
-    group->white_count = group->white_count - 1;
+  // Remove current from WHITE space
+  if (current == group->white) {
+    group->white = next;
   }
+  if (prev != NULL) {
+    SET_LINK_POINTER(prev->next, next);
+  }
+  if (next != NULL) {
+    SET_LINK_POINTER(next->prev, prev);
+  }
+
+  // Link current onto the end of the gray set. This give us a breadth
+  // first search when scanning the gray set (not that it matters)
+  SET_LINK_POINTER(current->prev, NULL);
+  GCPTR gray = group->gray;
+  if (gray == NULL) {
+    pthread_mutex_lock(&(group->black_and_last_lock));
+    SET_LINK_POINTER(current->next, group->black);
+    if (group->black == NULL) {
+      assert(NULL == group->free);
+      group->black = current;
+      group->free_last = current;
+      pthread_mutex_unlock(&(group->black_and_last_lock));
+    } else {
+      pthread_mutex_unlock(&(group->black_and_last_lock));
+      // looks like a race with alloc setting color on 
+      // black->prev. Should use a more specific lock than free.
+      WITH_LOCK(group->free_lock,
+		SET_LINK_POINTER((group->black)->prev, current););
+    }
+  } else {
+    SET_LINK_POINTER(current->next, gray);
+    SET_LINK_POINTER(gray->prev, current);
+  }
+  assert(WHITEP(current));
+  SET_COLOR(current, GRAY);
+  group->gray = current;
+  assert(group->white_count > 0); // no lock needed, white_count is gc only
+  group->white_count = group->white_count - 1;
 }
 
 static inline GCPTR interior_to_gcptr_3(BPTR ptr, PPTR page, GPTR group) {
@@ -161,7 +159,7 @@ void scan_memory_segment(BPTR low, BPTR high) {
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group);
 	if WHITEP(gcptr) {
-	    RTmake_object_gray(gcptr, ptr);
+	    RTmake_object_gray(gcptr);
 	}
       }
     }
@@ -177,7 +175,7 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
   //printf("closure env is %p\n", env);
   GCPTR gcptr = interior_to_gcptr(env); 
   if WHITEP(gcptr) {
-      RTmake_object_gray(gcptr, env);
+      RTmake_object_gray(gcptr);
     }
 }
 
@@ -200,7 +198,7 @@ int scan_write_vector() {
 	  GCPTR gcptr = (GCPTR) (base_ptr + (bit * MIN_GROUP_SIZE));
 	  mark_count = mark_count + 1;
 	  if (WHITEP(gcptr)) {
-	    RTmake_object_gray(gcptr, (BPTR) -1);
+	    RTmake_object_gray(gcptr);
 	  }
 	  mask = ~mask;
 	  // Must clear only the bit we just found set.
@@ -234,7 +232,7 @@ int scan_write_vector() {
       RTwrite_vector[index] = 0;
       mark_count = mark_count + 1;
       if (WHITEP(gcptr)) {
-	RTmake_object_gray(gcptr, (BPTR) -1);
+	RTmake_object_gray(gcptr);
       }
     }
   }
@@ -370,7 +368,7 @@ void scan_global_roots() {
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group); 
 	if WHITEP(gcptr) {
-	    RTmake_object_gray(gcptr, ptr);
+	    RTmake_object_gray(gcptr);
 	  }
       }
     }
