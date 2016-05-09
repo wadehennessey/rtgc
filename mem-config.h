@@ -16,7 +16,8 @@
 #define CHECK_SETFINIT 1
 #define GC_POINTER_ALIGNMENT (sizeof(long *))
 #define PAGE_POWER 8	       /* x86_64 page size is normally 4096 */
-#define INTERIOR_PTR_RETENTION_LIMIT 32
+//#define INTERIOR_PTR_RETENTION_LIMIT 32
+#define INTERIOR_PTR_RETENTION_LIMIT 512
 
 #define FLIP_SIGNAL SIGUSR1
 

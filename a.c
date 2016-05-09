@@ -201,8 +201,6 @@ void *start_word_count(void *arg) {
   exit(1);
 }
 
-void copy_test();
-
 int main(int argc, char *argv[]) {
   struct timespec res, start_time, end_time;
   if (0 == clock_getres(CLOCK_REALTIME, &res)) {

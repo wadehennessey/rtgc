@@ -31,12 +31,10 @@ typedef GC_HEADER * GCPTR;
 #define GET_STORAGE_CLASS(p) (GET_LINK_INFO(p->next, GC_STORAGE_INFO_MASK))
 #define SET_STORAGE_CLASS(p,RTclass) (SET_LINK_INFO(p->next,GC_STORAGE_INFO_MASK, RTclass))
 
-#define GET_INSTANCE_STORAGE_CLASS(o) (GET_LINK_INFO(((GCPTR) ((char *) (o) - sizeof(GC_HEADER))), GC_STORAGE_INFO_MASK))
-#define SET_INSTANCE_STORAGE_CLASS(o,RTclass) (SET_LINK_INFO(((GCPTR) ((char *) (o) - sizeof(GC_HEADER))), GC_STORAGE_INFO_MASK, RTclass))
-
 #define GET_COLOR(p) (GET_LINK_INFO(p->prev,GC_COLOR_INFO_MASK))
 #define SET_COLOR(p,color) (SET_LINK_INFO(p->prev,GC_COLOR_INFO_MASK,color))
 
+// use enums for these instead?
 #define SC_NOPOINTERS     0
 #define SC_POINTERS       1
 #define SC_METADATA       2
@@ -50,3 +48,24 @@ typedef GC_HEADER * GCPTR;
 #define BLACKP(p) (GET_COLOR(p) == marked_color)
 #define GRAYP(p)  (GET_COLOR(p) == GRAY)
 #define GREENP(p) (GET_COLOR(p) == GREEN)
+
+
+// play around with how we might use inline funcs instead of messy
+// #defines for some things
+
+inline int validp(GCPTR gcptr) {
+  return(gcptr == (GCPTR) 0xDEADBEEF);
+}
+
+// putting this in a .c file:
+// extern validp(GCPTR gcptr);
+// will cause a function called validp to be created in that file
+
+inline void set_link_info(GCPTR l, int mask, int bits) {
+  l = (GCPTR) (((long) l & ~(mask)) | bits);
+}
+
+inline void set_instance_storage_class(char *o, int RTclass) {
+  set_link_info(((GCPTR) ((char *) (o) - sizeof(GC_HEADER))), 
+		GC_STORAGE_INFO_MASK, RTclass);
+}

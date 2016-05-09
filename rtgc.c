@@ -158,8 +158,8 @@ void scan_memory_segment(BPTR low, BPTR high) {
       GPTR group = page->group;
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group);
-	if WHITEP(gcptr) {
-	    RTmake_object_gray(gcptr);
+	if (WHITEP(gcptr) && valid_interior_ptr(gcptr, ptr)) {
+	  RTmake_object_gray(gcptr);
 	}
       }
     }
@@ -174,9 +174,9 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
   BPTR env = wcl_get_closure_env(low + sizeof(long));
   //printf("closure env is %p\n", env);
   GCPTR gcptr = interior_to_gcptr(env); 
-  if WHITEP(gcptr) {
-      RTmake_object_gray(gcptr);
-    }
+  if (WHITEP(gcptr)) {
+    RTmake_object_gray(gcptr);
+  }
 }
 
 // Public version
@@ -256,9 +256,9 @@ void *RTwrite_barrier(void *lhs_address, void *rhs) {
     BPTR object = *((BPTR *) lhs_address);
     if (IN_HEAP(object)) {
       GCPTR gcptr = interior_to_gcptr(object); 
-      if WHITEP(gcptr) {
-	  mark_write_vector(gcptr);
-	}
+      if (WHITEP(gcptr) && valid_interior_ptr(gcptr, object)) {
+	mark_write_vector(gcptr);
+      }
     }
   }
   return((void *) (*(LPTR)lhs_address = (long) rhs));
@@ -303,9 +303,9 @@ void memory_segment_write_barrier(BPTR low, BPTR high) {
       BPTR object = *((BPTR *) next);
       if (IN_HEAP(object)) {
 	GCPTR gcptr = interior_to_gcptr(object); 
-	if WHITEP(gcptr) {
-	    mark_write_vector(gcptr);
-	  }
+	if (WHITEP(gcptr) && valid_interior_ptr(gcptr, object)) {
+	  mark_write_vector(gcptr);
+	}
       }
     }
   }
@@ -367,9 +367,9 @@ void scan_global_roots() {
       GPTR group = page->group;
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group); 
-	if WHITEP(gcptr) {
-	    RTmake_object_gray(gcptr);
-	  }
+	if (WHITEP(gcptr) && valid_interior_ptr(gcptr, ptr)) {
+	  RTmake_object_gray(gcptr);
+	}
       }
     }
   }
