@@ -415,6 +415,7 @@ void scan_root_set() {
   }
 }
 
+
 void scan_object(GCPTR ptr, int total_size) {
   BPTR bptr, low, high;
 
@@ -515,7 +516,15 @@ void flip() {
       group->free_last = NULL;
     }
 
-    group->white = group->black;
+    // used to handle this with:
+    // group->white = (GREENP(black) ? NULL : black)
+    if (group->black == group->free) {
+      // Must have no retained objects, we have nothing
+      // availble to retain this cycle
+      group->white = 0;
+    } else {
+      group->white = group->black;
+    }
     group->black = group->free;
     group->gray = NULL;
 
@@ -589,11 +598,12 @@ void recycle_group_garbage(GPTR group) {
       group->free = group->white;
     }
 
-    /*
+    // HEY! this was commented out
     if (group->black == NULL) {
+      printf("recycle black is null\n");
       group->black = group->white;
     }
-    */
+    
     
     if (group->free_last != NULL) {
       SET_LINK_POINTER((group->free_last)->next, group->white);
@@ -614,7 +624,7 @@ void recycle_all_garbage() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     recycle_group_garbage(&groups[i]);
   }
-  coalesce_all_free_pages();
+  //coalesce_all_free_pages();
 }
 
 static
