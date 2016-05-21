@@ -15,7 +15,7 @@
 #include <signal.h>
 #include <semaphore.h>
 #include "mem-config.h"
-#include "infoBits.h"
+#include "info-bits.h"
 #include "mem-internals.h"
 #include "allocate.h"
 

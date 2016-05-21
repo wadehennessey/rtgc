@@ -13,7 +13,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include "mem-config.h"
-#include "infoBits.h"
+#include "info-bits.h"
 #include "mem-internals.h"
 #include "allocate.h"
 
