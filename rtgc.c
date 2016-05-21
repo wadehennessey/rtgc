@@ -624,7 +624,7 @@ void recycle_all_garbage() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     recycle_group_garbage(&groups[i]);
   }
-  //coalesce_all_free_pages();
+  coalesce_all_free_pages();
 }
 
 static

@@ -104,7 +104,6 @@ static void remove_object_from_free_list(GPTR group, GCPTR object) {
     group->free = next;	       // must be locked
   }
 
-  assert(object != group->black);
   if (object == group->black) {
     group->black = next;       // safe to not lock
   }
@@ -152,9 +151,10 @@ static void identify_single_free_page(int page, GPTR group) {
 	remove_object_from_free_list(group, next);
 	next = (GCPTR) ((BPTR) next + group->size);
       }
-      // HEY! conditionalize this clear page - just here to catch bugs
-      //memset(PAGE_INDEX_TO_PTR(page), 0, BYTES_PER_PAGE);
+      pages[page].group = 0;
       pages[page].group = FREE_PAGE;
+      // HEY! conditionalize this clear page - just here to catch bugs
+      //memset(PAGE_INDEX_TO_PTR(page), 0xEF, BYTES_PER_PAGE);
     }
     pthread_mutex_unlock(&(group->free_lock));
   }
