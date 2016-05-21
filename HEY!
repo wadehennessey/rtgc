@@ -196,13 +196,12 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
 
 fix:remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
 
-fix: remove #define IN_GLOBALS - not used
 fix: don't RTbig_alloc when we run out of memory. < 2 isn't working now.
 fix: don't dup lock/unlock_all_locks. Make it non static in rtutil.
+fix: rename atomic_booleans to atomic-booleans
 remove the rt prefix from file names
 
 rename example:
-
 cp rtgc.c gc.c
 git add gc.c
 fix Makefile

@@ -14,7 +14,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <pthread.h>
-#include "infoBits.h"
+#include "info-bits.h"
 #include "mem-config.h"
 #include "mem-internals.h"
 #include "allocate.h"
