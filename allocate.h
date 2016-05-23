@@ -45,7 +45,7 @@ int RTtrueSize(void *ptr);
 
 //LPTR RTinitializeObject(void *metadata, void *base, int total_size, int real);
 
-void RTinit_heap(size_t first_segment_bytes, int static_size);
+void RTinit_heap(size_t first_segment_bytes, size_t static_size);
 
 int new_thread(void *(*start_func) (void *), void *args);
 

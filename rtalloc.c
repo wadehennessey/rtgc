@@ -211,7 +211,9 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	  // gc_count is declared volatile
 	  sched_yield();
 	}
-	assert(NULL != group->free);
+	if (NULL == group->free) {
+	  out_of_memory("Heap", group->size);
+	}
       }
       pthread_mutex_lock(&(group->free_lock));
     }
@@ -439,7 +441,7 @@ void register_global_root(void *root) {
   pthread_mutex_unlock(&global_roots_lock);
 }
 
-void RTinit_heap(size_t first_segment_bytes, int static_size) {
+void RTinit_heap(size_t first_segment_bytes, size_t static_size) {
   enable_write_barrier = 0;
 
   total_partition_pages = first_segment_bytes / BYTES_PER_PAGE;

@@ -134,7 +134,7 @@ int stop_all_mutators_and_save_state();
 
 
 //int RTallocationTrueSize(void * metadata, int size);
-void RTinit_heap(size_t default_heap_bytes, int static_size);
+void RTinit_heap(size_t default_heap_bytes, size_t static_size);
 void init_realtime_gc(void);
 void Debugger(char *msg);
 void * RTbig_malloc(size_t size);

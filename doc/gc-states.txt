@@ -2,7 +2,7 @@
 #    Gray 	   Black     	 Free	      Free_last	    White   Label
 ----------------------------------------------------------------------------------
 0    0	           0             0            0             0	    Start
-1    0	           0             0            0             H       Only white
+1    0	           0             0            0             H       Start
 2    0	           0             0            H             0	    Invalid
 3    0	           0             0            H             H	    Invalid
 4    0	           0             H            0             0	    Invalid
@@ -16,7 +16,7 @@
 12   0             H             H            0             0	    Invalid
 13   0             H             H            0             H	    Invalid
 14   0             H             H            H             0	    Only blk/free
-15   0             H             H            H             H 	    Green, white
+15   0             H             H            H             H 	    Done
 16   H	           0             0            0             0	    Invalid
 17   H	           0             0            0             H	    Invalid
 18   H             0             0            H             0	    Invalid
@@ -26,10 +26,10 @@
 22   H	           0             H            H             0	    Invalid
 23   H	           0             H            H             H	    Invalid
 24   H             H             0            0             0	    Invalid
-25   H             H             0            0             H	    Done, free
-26   H             H             0            H             0	    Done, no green
-27   H             H             0            H             H	    Done, free
+25   H             H             0            0             H	    Invalid
+26   H             H             0            H             0	    Done
+27   H             H             0            H             H	    Done
 28   H             H             H            0             0	    Invalid
 29   H             H             H            0             H	    Invalid
-30   H             H             H            H             0	    Done, no green
-31   H             H             H            H             H	    Done
+30   H             H             H            H             0	    Done
+31   H             H             H            H             H	    Tracing
