@@ -1,0 +1,13 @@
+#!/bin/bash
+dia --version
+dia --export=state-0.png state-0.dia
+dia --export=state-10.png state-10.dia
+dia --export=state-11.png state-11.dia
+dia --export=state-14.png state-14.dia
+dia --export=state-15.png state-15.dia
+dia --export=state-1.png state-1.dia
+dia --export=state-26.png state-26.dia
+dia --export=state-27.png state-27.dia
+dia --export=state-30.png state-30.dia
+dia --export=state-31.png state-31.dia
+
