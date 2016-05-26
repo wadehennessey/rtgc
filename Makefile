@@ -1,6 +1,6 @@
 # (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
-a:	a.c
+a:	a.c lib
 	gcc -o a -Og -g a.c -L/home/wade/rtgc -lrtgc -lpthread -lc -lm -ldl
 
 opt-a:	a.c
