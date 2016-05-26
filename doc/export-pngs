@@ -10,4 +10,6 @@ dia --export=state-26.png state-26.dia
 dia --export=state-27.png state-27.dia
 dia --export=state-30.png state-30.dia
 dia --export=state-31.png state-31.dia
+dia --export=transitions.png transitions.dia
+
 
