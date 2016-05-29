@@ -145,6 +145,13 @@ static inline GCPTR interior_to_gcptr(BPTR ptr) {
   return(gcptr);
 }
 
+void RTtrace_pointer(void *ptr) {
+  GCPTR gcptr = interior_to_gcptr(ptr);
+  if (WHITEP(gcptr)) {
+    RTmake_object_gray(gcptr);
+  }
+}
+
 // Scan memory looking for *possible* pointers
 static
 void scan_memory_segment(BPTR low, BPTR high) {
@@ -396,11 +403,22 @@ void scan_static_space() {
 static int total_root_scanners = 0;
 static void (*root_scanners[10])();
 
+static int total_custom_scanners = 0;
+static void (*custom_scanners[5])(void *low, void *high);
+
 void RTregister_root_scanner(void (*root_scanner)()) {
   root_scanners[0] = root_scanner;
   total_root_scanners = total_root_scanners + 1;
 }
 
+int RTregister_custom_scanner(void (*custom_scanner)(void *low, void *high)) {
+  custom_scanners[0] = custom_scanner;
+  total_custom_scanners = total_custom_scanners + 1;
+  return(SC_CUSTOM1);
+}
+
+// HEY! Generalize this to allow more than 1 no_write_barrier state
+// to be registered.
 void RTregister_no_write_barrier_state(void *start, int len) {
   RTno_write_barrier_state_ptr = start;
 }
@@ -429,6 +447,9 @@ void scan_object(GCPTR ptr, int total_size) {
     break;
   case SC_METADATA:
     scan_memory_segment_with_metadata(low, high, 0);
+    break;
+  case SC_CUSTOM1:
+    (*custom_scanners[0])(low, high);
     break;
   default: Debugger(0);
   }

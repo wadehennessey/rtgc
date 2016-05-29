@@ -1,6 +1,6 @@
 // (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
-/* Interface to the memory manager */
+// Interface to rtgc
 
 // Requires more than just this header to work
 //#define RTnopointers ((void *) SC_NOPOINTERS)
@@ -8,6 +8,8 @@
 
 #define RTnopointers ((void *) 0)
 #define RTpointers   ((void *) 1)
+#define RTmetadata   ((void *) 2)
+#define RTcustom1    ((void *) 3)
 
 #define RTbeerBash(lhs, rhs) ((lhs) = (rhs))
 #define setf_init(lhs, rhs) ((lhs) = (rhs))
@@ -51,14 +53,16 @@ int new_thread(void *(*start_func) (void *), void *args);
 
 int rtgc_count(void);
 
+void RTfull_gc();
+
 void RTregister_root_scanner(void (*root_scanner)());
+
+int RTregister_custom_scanner(void (*custom_scanner)(void *low, void *high));
 
 void RTregister_no_write_barrier_state(void *start, int len);
 
-void RTfull_gc();
+void RTtrace_pointer(void *ptr);
 
 extern volatile int RTatomic_gc;
-
 extern int RTpage_power;
-
 extern int RTpage_size;

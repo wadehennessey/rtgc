@@ -38,6 +38,7 @@ typedef GC_HEADER * GCPTR;
 #define SC_NOPOINTERS     0
 #define SC_POINTERS       1
 #define SC_METADATA       2
+#define SC_CUSTOM1        3
 
 #define GENERATION0       0
 #define GENERATION1       1
@@ -49,6 +50,7 @@ typedef GC_HEADER * GCPTR;
 #define GRAYP(p)  (GET_COLOR(p) == GRAY)
 #define GREENP(p) (GET_COLOR(p) == GREEN)
 
+/*
 
 // play around with how we might use inline funcs instead of messy
 // #defines for some things
@@ -69,3 +71,4 @@ inline void set_instance_storage_class(char *o, int RTclass) {
   set_link_info(((GCPTR) ((char *) (o) - sizeof(GC_HEADER))), 
 		GC_STORAGE_INFO_MASK, RTclass);
 }
+*/

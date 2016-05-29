@@ -319,11 +319,13 @@ void initialize_object_metadata(void *metadata, GCPTR gcptr, GPTR group) {
     break;
   case (long) RTpointers:
     SET_STORAGE_CLASS(gcptr,SC_POINTERS);
-    break;    
+    break;
+  case (long) RTcustom1:
+    SET_STORAGE_CLASS(gcptr,SC_CUSTOM1);
   default:
     SET_STORAGE_CLASS(gcptr,SC_METADATA);
-      //LPTR last_ptr = base + (group->size / sizeof(LPTR)) - 1;
-      //*last_ptr = (long) metadata;
+    //LPTR last_ptr = base + (group->size / sizeof(LPTR)) - 1;
+    //*last_ptr = (long) metadata;
     break;
   }
 }
