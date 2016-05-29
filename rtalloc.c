@@ -322,6 +322,7 @@ void initialize_object_metadata(void *metadata, GCPTR gcptr, GPTR group) {
     break;
   case (long) RTcustom1:
     SET_STORAGE_CLASS(gcptr,SC_CUSTOM1);
+    break;    
   default:
     SET_STORAGE_CLASS(gcptr,SC_METADATA);
     //LPTR last_ptr = base + (group->size / sizeof(LPTR)) - 1;
@@ -353,7 +354,7 @@ void *RTallocate(void *metadata, int size) {
   // when the marked_color is being changed.
   SET_COLOR(new,marked_color);	// Must allocate black!
   long mdptr;
-  if (((long) metadata) <= SC_POINTERS) {
+  if ((((long) metadata) <= SC_POINTERS) || (((long) metadata) == SC_CUSTOM1)) {
     SET_STORAGE_CLASS(new, (long) metadata); 
     mdptr = 0;
   } else {

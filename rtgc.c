@@ -173,17 +173,9 @@ void scan_memory_segment(BPTR low, BPTR high) {
   }
 }
 
-extern void *wcl_get_closure_env(void *ptr);
-
-// HEY! this is a total hack for wcl - fix this!
 static
 void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
-  BPTR env = wcl_get_closure_env(low + sizeof(long));
-  //printf("closure env is %p\n", env);
-  GCPTR gcptr = interior_to_gcptr(env); 
-  if (WHITEP(gcptr)) {
-    RTmake_object_gray(gcptr);
-  }
+  Debugger("HEY! write me!\n");
 }
 
 // Public version
