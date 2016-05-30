@@ -63,6 +63,8 @@ void RTregister_no_write_barrier_state(void *start, int len);
 
 void RTtrace_pointer(void *ptr);
 
+void RTtrace_heap_pointer(void *ptr);
+
 extern volatile int RTatomic_gc;
 extern int RTpage_power;
 extern int RTpage_size;

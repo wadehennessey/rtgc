@@ -146,6 +146,21 @@ static inline GCPTR interior_to_gcptr(BPTR ptr) {
 }
 
 void RTtrace_pointer(void *ptr) {
+  if (IN_PARTITION(ptr)) {
+    PPTR page = pages + PTR_TO_PAGE_INDEX(ptr);
+    GPTR group = page->group;
+    if (group > EXTERNAL_PAGE) {
+      GCPTR gcptr = interior_to_gcptr_3(ptr, page, group);
+      if (WHITEP(gcptr) && valid_interior_ptr(gcptr, ptr)) {
+	RTmake_object_gray(gcptr);
+      }
+    }
+  }
+}
+
+// Slightly shorter trace that skips partition check for ptrs known
+// to point into the heap
+void RTtrace_heap_pointer(void *ptr) {
   GCPTR gcptr = interior_to_gcptr(ptr);
   if (WHITEP(gcptr)) {
     RTmake_object_gray(gcptr);
