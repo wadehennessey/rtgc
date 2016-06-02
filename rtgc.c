@@ -167,7 +167,7 @@ void RTtrace_heap_pointer(void *ptr) {
   }
 }
 
-// Scan memory looking for *possible* pointers
+// Scan memory to trace *possible* pointers
 static
 void scan_memory_segment(BPTR low, BPTR high) {
   // if GC_POINTER_ALIGNMENT is < 4, avoid scanning potential pointers that
@@ -217,7 +217,7 @@ int scan_write_vector() {
 	  mask = ~mask;
 	  // Must clear only the bit we just found set.
 	  // Clearing entire long at end of bit scan
-	  // creates a race condition with the mark_RTwrite_vector.
+	  // creates a race condition with mark_write_vector.
 	  locked_long_and(RTwrite_vector + index, mask);
 	}
       }

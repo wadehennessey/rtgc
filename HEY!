@@ -183,7 +183,6 @@ remove black_count_lock with count_lock for conditional debugging
 
 change group->free_last to just group->last?
 
-add .gdbinit to rtgc as link to ~/.gdbinit, commit it
 
 remove green count and total_object_count
 --------------
@@ -195,11 +194,45 @@ static
 void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
 
 fix:remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
-
-fix: don't RTbig_alloc when we run out of memory. < 2 isn't working now.
 fix: don't dup lock/unlock_all_locks. Make it non static in rtutil.
-fix: rename atomic_booleans to atomic-booleans
-remove the rt prefix from file names
+fix: add .gdbinit to rtgc, make ~/.gdbinit a link to rtgc version
+
+introduce "flip stack copy helper threads with almost no stack themselves"
+comment copy on write as another stack copy speed up - need to sync scan/copy
+
+write "RTroom" - synch with start of flip after all alloc locks are held.
+               no alloc possible, gc just finished
+
+	       need:
+	       room_mutex	
+	       volatile int pause_to_run_room = 0
+	       volatile int running_room = 0;
+
+	       
+	       mutator room:
+		lock room_mutex()
+		pause_to_run_room = 1;
+	       	while (1 == running_room) sched_yield;
+		pause_to_run_room = 0;
+		unlock room_mutext()
+
+	       gc flip in after locks held:
+	       call maybe_run_room:
+
+	       maybe_run_room:
+	       if (pause_to_run_room var = 1)
+	         running_room = 1
+		 <execute room>
+		 runing_room = 0;
+	       }
+                
+
+
+
+       
+list all holes by hole size/total
+commited free by object size/total
+show in use by object size/total
 
 rename example:
 cp rtgc.c gc.c
