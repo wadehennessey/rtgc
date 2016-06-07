@@ -33,23 +33,10 @@ man page:
        Mutexes and condition variables are thus not suitable  for  releasing  a
        waiting thread by signaling from code running in a signal handler.
 
-New method using sig_atomic_t flags. 
-3 step "handshake" interaction:
-
-1. handler_done = 0. mutators_may_proceed = 0. 
-   Stop every mutator, mutators copy stack, set handler_done - 1;
-
-2. then busy wait until gc thread sets mutators_may_proceed to 1.
-
-3. Then each mutator acknowledges mutators_may proceed == 1 by exiting busy wait
-   and setting handler_done = -1 (meaning handlers is exiting). Gc thread uses 
-   handler_done == -1 loop to wait for all acknowledgements before starting 
-   a new gc cycle. This avoids being deadlocked in step 2, and each new gc cycle
-   starts only after all mutators acknowledge signal handler is going to exit.
-
+New method uses sig_atomic_t flags and locked increment instructions.
 */
 
-// integers safe to read and set in signal handler
+// Integers safe to read and set in signal handler
 // Should we use this instead? static volatile sig_atomic_t
 // volatile is ESSENTIAL, or -O2 optimizaions break things
 static volatile long entered_handler_count = 0;
@@ -133,11 +120,6 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
     threads[thread_index].saved_stack_size = live_stack_size;
 
     locked_long_inc(&copied_stack_count);
-    /*    
-    while (0 == mutators_may_proceed) {
-      sched_yield();
-    }
-    */
 
     gettimeofday(&end_tv, 0);
     timersub(&end_tv, &start_tv, &pause_tv);
@@ -147,9 +129,6 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
     if timercmp(&pause_tv, &(threads[thread_index].max_pause_tv), >) {
     	threads[thread_index].max_pause_tv = pause_tv;
       }
-
-    // indicate mutator is proceeding
-    //printf("Resuming after signal\n");
   }
 }
 
@@ -208,13 +187,6 @@ int stop_all_mutators_and_save_state() {
   // what looked like an unsafe place. It always worked though..
   enable_write_barrier = 1;
   SWAP(marked_color,unmarked_color);
-  /*
-  int tmp = unmarked_color;
-  unmarked_color = marked_color;
-  enable_write_barrier = 1;
-  marked_color = tmp;
-  */
-  
   unlock_all_free_locks();
 
   // Busy wait to start gc cycle until all thread stacks are copied
@@ -223,7 +195,7 @@ int stop_all_mutators_and_save_state() {
   }
   // all stacks and registers should be copied at this point
   assert(total_threads_to_halt == copied_stack_count);
+  // Allow creation of new threads now
   pthread_mutex_unlock(&total_threads_lock);
-  //usleep(100000);
 }
 

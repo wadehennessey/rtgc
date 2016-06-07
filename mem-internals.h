@@ -132,7 +132,7 @@ void rtgc_loop();
 void init_signals_for_rtgc();
 int stop_all_mutators_and_save_state();
 
-
+void RTroom();
 //int RTallocationTrueSize(void * metadata, int size);
 void RTinit_heap(size_t default_heap_bytes, size_t static_size);
 void init_realtime_gc(void);

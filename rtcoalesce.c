@@ -210,10 +210,102 @@ void identify_free_pages() {
   }
 }
 
+void RTroom_print(long *green_count, long *alloc_count, long *hole_counts) {
+  long total_empty_pages = 0;
+  printf("----------------------------------------------------------------\n");
+  for (long i = 0; i < (total_partition_pages + 1); i++) {
+    if (hole_counts[i] > 0) {
+      printf("Hole size = %d: %d\n", i, hole_counts[i]);
+    }
+    total_empty_pages = total_empty_pages + (hole_counts[i] * i);
+  }
+  printf("Total hole bytes = %d\n", total_empty_pages * BYTES_PER_PAGE);
+  long total_committed_bytes = 0;
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i = i + 1) {
+    if ((green_count[i] > 0) || (alloc_count[i] > 0)) {
+      long total_group_bytes = 	((alloc_count[i] +  green_count[i]) * 
+				 groups[i].size);
+      printf("Group size = %d: allocated: %d, free: %d, total_bytes = %d\n",
+	     groups[i].size, 
+	     alloc_count[i], 
+	     green_count[i],
+	     total_group_bytes);
+      total_committed_bytes = total_committed_bytes + total_group_bytes;
+    }
+  }
+  printf("Total committed bytes = %d\n", total_committed_bytes);
+  printf("Total hole + committed bytes = %d\n", 
+	 (total_empty_pages * BYTES_PER_PAGE) + total_committed_bytes);
+  printf("----------------------------------------------------------------\n");
+}
+
+void RTroom() {
+  long green_count[MAX_GROUP_INDEX + 1];
+  long alloc_count[MAX_GROUP_INDEX + 1];
+  long hole_counts_len = (total_partition_pages + 1) * sizeof(long);
+  // HEY! should malloc this
+  long hole_counts[hole_counts_len];
+  memset(green_count, 0, sizeof(green_count));
+  memset(alloc_count, 0, sizeof(alloc_count));
+  memset(hole_counts, 0, hole_counts_len);
+  int page = 0;
+  int hole_len = 0;
+  lock_all_free_locks();
+  while (page < total_partition_pages) {
+    GPTR group = pages[page].group;
+    if (group > EXTERNAL_PAGE) {
+      if (hole_len > 0) {
+	hole_counts[hole_len] = hole_counts[hole_len] + 1;
+	hole_len = 0;
+      }
+      GCPTR next = (GCPTR) PAGE_INDEX_TO_PTR(page);
+      if (group->size <= BYTES_PER_PAGE) {
+	int object_count = BYTES_PER_PAGE / group->size;
+	int green = 0;
+	int alloc = 0;
+	for (int i = 0; i < object_count; i++) {
+	  if (GREENP(next)) {
+	    green = green + 1;
+	  } else {
+	    alloc = alloc + 1;
+	  }
+	  next = (GCPTR) ((BPTR) next + group->size);
+	}
+	green_count[group->index] = green_count[group->index] + green;
+	alloc_count[group->index] = alloc_count[group->index] + alloc;
+	page = page + 1;
+      } else {
+	if (GREENP(next)) {
+	  printf("HEY! shouldn't see green multi page objects after coalesce!\n");
+	  green_count[group->index] = green_count[group->index] + 1;
+	} else {
+	  alloc_count[group->index] = green_count[group->index] + 1;
+	}
+	page = page + (group->size / BYTES_PER_PAGE);
+      }
+    } else {
+      if (group != EMPTY_PAGE) {
+	Debugger("Should have found an EMPTY_PAGE!\n");
+      }
+      hole_len = hole_len + 1;
+      page = page + 1;
+    }
+  }
+  if (hole_len > 0) {
+    hole_counts[hole_len] = hole_counts[hole_len] + 1;
+  }
+  unlock_all_free_locks();
+  RTroom_print(green_count, alloc_count, hole_counts);
+}
+
+
 void coalesce_all_free_pages() {
   identify_free_pages();
   coalesce_free_pages();
   //  verify_heap();
+  if ((gc_count % 1000) == 0) {
+    RTroom();
+  }
 }
 
 

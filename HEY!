@@ -196,6 +196,7 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
 fix:remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
 fix: don't dup lock/unlock_all_locks. Make it non static in rtutil.
 fix: add .gdbinit to rtgc, make ~/.gdbinit a link to rtgc version
+fix: add .wclinit to wcl, make ~/.wclinit a link
 
 introduce "flip stack copy helper threads with almost no stack themselves"
 comment copy on write as another stack copy speed up - need to sync scan/copy
@@ -239,3 +240,8 @@ cp rtgc.c gc.c
 git add gc.c
 fix Makefile
 git rm rtgc.c
+
+watch *primary-function-info* - rehash grows to largest object
+
+grows by 25 objects each compile cycle
+
