@@ -234,8 +234,9 @@ void RTroom_print(long *green_count, long *alloc_count, long *hole_counts) {
     }
   }
   printf("Total committed bytes = %d\n", total_committed_bytes);
-  printf("Total hole + committed bytes = %d\n", 
-	 (total_empty_pages * BYTES_PER_PAGE) + total_committed_bytes);
+  printf("Total hole + committed bytes = %d (max %d)\n", 
+	 (total_empty_pages * BYTES_PER_PAGE) + total_committed_bytes,
+	 total_partition_pages * BYTES_PER_PAGE);
   printf("----------------------------------------------------------------\n");
 }
 
@@ -279,7 +280,7 @@ void RTroom() {
 	  printf("HEY! shouldn't see green multi page objects after coalesce!\n");
 	  green_count[group->index] = green_count[group->index] + 1;
 	} else {
-	  alloc_count[group->index] = green_count[group->index] + 1;
+	  alloc_count[group->index] = alloc_count[group->index] + 1;
 	}
 	page = page + (group->size / BYTES_PER_PAGE);
       }
