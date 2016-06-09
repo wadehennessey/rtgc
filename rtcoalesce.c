@@ -304,9 +304,9 @@ void coalesce_all_free_pages() {
   identify_free_pages();
   coalesce_free_pages();
   //  verify_heap();
-  if ((gc_count % 1000) == 0) {
-    RTroom();
-  }
+  //  if ((gc_count % 1000) == 0) {
+  //     RTroom();
+  //  }
 }
 
 
