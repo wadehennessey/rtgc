@@ -3,8 +3,7 @@
 #define EMPTY_PAGE     ((GPTR) 0)
 #define FREE_PAGE      ((GPTR) 1)
 #define SYSTEM_PAGE    ((GPTR) 2)
-#define STATIC_PAGE    ((GPTR) 3)
-#define EXTERNAL_PAGE  ((GPTR) 4)
+#define EXTERNAL_PAGE  ((GPTR) 3)
 
 #define HEAP_SEGMENT 0
 #define STATIC_SEGMENT 1
@@ -155,6 +154,7 @@ extern BPTR first_partition_ptr;
 extern BPTR last_partition_ptr;
 extern BPTR first_static_ptr;
 extern BPTR last_static_ptr;
+extern BPTR static_frontier_ptr;
 
 extern GROUP_INFO *groups;
 extern PAGE_INFO *pages;
@@ -186,6 +186,8 @@ extern int total_global_roots;
 extern pthread_mutex_t total_threads_lock;
 extern pthread_mutex_t empty_pages_lock;
 extern pthread_mutex_t global_roots_lock;
+extern pthread_mutex_t static_frontier_ptr_lock;
+
 extern sem_t gc_semaphore;
 extern volatile int run_gc;
 //extern int atomic_gc;

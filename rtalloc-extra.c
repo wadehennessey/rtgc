@@ -4,43 +4,45 @@
 // moved here for now to reduce clutter since we aren't
 // usinig this stuff now
 
-void *RTstaticAllocate(void * metadata, int size) {
-  int real_size, data_size;
-  LPTR base;
-  GPTR group;
-  BPTR new_static_ptr;
+int RTtotalFreeHeapSpace() {
+  int free = 0;
+  int index;
 
-  // We don't care about the group, just the GCHDR compatible real size
-  group = allocationGroup(metadata, size, &data_size, &real_size, &metadata);
-  data_size = ROUND_UPTO_LONG_ALIGNMENT(data_size);
-  real_size = ROUND_UPTO_LONG_ALIGNMENT(real_size);
+  pthread_mutex_lock(&empty_pages_lock);
+  HOLE_PTR next = empty_pages;
+  while (next != NULL) {
+    free = free + (next->page_count * BYTES_PER_PAGE);
+    next = next->next;
+  }
+  for (index = MIN_GROUP_INDEX; index <= MAX_GROUP_INDEX; index = index + 1) {
+    int group_free = groups[index].green_count * groups[index].size;
+    free = free + group_free;
+  }
+  pthread_mutex_unlock(&empty_pages_lock);
+  return(free);
+}
 
-  // Static object headers are only 1 word long instead of 2 
-  // HEY! add 8 byte alignment???
-  new_static_ptr = first_static_ptr - (real_size - sizeof(GCPTR));
-  
-  if (new_static_ptr >= segments[0].first_segment_ptr) {
-    int first_static_page_index = PTR_TO_PAGE_INDEX(new_static_ptr);
-    int last_static_page_index = PTR_TO_PAGE_INDEX(first_static_ptr);
-    int index;
+int RTlargestFreeHeapBlock() {
+  int largest = 0;
 
-    for (index = first_static_page_index; 
-	 index < last_static_page_index; 
-	 index++) {
-      pages[index].group = STATIC_PAGE;
-    }
-    first_static_ptr = new_static_ptr;
-  } else {
-    // HEY! allow more than 1 static segment? for now
-    // just dynamically allocate after booting
-    return(RTallocate(metadata, size));
+  pthread_mutex_lock(&empty_pages_lock);
+  HOLE_PTR next = empty_pages;
+  while (next != NULL) {
+    largest = MAX(largest, next->page_count * BYTES_PER_PAGE);
+    next = next->next;
   }
 
-  base = (LPTR) first_static_ptr;
-  *base = (data_size << LINK_INFO_BITS);
-  base = (LPTR) (((BPTR) base) - sizeof(GCPTR)); // make base GCHDR compat
-  base = RTInitializeObject(metadata, base, real_size, real_size);
-  return(base);
+  int index = MAX_GROUP_INDEX;
+  while (index >= MIN_GROUP_INDEX) {
+    if (groups[index].free != NULL) {
+      largest = MAX(largest, groups[index].size);
+      index = 0;
+    } else {
+      index = index - 1;
+    }
+  }
+  pthread_mutex_unlock(&empty_pages_lock);
+  return(largest);
 }
 
 static void *copy_object(LPTR src, int storage_class, int current_size,

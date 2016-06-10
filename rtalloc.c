@@ -118,7 +118,8 @@ long allocate_segment(size_t desired_bytes, int type) {
 	break;
       case STATIC_SEGMENT:
 	last_static_ptr = segments[0].last_segment_ptr;
-	first_static_ptr = last_static_ptr;
+	first_static_ptr = segments[0].first_segment_ptr;
+	static_frontier_ptr = first_static_ptr;
 	break;
       default: break;
       }
@@ -373,45 +374,28 @@ void *RTallocate(void *metadata, int size) {
   return(base);
 }
 
-int RTtotalFreeHeapSpace() {
-  int free = 0;
-  int index;
+void *RTstatic_allocate(void *metadata, int size) {
+  size = ROUND_UPTO_LONG_ALIGNMENT(size);
+  
+  // HEY! Need to acquire/release frontier lock here
+  // and in flip
+  // also need to copy frontier_ptr at flip
+  pthread_mutex_lock(&static_frontier_ptr_lock);
+  // Static object headers are only 1 word long instead of 2 
+  LPTR ptr = (LPTR) static_frontier_ptr;
+  static_frontier_ptr = static_frontier_ptr + size + sizeof(long);
 
-  pthread_mutex_lock(&empty_pages_lock);
-  HOLE_PTR next = empty_pages;
-  while (next != NULL) {
-    free = free + (next->page_count * BYTES_PER_PAGE);
-    next = next->next;
+  if (static_frontier_ptr > last_static_ptr) {
+    out_of_memory("Static", size);
+  } else {
+    LPTR base = (LPTR) ptr;
+    *ptr = (size << LINK_INFO_BITS);
+    ptr = ptr + 1;
+    // need to set storage class and clear body
+    //base = RTInitializeObject(metadata, base, real_size, real_size);
+    pthread_mutex_lock(&static_frontier_ptr_lock);
+    return(ptr + 1);
   }
-  for (index = MIN_GROUP_INDEX; index <= MAX_GROUP_INDEX; index = index + 1) {
-    int group_free = groups[index].green_count * groups[index].size;
-    free = free + group_free;
-  }
-  pthread_mutex_unlock(&empty_pages_lock);
-  return(free);
-}
-
-int RTlargestFreeHeapBlock() {
-  int largest = 0;
-
-  pthread_mutex_lock(&empty_pages_lock);
-  HOLE_PTR next = empty_pages;
-  while (next != NULL) {
-    largest = MAX(largest, next->page_count * BYTES_PER_PAGE);
-    next = next->next;
-  }
-
-  int index = MAX_GROUP_INDEX;
-  while (index >= MIN_GROUP_INDEX) {
-    if (groups[index].free != NULL) {
-      largest = MAX(largest, groups[index].size);
-      index = 0;
-    } else {
-      index = index - 1;
-    }
-  }
-  pthread_mutex_unlock(&empty_pages_lock);
-  return(largest);
 }
 
 // Thread 0 is considered the main stack that started this process.

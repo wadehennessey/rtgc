@@ -1,3 +1,6 @@
+very useful to keep debuinfo up to date
+dnf --enablerepo=updates-debuginfo update
+
 zm-x gud-gdb to switch *dedicated* window
 
 c-x c-a c-b to set breakpoint at point line. Who changed this and why?

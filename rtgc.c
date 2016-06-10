@@ -392,18 +392,17 @@ void scan_global_roots() {
 static
 void scan_static_space() {
   BPTR next = first_static_ptr;
-  BPTR end = last_static_ptr;
+  // Ok to not acquire lock or copy at flip time???
+  // might scan uninitalized object or more than needed this way
+  // problaby safer to set static_frontier_at_flip in rtstop.c
+  BPTR end = static_frontier_ptr;
   while (next < end) {
     int size = *((int *) next);
-    BPTR low = next + sizeof(GCPTR);
+    BPTR low = next + sizeof(long);
     size = size >> LINK_INFO_BITS;
     next = low + size;
     GCPTR gcptr = (GCPTR) (low - sizeof(GC_HEADER));
     scan_object(gcptr, size + sizeof(GC_HEADER));
-    /* Delete ME! HEY! Convert to common scanner with scan_object 
-       if (GET_STORAGE_CLASS(gcptr) != SC_NOPOINTERS) {
-       scan_memory_segment(low,next);
-       } */
   }
 }
 
@@ -708,7 +707,9 @@ void init_realtime_gc() {
   total_global_roots = 0;
   gc_count = 0;
   pthread_mutex_init(&total_threads_lock, NULL);
+  pthread_mutex_init(&global_roots_lock, NULL);
   pthread_mutex_init(&empty_pages_lock, NULL);
+  pthread_mutex_init(&static_frontier_ptr_lock, NULL);
   sem_init(&gc_semaphore, 0, 0);
   init_signals_for_rtgc();
   timerclear(&max_flip_tv);

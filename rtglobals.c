@@ -36,6 +36,7 @@ int total_global_roots;
 // HEY! only 1 static segment while these are global!
 BPTR first_static_ptr;
 BPTR last_static_ptr;
+BPTR static_frontier_ptr;
 
 BPTR first_partition_ptr;
 BPTR last_partition_ptr;
@@ -57,8 +58,9 @@ pthread_key_t thread_index_key;
 pthread_mutex_t total_threads_lock;
 pthread_mutex_t global_roots_lock;
 pthread_mutex_t empty_pages_lock;
+// Use locked add instruction instead of a mutex?
+pthread_mutex_t static_frontier_ptr_lock;
 
-COUNTER stacks_copied_counter;
 sem_t gc_semaphore;
 volatile int run_gc = 0;
 volatile int RTatomic_gc = 0;
