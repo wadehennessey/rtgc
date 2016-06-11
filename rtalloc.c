@@ -390,11 +390,17 @@ void *RTstatic_allocate(void *metadata, int size) {
   } else {
     LPTR base = (LPTR) ptr;
     *ptr = (size << LINK_INFO_BITS);
-    ptr = ptr + 1;
     // need to set storage class and clear body
     //base = RTInitializeObject(metadata, base, real_size, real_size);
-    pthread_mutex_lock(&static_frontier_ptr_lock);
-    return(ptr + 1);
+    if ((((long) metadata) <= SC_POINTERS) || (((long) metadata) == SC_CUSTOM1)) {
+      SET_STORAGE_CLASS(((GCPTR) (ptr - 1)), (long) metadata); 
+    } else {
+      Debugger("Add static support for SC_METADATA");
+    }
+    ptr = ptr + 1;
+    memset(ptr, 0, size);
+    pthread_mutex_unlock(&static_frontier_ptr_lock);
+    return(ptr);
   }
 }
 

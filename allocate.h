@@ -29,7 +29,7 @@ void * RTsafe_setfInit(void *lhs_address, void * rhs);
 
 void * RTallocate(void *metadata, int number_of_bytes);
 
-void * RTstaticAllocate(void *metadata, int number_of_bytes);
+void * RTstatic_allocate(void *metadata, int number_of_bytes);
 
 void * RTreallocate(void *pointer, int new_size);
 

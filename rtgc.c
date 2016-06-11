@@ -397,8 +397,8 @@ void scan_static_space() {
   // problaby safer to set static_frontier_at_flip in rtstop.c
   BPTR end = static_frontier_ptr;
   while (next < end) {
-    int size = *((int *) next);
     BPTR low = next + sizeof(long);
+    int size = *((long *) next);
     size = size >> LINK_INFO_BITS;
     next = low + size;
     GCPTR gcptr = (GCPTR) (low - sizeof(GC_HEADER));
