@@ -67,27 +67,8 @@ would involve MAP_PRIVATE each stack to a file?
 gdb> set unwindonsignal on
 
 
-IDEA
-POSSIBLE RACE - none now because of when gc holds free locks?
-can setting storage_class in InitializeObject conflict with gc?
-set storage class reads and then writes a the gchdr next pointer with new
-storage class. Race if gc might be changing ptr at the same time
-
-NO RACE
-setting object color reads and writes the gcptr->next field. Maybe no race
-here because gc colors free objects green while they are left over white
-and nobody can reach them. Also, alloc does SET_COLOR while the within
-the free_lock.
-
 TODO:
 -----
-write new verify_group to be run on gc thread when all free locks are held.
-Ok if write_barrier on or off - new write_vector allows this.
-
-maybe verify on mutator thread if we SIGSTOP/SIGCONT the gc thread.
-
-Run verify right after recycle_garbage has all free_locks
-
 verify:
 double linked lists correct - (obj->next)->prev == obj, (obj->prev)->next == obj
 verify color in header and color in list are the same

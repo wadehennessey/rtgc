@@ -520,9 +520,6 @@ void unlock_all_free_locks() {
   
 static
 void flip() {
-  // Originally at this point all mutator threads are stopped, and none of
-  // them is in the middle of an RTallocate. We got this for free by being
-  // single threaded and implicity locking by yielding only when we chose to.
   assert(0 == enable_write_barrier);
   // No allocation allowed during a flip
   lock_all_free_locks();
