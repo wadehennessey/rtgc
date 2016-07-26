@@ -699,6 +699,7 @@ void init_realtime_gc() {
     printf("thread_index_key create failed!\n");
   }
 
+  printf("Running branch t1 - single threaded gc\n");
   printf("Page size is %d\n", BYTES_PER_PAGE);
   printf((RTatomic_gc ? "***ATOMIC GC***\n" : "***REAL-TIME GC***\n"));
   total_global_roots = 0;
