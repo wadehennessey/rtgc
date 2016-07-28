@@ -699,7 +699,7 @@ void init_realtime_gc() {
     printf("thread_index_key create failed!\n");
   }
 
-  printf("Running last commit before t1/t2 branch creation\n");
+  printf("Running t1 branch\n");
   printf("Page size is %d\n", BYTES_PER_PAGE);
   printf((RTatomic_gc ? "***ATOMIC GC***\n" : "***REAL-TIME GC***\n"));
   total_global_roots = 0;
