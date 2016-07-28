@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
   if (0 == clock_getres(CLOCK_REALTIME, &res)) {
     clock_gettime(CLOCK_REALTIME, &start_time);
     clock_gettime(CLOCK_REALTIME, &end_time);
-    printf("got nano times!\n");
+    //printf("got nano times!\n");
   }
 
   RTatomic_gc = 0;

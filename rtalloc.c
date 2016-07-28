@@ -413,8 +413,8 @@ void init_gc_thread() {
   pthread_t self = pthread_self();
   pthread_getattr_np(self, &attr);
   pthread_attr_getstack(&attr, &stackaddr, &stacksize);
-  printf("Main Stackaddr is %p\n", stackaddr);
-  printf("Main Stacksize is 0x%x\n", stacksize);
+  //printf("Main Stackaddr is %p\n", stackaddr);
+  //printf("Main Stacksize is 0x%x\n", stacksize);
   threads[0].stack_base = stackaddr + stacksize;
   threads[0].stack_size = stacksize;
   threads[0].stack_bottom = (char *) &stacksize;
@@ -447,15 +447,15 @@ void RTinit_heap(size_t first_segment_bytes, size_t static_size) {
   RTwrite_vector_length = first_segment_bytes / (MIN_GROUP_SIZE * BITS_PER_LONG);
   RTwrite_vector = RTbig_malloc(RTwrite_vector_length * sizeof(long));
   memset(RTwrite_vector, 0, RTwrite_vector_length * sizeof(long));
-  printf("using bit write barrier, ");
+  //printf("using bit write barrier, ");
 #else
   RTwrite_vector_length = (total_partition_pages * 
 		       (BYTES_PER_PAGE / MIN_GROUP_SIZE));
   RTwrite_vector = RTbig_malloc(RTwrite_vector_length);
   memset(RTwrite_vector, 0, RTwrite_vector_length);
-  printf("using byte write barrier, ");
+  //printf("using byte write barrier, ");
 #endif
-  printf("RTwrite_vector_length is %ld\n", RTwrite_vector_length);
+  //printf("RTwrite_vector_length is %ld\n", RTwrite_vector_length);
   if ((pages == 0) || (groups == 0) || (segments == 0) || 
       (threads == 0) || (global_roots == 0) || (RTwrite_vector == 0)) {
     out_of_memory("Heap Memory tables", 0);
@@ -506,8 +506,8 @@ void *rtalloc_start_thread(void *arg) {
   // We don't really need this info, but it might be nice for debugging
   // stackaddr is the LOWEST addressable byte of the stack
   // The stack pointer starts at stackaddr + stacksize!
-  printf("Stackaddr is %p\n", stackaddr);
-  printf("Stacksize is %x\n", stacksize);
+  // printf("Stackaddr is %p\n", stackaddr);
+  // printf("Stacksize is %x\n", stacksize);
   threads[thread_index].stack_base = stackaddr;
   threads[thread_index].stack_size = stacksize;
   threads[thread_index].stack_bottom = (char *)  &stacksize;
