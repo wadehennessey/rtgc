@@ -24,7 +24,7 @@ void *RTbig_malloc(size_t bytes) {
 		 MAP_PRIVATE | MAP_ANONYMOUS,
 		 0,
 		 0));
-  printf("RTbig_malloc of %ld bytes returning pointer %p\n", bytes, p);
+  // printf("RTbig_malloc of %ld bytes returning pointer %p\n", bytes, p);
   return(p);
 }
 
