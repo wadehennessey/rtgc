@@ -26,7 +26,7 @@ double last_cycle_ms;
 double last_gc_ms;
 double last_write_barrier_ms;
 struct timeval max_flip_tv, total_flip_tv;
-static volatile int run_scan_thread;
+static volatile int run_trace_thread;
 
 static int verify_count = 0;
 static void mark_write_vector(GCPTR gcptr);
@@ -663,13 +663,13 @@ static
 void full_gc() {
   flip();
   assert(1 == enable_write_barrier);
-  run_scan_thread = 1;
-  while (1 == run_scan_thread);
+  run_trace_thread = 1;
+  while (1 == run_trace_thread);
 
   do {
     live_mark_count = scan_write_vector();
-    run_scan_thread = 1;
-    while (1 == run_scan_thread);
+    run_trace_thread = 1;
+    while (1 == run_trace_thread);
   } while (live_mark_count > 0);
 
   enable_write_barrier = 0;
@@ -681,34 +681,34 @@ void RTfull_gc() {
   full_gc();
 }
 
-void *start_gray_scanner_thread(void *args) {
-  printf("started gray_scanner thread\n");
+void *start_trace_thread(void *args) {
+  printf("started trace thread\n");
   while (1) {
-    run_scan_thread = 0;
-    while (0 == run_scan_thread);
+    run_trace_thread = 0;
+    while (0 == run_trace_thread);
     scan_root_set();
 
     do {
-      run_scan_thread = 0;
-      while (run_scan_thread == 0);
+      run_trace_thread = 0;
+      while (run_trace_thread == 0);
       scan_gray_set();
     } while (live_mark_count > 0);
   }
 }
 
-void create_gray_scanner_thread() {
-  run_scan_thread = -1;
-  if (0 != pthread_create(&gray_scanner_thread, 
+void create_trace_thread() {
+  run_trace_thread = -1;
+  if (0 != pthread_create(&trace_thread, 
 			  NULL, 
-			  start_gray_scanner_thread,
+			  start_trace_thread,
 			  (void *) 0)) {
-    Debugger("gray_scanner thread_create failed!\n");
+    Debugger("scan thread creation failed!\n");
   }
 }
 
 void rtgc_loop() {
-  create_gray_scanner_thread();
-  while (run_scan_thread == -1);  // wait for thread to start thread to start
+  create_trace_thread();
+  while (run_trace_thread == -1);  // wait for thread to start thread to start
   while (1) {
     if (1 == RTatomic_gc) while (0 == run_gc);
     full_gc();

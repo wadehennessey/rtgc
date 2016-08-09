@@ -68,4 +68,4 @@ volatile int RTatomic_gc = 0;
 long *RTno_write_barrier_state_ptr = 0;
 long saved_no_write_barrier_state = 0;
 
-pthread_t gray_scanner_thread;
+pthread_t trace_thread;
