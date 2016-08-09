@@ -200,6 +200,7 @@ extern size_t RTwrite_vector_length;
 
 extern long *RTno_write_barrier_state_ptr;
 extern long saved_no_write_barrier_state;
+extern pthread_t gray_scanner_thread;
 
 #define ENABLE_LOCKING 1
 
