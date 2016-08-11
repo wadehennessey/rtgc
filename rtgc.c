@@ -72,7 +72,6 @@ void RTmake_object_gray(GCPTR current) {
   GCPTR prev = GET_LINK_POINTER(current->prev);
   GCPTR next = GET_LINK_POINTER(current->next);
 
-  // assert(WHITEP(current));
   // Remove current from WHITE space
   if (current == group->white) {
     group->white = next;
@@ -153,7 +152,7 @@ void RTtrace_pointer(void *ptr) {
     if (group > EXTERNAL_PAGE) {
       GCPTR gcptr = interior_to_gcptr_3(ptr, page, group);
       if (WHITEP(gcptr) && valid_interior_ptr(gcptr, ptr)) {
-	RTmake_object_gray(gcptr);
+	mark_write_vector(gcptr);
       }
     }
   }
@@ -164,7 +163,7 @@ void RTtrace_pointer(void *ptr) {
 void RTtrace_heap_pointer(void *ptr) {
   GCPTR gcptr = interior_to_gcptr(ptr);
   if (WHITEP(gcptr)) {
-    RTmake_object_gray(gcptr);
+    mark_write_vector(gcptr);
   }
 }
 
@@ -182,7 +181,7 @@ void scan_memory_segment(BPTR low, BPTR high) {
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group);
 	if (WHITEP(gcptr) && valid_interior_ptr(gcptr, ptr)) {
-	  RTmake_object_gray(gcptr);
+	  mark_write_vector(gcptr);
 	}
       }
     }
@@ -383,7 +382,7 @@ void scan_global_roots() {
       if (group > EXTERNAL_PAGE) {
 	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group); 
 	if (WHITEP(gcptr) && valid_interior_ptr(gcptr, ptr)) {
-	  RTmake_object_gray(gcptr);
+	 mark_write_vector(gcptr);
 	}
       }
     }
