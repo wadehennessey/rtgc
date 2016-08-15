@@ -20,16 +20,6 @@
 #define INTERIOR_PTR_RETENTION_LIMIT 512
 
 #define FLIP_SIGNAL SIGUSR1
-
-// HEY! use timersub instead and write timeval_to_double 
-#define ELAPSED_MILLISECONDS(start, delta) {struct timeval end; \
-    gettimeofday(&end, 0); \
-    delta = (end.tv_usec - start.tv_usec) / 1000.0; }
-#define START_CODE_TIMING { struct timeval start_time; double time; \
-    gettimeofday(&start_time, 0);
-#define END_CODE_TIMING(total) ELAPSED_MILLISECONDS(start_time, time); \
-    total = total + time; }
-
 #define DETECT_INVALID_REFS 0
 #define USE_BIT_WRITE_BARRIER 1
 
