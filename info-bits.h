@@ -1,15 +1,12 @@
 // (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
 // Links are divided into a pointer and some low order info bits.
-// We could store object group indices in the info bits
-// if we wanted to for speed.
-
 typedef struct gc_header {
-  struct gc_header * prev;
-  struct gc_header * next;
+  struct gc_header *prev;
+  struct gc_header *next;
 } GC_HEADER;
 
-typedef GC_HEADER * GCPTR;
+typedef GC_HEADER *GCPTR;
 
 #define LINK_INFO_BITS 4
 #define LINK_INFO_MASK ((1 << LINK_INFO_BITS) - 1)
@@ -49,26 +46,3 @@ typedef GC_HEADER * GCPTR;
 #define BLACKP(p) (GET_COLOR(p) == marked_color)
 #define GRAYP(p)  (GET_COLOR(p) == GRAY)
 #define GREENP(p) (GET_COLOR(p) == GREEN)
-
-/*
-
-// play around with how we might use inline funcs instead of messy
-// #defines for some things
-
-inline int validp(GCPTR gcptr) {
-  return(gcptr == (GCPTR) 0xDEADBEEF);
-}
-
-// putting this in a .c file:
-// extern validp(GCPTR gcptr);
-// will cause a function called validp to be created in that file
-
-inline void set_link_info(GCPTR l, int mask, int bits) {
-  l = (GCPTR) (((long) l & ~(mask)) | bits);
-}
-
-inline void set_instance_storage_class(char *o, int RTclass) {
-  set_link_info(((GCPTR) ((char *) (o) - sizeof(GC_HEADER))), 
-		GC_STORAGE_INFO_MASK, RTclass);
-}
-*/

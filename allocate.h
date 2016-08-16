@@ -2,10 +2,6 @@
 
 // Interface to rtgc
 
-// Requires more than just this header to work
-//#define RTnopointers ((void *) SC_NOPOINTERS)
-//#define RTpointers   ((void *) SC_POINTERS)
-
 #define RTnopointers ((void *) 0)
 #define RTpointers   ((void *) 1)
 #define RTmetadata   ((void *) 2)
@@ -21,31 +17,19 @@ typedef struct rt_metadata {
   long *offsets;
 } RT_METADATA;
 
-void * RTwrite_barrier(void *lhs_address, void * rhs);
+void *RTallocate(void *metadata, int number_of_bytes);
 
-void * RTsafe_bash(void *lhs_address, void * rhs);
+void *RTstatic_allocate(void *metadata, int number_of_bytes);
 
-void * RTsafe_setfInit(void *lhs_address, void * rhs);
+void *RTwrite_barrier(void *lhs_address, void * rhs);
 
-void * RTallocate(void *metadata, int number_of_bytes);
+void *RTsafe_bash(void *lhs_address, void * rhs);
 
-void * RTstatic_allocate(void *metadata, int number_of_bytes);
+void *RTsafe_setfInit(void *lhs_address, void * rhs);
 
-void * RTreallocate(void *pointer, int new_size);
+void *ptrcpy(void *p1, void * p2, int num_bytes);
 
-void * ptrcpy(void *p1, void * p2, int num_bytes);
-
-void * ptrset(void *p1, int data, int num_bytes);
-
-int RTlargestFreeHeapBlock(void);
-
-int RTstackAllocationSize(void *metadata, int size);
-
-//int RTallocationTrueSize(void *metadata, int size);
-
-int RTtrueSize(void *ptr);
-
-//LPTR RTinitializeObject(void *metadata, void *base, int total_size, int real);
+void *ptrset(void *p1, int data, int num_bytes);
 
 void RTinit_heap(size_t first_segment_bytes, size_t static_size);
 

@@ -17,53 +17,7 @@
 #include "mem-internals.h"
 #include "allocate.h"
 
-volatile long gc_count;
-double total_gc_time_in_cycle;
-double max_increment_in_cycle;
-double total_write_barrier_time_in_cycle;
-struct timeval start_gc_cycle_time;
-double last_cycle_ms;
-double last_gc_ms;
-double last_write_barrier_ms;
 struct timeval max_flip_tv, total_flip_tv;
-
-
-static int verify_count = 0;
-
-static
-void verify_white_count(GPTR group) {
-  GCPTR ptr = group->white;
-  int count = 0;
-  while (ptr != NULL) {
-    if (group->size < BYTES_PER_PAGE) {
-      if ((((long) (GET_LINK_POINTER(ptr->prev)) % group->size) != 0) ||
-	  (((long) (GET_LINK_POINTER(ptr->next)) % group->size) != 0)) {
-	Debugger("Bad gchdr\n");
-      }
-    }
-    ptr = GET_LINK_POINTER(ptr->next);
-    count = count + 1;
-  }
-  if (group->white_count != count) {
-    Debugger("incorrect white_count\n");
-  } else {
-    verify_count = verify_count + 1;
-    //printf("Verify_white_count passed! %d\n", verify_count);
-  }
-}
-
-static
-void verify_white_counts() {
-  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    GPTR group = &groups[i];
-    verify_white_count(group);
-  }
-}
-
-static inline int valid_interior_ptr(GCPTR gcptr, BPTR interior_ptr) {
-  long delta = interior_ptr - (BPTR) gcptr;
-  return(delta < (INTERIOR_PTR_RETENTION_LIMIT + sizeof(GC_HEADER)));
-}
 
 static
 void RTmake_object_gray(GCPTR current) {
@@ -110,6 +64,11 @@ void RTmake_object_gray(GCPTR current) {
   group->gray = current;
   assert(group->white_count > 0); // no lock needed, white_count is gc only
   group->white_count = group->white_count - 1;
+}
+
+static inline int valid_interior_ptr(GCPTR gcptr, BPTR interior_ptr) {
+  long delta = interior_ptr - (BPTR) gcptr;
+  return(delta < (INTERIOR_PTR_RETENTION_LIMIT + sizeof(GC_HEADER)));
 }
 
 static inline GCPTR interior_to_gcptr_3(BPTR ptr, PPTR page, GPTR group) {
@@ -609,7 +568,6 @@ void recycle_group_garbage(GPTR group) {
   }
 
   if (count != group->white_count) { // no lock needed, white_count is gc only
-    //verify_all_groups();
     printf("group->white_count is %d, actual count is %d\n", 
 	   group->white_count, count);
     Debugger("group->white_count doesn't equal actual count\n");
@@ -644,7 +602,6 @@ void recycle_group_garbage(GPTR group) {
 static 
 void recycle_all_garbage() {
   assert(0 == enable_write_barrier);
-  //verify_all_groups();
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     recycle_group_garbage(&groups[i]);
   }

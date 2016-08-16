@@ -108,17 +108,43 @@ void counter_wait_threshold(COUNTER *c, int threshold) {
   // now c->count >= threshold
   pthread_mutex_unlock(&(c->lock));
 }
-/*
-timespec diff(timespec start, timespec end)
-{
-	timespec temp;
-	if ((end.tv_nsec-start.tv_nsec)<0) {
-		temp.tv_sec = end.tv_sec-start.tv_sec-1;
-		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
-	} else {
-		temp.tv_sec = end.tv_sec-start.tv_sec;
-		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
-	}
-	return temp;
+
+// useful with clock_gettime
+struct timespec diff(struct timespec start, struct timespec end) {
+  struct timespec temp;
+  if ((end.tv_nsec - start.tv_nsec) <0) {
+    temp.tv_sec = end.tv_sec - start.tv_sec - 1;
+    temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
+  } else {
+    temp.tv_sec = end.tv_sec - start.tv_sec;
+    temp.tv_nsec = end.tv_nsec - start.tv_nsec;
+  }
+  return temp;
 }
-*/
+
+static
+int verify_white_count(GPTR group) {
+  GCPTR ptr = group->white;
+  int count = 0;
+  while (ptr != NULL) {
+    if (group->size < BYTES_PER_PAGE) {
+      if ((((long) (GET_LINK_POINTER(ptr->prev)) % group->size) != 0) ||
+	  (((long) (GET_LINK_POINTER(ptr->next)) % group->size) != 0)) {
+	Debugger("Bad gchdr\n");
+      }
+    }
+    ptr = GET_LINK_POINTER(ptr->next);
+    count = count + 1;
+  }
+  if (group->white_count != count) {
+    Debugger("incorrect white_count\n");
+  }
+}
+
+static
+void verify_white_counts() {
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    GPTR group = &groups[i];
+    verify_white_count(group);
+  }
+}

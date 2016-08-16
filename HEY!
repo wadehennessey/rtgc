@@ -166,8 +166,6 @@ black_count == black_scanned_count + black_new_count
 remove black_count_lock with count_lock for conditional debugging 
 
 change group->free_last to just group->last?
-
-
 remove green count and total_object_count
 --------------
 Also, we should turn adjacent holes into one bigger whole as the last
@@ -185,47 +183,25 @@ fix: add .wclinit to wcl, make ~/.wclinit a link
 introduce "flip stack copy helper threads with almost no stack themselves"
 comment copy on write as another stack copy speed up - need to sync scan/copy
 
-write "RTroom" - synch with start of flip after all alloc locks are held.
-               no alloc possible, gc just finished
 
-	       need:
-	       room_mutex	
-	       volatile int pause_to_run_room = 0
-	       volatile int running_room = 0;
+-------------------------------------------------------------------
+// play around with how we might use inline funcs instead of messy
+// #defines for some things
 
-	       
-	       mutator room:
-		lock room_mutex()
-		pause_to_run_room = 1;
-	       	while (1 == running_room) sched_yield;
-		pause_to_run_room = 0;
-		unlock room_mutext()
+inline int validp(GCPTR gcptr) {
+  return(gcptr == (GCPTR) 0xDEADBEEF);
+}
 
-	       gc flip in after locks held:
-	       call maybe_run_room:
+// putting this in a .c file:
+// extern validp(GCPTR gcptr);
+// will cause a function called validp to be created in that file
 
-	       maybe_run_room:
-	       if (pause_to_run_room var = 1)
-	         running_room = 1
-		 <execute room>
-		 runing_room = 0;
-	       }
-                
+inline void set_link_info(GCPTR l, int mask, int bits) {
+  l = (GCPTR) (((long) l & ~(mask)) | bits);
+}
 
-
-
-       
-list all holes by hole size/total
-commited free by object size/total
-show in use by object size/total
-
-rename example:
-cp rtgc.c gc.c
-git add gc.c
-fix Makefile
-git rm rtgc.c
-
-watch *primary-function-info* - rehash grows to largest object
-
-grows by 25 objects each compile cycle
-
+inline void set_instance_storage_class(char *o, int RTclass) {
+  set_link_info(((GCPTR) ((char *) (o) - sizeof(GC_HEADER))), 
+		GC_STORAGE_INFO_MASK, RTclass);
+}
+--------------------------------------------------------------------

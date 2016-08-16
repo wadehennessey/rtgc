@@ -19,8 +19,6 @@ typedef unsigned char * BPTR;
 #define IN_PARTITION(ptr) (((BPTR) ptr >= first_partition_ptr) && ((BPTR) ptr < last_partition_ptr))
 #define PAGE_GROUP(ptr) (IN_PARTITION(ptr) ? PTR_TO_GROUP(ptr) : EXTERNAL_PAGE)
 #define IN_HEAP(ptr) ((long) PAGE_GROUP(ptr) > (long) EXTERNAL_PAGE)
-#define IN_STATIC(ptr) (((BPTR) ptr >= first_static_ptr) && ((BPTR) ptr < last_static_ptr))
-#define IN_HEAP_OR_STATIC(ptr) (IN_HEAP(ptr) || IN_STATIC(ptr))
 #define ROUND_DOWN_TO_PAGE(ptr) ((BPTR) (((long) ptr & ~PAGE_ALIGNMENT_MASK)))
 #define ROUND_UP_TO_PAGE(ptr) (ROUND_DOWN_TO_PAGE(ptr) + BYTES_PER_PAGE)
 
@@ -29,11 +27,6 @@ typedef unsigned char * BPTR;
 #define MIN_GROUP_SIZE (1 << MIN_GROUP_INDEX)
 #define MAX_GROUP_SIZE ( 1 << MAX_GROUP_INDEX)
 #define NUMBER_OF_GROUPS (MAX_GROUP_INDEX - MIN_GROUP_INDEX + 1)
-#define MIN_OBJECT_ALIGNMENT (MIN_GROUP_SIZE - 1)
-#define INSTANCE_TO_GCPTR(ptr) ((GCPTR) ((BPTR) ptr - sizeof(GC_HEADER)))
-#define HEAP_OBJECT_TO_GCPTR(ptr) ((GCPTR) ((long) ptr & ~MIN_OBJECT_ALIGNMENT))
-#define DOUBLE_ALIGNMENT (sizeof(double) - 1)
-#define DOUBLE_ALIGNED_P(p) ((long) p == (((long) p) && ~DOUBLE_ALIGNMENT))
 #define LONG_ALIGNMENT (sizeof(long) - 1)
 #define ROUND_UPTO_LONG_ALIGNMENT(n) (((((n) - 1)) & ~LONG_ALIGNMENT) + \
                                      sizeof(long)) 
@@ -42,8 +35,6 @@ typedef unsigned char * BPTR;
 
 
 #define METADATAP(ptr) (((void *) ptr)  > RTpointers)
-
-// This really slows the gc down if sched_yield is done
 
 #define MIN(x,y) ((x < y) ? x : y)
 #define MAX(x,y) ((x > y) ? x : y)
@@ -69,7 +60,7 @@ typedef struct group_info {
   pthread_mutex_t black_and_last_lock;	// used in rtgc and rtalloc
 } GROUP_INFO;
 
-typedef GROUP_INFO * GPTR;
+typedef GROUP_INFO *GPTR;
 
 typedef struct segment {
   BPTR first_segment_ptr;
@@ -83,14 +74,14 @@ typedef struct hole {
   struct hole *next;		// only used in rtalloc
 } HOLE;
 
-typedef HOLE * HOLE_PTR;
+typedef HOLE *HOLE_PTR;
 
 typedef struct page_info {
   GCPTR base;
   GPTR group;
 } PAGE_INFO;
 
-typedef PAGE_INFO * PPTR;
+typedef PAGE_INFO *PPTR;
 
 typedef struct thread_info {
   pthread_t pthread;
@@ -102,8 +93,6 @@ typedef struct thread_info {
   int saved_stack_size;
   struct timeval max_pause_tv, total_pause_tv;
 } THREAD_INFO;
-
-typedef THREAD_INFO * TPTR;
 
 typedef struct start_thread_args {
   int thread_index;
@@ -119,24 +108,13 @@ typedef struct counter {
 
 void scan_object(GCPTR ptr, int total_size);
 void RTinit_empty_pages(int first_page, int page_count, int type);
-void verify_total_object_count(void);
-void verify_header(GCPTR ptr);
-void verify_group(GPTR group);
-void verify_all_groups(void);
-int RTprint_object_info(GCPTR ptr, int i);
-int RTprint_page_info(int page_index);
-void RTprint_group_info(GPTR group);
-void RTprint_memory_summary(void);
 void rtgc_loop();
 void init_signals_for_rtgc();
 int stop_all_mutators_and_save_state();
-
 void RTroom();
-//int RTallocationTrueSize(void * metadata, int size);
-void RTinit_heap(size_t default_heap_bytes, size_t static_size);
 void init_realtime_gc(void);
 void Debugger(char *msg);
-void * RTbig_malloc(size_t size);
+void *RTbig_malloc(size_t size);
 void RTcopy_regs_to_stack(BPTR regptr);
 void out_of_memory(char *space_name, int size);
 void register_global_root(void *root);
@@ -172,14 +150,6 @@ extern int unmarked_color;
 extern int marked_color;
 extern int enable_write_barrier;
 
-extern int total_allocation;
-extern int total_requested_allocation;
-extern int total_requested_objects;
-extern int total_allocation_this_cycle;
-
-extern double last_cycle_ms;
-extern double last_gc_ms;
-extern double last_write_barrier_ms;
 extern pthread_key_t thread_index_key;
 extern char **global_roots;
 extern int total_global_roots;
@@ -190,7 +160,7 @@ extern pthread_mutex_t static_frontier_ptr_lock;
 
 extern sem_t gc_semaphore;
 extern volatile int run_gc;
-//extern int atomic_gc;
+
 #if USE_BIT_WRITE_BARRIER
 extern LPTR RTwrite_vector;
 #else
@@ -201,16 +171,8 @@ extern size_t RTwrite_vector_length;
 extern long *RTno_write_barrier_state_ptr;
 extern long saved_no_write_barrier_state;
 
-#define ENABLE_LOCKING 1
-
-#if ENABLE_LOCKING
 #define LOCK(lock)  pthread_mutex_lock(&lock)
 #define UNLOCK(lock) pthread_mutex_unlock(&lock)
-#else
-#define LOCK(lock)  
-#define UNLOCK(lock)
-#endif
-
 #define WITH_LOCK(lock, code) LOCK(lock); \
 			      code \
 			      UNLOCK(lock);

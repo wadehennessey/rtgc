@@ -52,6 +52,7 @@ long total_partition_pages;
 int unmarked_color;
 int marked_color;
 int enable_write_barrier;
+volatile long gc_count;
 
 pthread_key_t thread_index_key;
 
