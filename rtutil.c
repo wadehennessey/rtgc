@@ -46,14 +46,10 @@ void Debugger(char *msg) {
   debug = 1 / zero;
 }
 
-static size_t len = 8000;
-static char *src;
-static char *dest;
-
-void copy_test() {
+void copy_test(size_t len) {
   struct timeval start_tv, end_tv;
-  src = malloc(len);
-  dest = malloc(len);
+  char *src = malloc(len);
+  char *dest = malloc(len);
   
   gettimeofday(&start_tv, 0);
   memcpy(dest, src, len);
@@ -61,6 +57,8 @@ void copy_test() {
   printf("start: %d sec, %d usec\n", start_tv.tv_sec, start_tv.tv_usec);
   printf("end: %d sec, %d usec\n", end_tv.tv_sec, end_tv.tv_usec);
   printf("elapsed: %d\n", end_tv.tv_usec - start_tv.tv_usec);
+  free(src);
+  free(dest);
 }  
 
 void counter_init(COUNTER *c) {
@@ -110,17 +108,26 @@ void counter_wait_threshold(COUNTER *c, int threshold) {
 }
 
 // useful with clock_gettime
-struct timespec diff(struct timespec start, struct timespec end) {
-  struct timespec temp;
-  if ((end.tv_nsec - start.tv_nsec) <0) {
-    temp.tv_sec = end.tv_sec - start.tv_sec - 1;
-    temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
+struct timespec RTtime_diff(struct timespec start, struct timespec end) {
+  struct timespec diff;
+  if ((end.tv_nsec - start.tv_nsec) < 0) {
+    diff.tv_sec = end.tv_sec - start.tv_sec - 1;
+    diff.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
   } else {
-    temp.tv_sec = end.tv_sec - start.tv_sec;
-    temp.tv_nsec = end.tv_nsec - start.tv_nsec;
+    diff.tv_sec = end.tv_sec - start.tv_sec;
+    diff.tv_nsec = end.tv_nsec - start.tv_nsec;
   }
-  return temp;
+  return(diff);
 }
+
+int RTtime_cmp(struct timespec a, struct timespec b) {
+  if (a.tv_sec == b.tv_sec) {
+    return(a.tv_nsec > b.tv_nsec);
+  } else {
+    return(a.tv_sec > b.tv_sec);
+  }
+}
+    
 
 static
 int verify_white_count(GPTR group) {

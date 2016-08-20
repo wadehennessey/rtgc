@@ -93,15 +93,15 @@ static void coalesce_free_pages() {
 }
 
 
+// Caller must hold the group->free_lock to save
+// us from repeatedly locking and unlocking for a page of objects
 static void remove_object_from_free_list(GPTR group, GCPTR object) {
   GCPTR prev = GET_LINK_POINTER(object->prev);
   GCPTR next = GET_LINK_POINTER(object->next);
 
   if (object == group->free) {
     // we end up here a lot
-    // caller must hold green lock from group to save
-    // us from repeatedly locking and unlocking for a page of objects
-    group->free = next;	       // must be locked
+    group->free = next;	       // free must be locked
   }
 
   if (object == group->black) {
@@ -120,7 +120,7 @@ static void remove_object_from_free_list(GPTR group, GCPTR object) {
     SET_LINK_POINTER(next->prev, prev);
   }
 
-  // must lock these
+  // These counts are covered by the free lock
   group->green_count = group->green_count - 1;
   group->total_object_count = group->total_object_count - 1;
 }

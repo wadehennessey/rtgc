@@ -348,12 +348,13 @@ void *RTallocate(void *metadata, int size) {
   new = group->free;
   group->free = GET_LINK_POINTER(new->next);
   group->green_count = group->green_count - 1;
-  WITH_LOCK(group->black_count_lock,
-	    group->black_count = group->black_count + 1;)
   // No need for an explicit flip lock here. During a flip the gc will
   // hold the green lock for every group, so no allocator can get here
   // when the marked_color is being changed.
   SET_COLOR(new,marked_color);	// Must allocate black!
+  WITH_LOCK(group->black_count_lock,
+	    group->black_count = group->black_count + 1;)
+
   long mdptr;
   if ((((long) metadata) <= SC_POINTERS) || (((long) metadata) == SC_CUSTOM1)) {
     SET_STORAGE_CLASS(new, (long) metadata); 

@@ -202,11 +202,12 @@ void *start_word_count(void *arg) {
 }
 
 int main(int argc, char *argv[]) {
-  struct timespec res, start_time, end_time;
+  struct timespec res, start_time, end_time, elapsed;
   if (0 == clock_getres(CLOCK_REALTIME, &res)) {
     clock_gettime(CLOCK_REALTIME, &start_time);
     clock_gettime(CLOCK_REALTIME, &end_time);
-    //printf("got nano times!\n");
+    elapsed = RTtime_diff(start_time, end_time);
+    printf("Elapsed: %lld.%.9ld\n", elapsed.tv_sec, elapsed.tv_nsec);
   }
 
   RTatomic_gc = 0;

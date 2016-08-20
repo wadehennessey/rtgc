@@ -49,6 +49,10 @@ void RTtrace_pointer(void *ptr);
 
 void RTtrace_heap_pointer(void *ptr);
 
+struct timespec RTtime_diff(struct timespec start, struct timespec end);
+
+int RTtime_cmp(struct timespec x, struct timespec y);
+
 extern volatile int RTatomic_gc;
 extern int RTpage_power;
 extern int RTpage_size;
