@@ -370,7 +370,9 @@ void *RTallocate(void *metadata, int size) {
   // Unlock only after storage class initialization because
   // gc recyling garbage can read and write next ptr
   pthread_mutex_unlock(&(group->free_lock));
-  initialize_object_body(new, group->size); // , real_size);
+  if (RTnopointers != metadata) {
+    memset(base, 0, group->size - sizeof(GC_HEADER));
+  }
 
   return(base);
 }
@@ -378,9 +380,8 @@ void *RTallocate(void *metadata, int size) {
 void *RTstatic_allocate(void *metadata, int size) {
   size = ROUND_UPTO_LONG_ALIGNMENT(size);
   
-  // HEY! Need to acquire/release frontier lock here
-  // and in flip
-  // also need to copy frontier_ptr at flip
+  // Should we lock during flip and copy frontier_ptr at that time?
+  // Seems like it shouldn't be needed
   pthread_mutex_lock(&static_frontier_ptr_lock);
   // Static object headers are only 1 word long instead of 2 
   LPTR ptr = (LPTR) static_frontier_ptr;
