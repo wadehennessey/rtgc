@@ -34,8 +34,8 @@ typedef GC_HEADER *GCPTR;
 // use enums for these instead?
 #define SC_NOPOINTERS     0
 #define SC_POINTERS       1
-#define SC_METADATA       2
-#define SC_CUSTOM1        3
+#define SC_CUSTOM1        2
+#define SC_METADATA       3
 
 #define GENERATION0       0
 #define GENERATION1       1

@@ -21,8 +21,7 @@
 
 HOLE_PTR empty_pages;
 
-static
-int size_to_group_index(int size) {
+static inline int size_to_group_index(int size) {
   int s = size;
   int index = 0;
   
@@ -267,24 +266,20 @@ void init_pages_for_group(GPTR group, int min_pages) {
   }
 }
 
-static
-GPTR allocation_group(int *metadata, int size) {
+static inline
+GPTR allocation_group(long *metadata, int size) {
   int data_size, real_size;
   if (size >= 0) {
     switch ((long) metadata) {
     case (long) RTnopointers:
     case (long) RTpointers:
+    case (long) RTcustom1:
       data_size = size;
-      real_size = size + sizeof(GC_HEADER); break;
+      real_size = size + sizeof(GC_HEADER); 
+      break;
     default:
-      if (METADATAP(metadata)) {
-	// We count the metadata ptr in data_size for compat with instance
-	// data_size = (size * (((RT_METADATA *) metadata)->size)) + sizeof(void *);
-	data_size = size + sizeof(void *);
-	real_size = data_size + sizeof(GC_HEADER);
-      } else {
-	Debugger("Error - you may not allocate instances\n");
-      }
+      data_size = (metadata[0] * size) + sizeof(void *);
+      real_size = data_size + sizeof(GC_HEADER);
       break;
     }
     
@@ -298,7 +293,7 @@ GPTR allocation_group(int *metadata, int size) {
     }
     return(group);
   } else {
-    printf("Negative object size\n");
+    Debugger("Negative object size\n");
   }
 }
 
@@ -355,13 +350,12 @@ void *RTallocate(void *metadata, int size) {
   WITH_LOCK(group->black_count_lock,
 	    group->black_count = group->black_count + 1;)
 
-  long mdptr;
   if ((((long) metadata) <= SC_POINTERS) || (((long) metadata) == SC_CUSTOM1)) {
     SET_STORAGE_CLASS(new, (long) metadata); 
-    mdptr = 0;
   } else {
     SET_STORAGE_CLASS(new, SC_METADATA);
-    mdptr = (long) metadata;
+    LPTR last_ptr = base + (group->size / sizeof(LPTR)) - 1;
+    *last_ptr = (long) metadata;
   }
   
   //initialize_object_metadata(metadata, new, group);

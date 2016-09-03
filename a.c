@@ -27,25 +27,18 @@ void *wcl_get_closure_env(void *ptr) {
 }
 
 typedef struct node {
-  char bloat[1024];
   char *word;
   int count;
   struct node *lesser;
   struct node *greater;
 } NODE;
 
-/*
+
 RT_METADATA NODE_md[] = {sizeof(NODE),
 			 offsetof(NODE, word),
 			 offsetof(NODE, lesser),
-			 offsetof(NODE, greater),
-			 (long *) -1};
-*/
-
-long NODE_md[] = {offsetof(NODE, word),
-		  offsetof(NODE, lesser),
-		  offsetof(NODE, greater),
-		  -1};
+			 offsetof(NODE, greater)
+			 -1};
 
 NODE *roots[100];
 

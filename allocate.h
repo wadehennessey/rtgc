@@ -4,18 +4,15 @@
 
 #define RTnopointers ((void *) 0)
 #define RTpointers   ((void *) 1)
-#define RTmetadata   ((void *) 2)
-#define RTcustom1    ((void *) 3)
+#define RTcustom1    ((void *) 2)
+#define RTmetadata   ((void *) 3)
 
 #define RTbeerBash(lhs, rhs) ((lhs) = (rhs))
 #define setf_init(lhs, rhs) ((lhs) = (rhs))
 
 #define INVALID_ADDRESS 0xEF
 
-typedef struct rt_metadata {
-  long size;
-  long *offsets;
-} RT_METADATA;
+typedef long RT_METADATA;
 
 void *RTallocate(void *metadata, int number_of_bytes);
 
