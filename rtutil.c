@@ -155,3 +155,46 @@ void verify_white_counts() {
     verify_white_count(group);
   }
 }
+
+#define FINALIZE_RING_SIZE (1 << 16)
+#define FINALIZE_RING_MASK (FINALIZE_RING_SIZE - 1)
+
+unsigned long finalize_head;
+unsigned long finalize_tail;
+void *finalize_ring[FINALIZE_RING_SIZE];
+pthread_mutex_t finalize_lock;
+pthread_cond_t finalize_cond_empty;
+pthread_cond_t finalize_cond_full;
+
+void finalize_add(void *obj) {
+  pthread_mutex_lock(&finalize_lock);
+  while ((finalize_tail + FINALIZE_RING_SIZE) > finalize_head) {
+    pthread_cond_wait(&finalize_cond_full, &finalize_lock);
+  }
+  finalize_ring[finalize_head & FINALIZE_RING_MASK] = obj;
+  finalize_head = finalize_head + 1;
+  pthread_cond_signal(&finalize_cond_empty);
+  pthread_mutex_unlock(&finalize_lock);
+}
+
+void *finalize_remove() {
+  pthread_mutex_lock(&finalize_lock);
+  while (finalize_tail == finalize_head) {
+    pthread_cond_wait(&finalize_cond_empty, &finalize_lock);
+  }
+  void *object = finalize_ring[finalize_tail & FINALIZE_RING_MASK];
+  finalize_tail = finalize_tail + 1;
+  pthread_cond_signal(&finalize_cond_full);
+  pthread_mutex_unlock(&finalize_lock);
+}
+
+void finalize_init() {
+  pthread_mutex_init(&finalize_lock, NULL);
+  pthread_cond_init(&finalize_cond_empty, NULL);
+  pthread_cond_init(&finalize_cond_full, NULL);
+  finalize_head = 0;
+  finalize_tail = 0;
+}
+  
+ 
+
