@@ -297,33 +297,25 @@ GPTR allocation_group(long *metadata, int size) {
   }
 }
 
-static
-void initialize_object_body(void *void_base, int total_size) {
-  LPTR base = void_base;
-  int limit =  total_size / sizeof(LPTR);
-
-  for (int i = 2; i < limit; i++) {
-    *(base + i) = 0;
+static inline
+void initialize_object_metadata(void *metadata, GCPTR gcptr, GPTR group) {
+  long md = (long) metadata;
+  if (md < SC_METADATA) {
+    SET_STORAGE_CLASS(gcptr, md);
+  } else {
+    SET_STORAGE_CLASS(gcptr, SC_METADATA);
   }
 }
 
-static
-void initialize_object_metadata(void *metadata, GCPTR gcptr, GPTR group) {
-  switch ((long) metadata) {
-  case (long) RTnopointers:
-    SET_STORAGE_CLASS(gcptr,SC_NOPOINTERS);
-    break;
-  case (long) RTpointers:
-    SET_STORAGE_CLASS(gcptr,SC_POINTERS);
-    break;
-  case (long) RTcustom1:
-    SET_STORAGE_CLASS(gcptr,SC_CUSTOM1);
-    break;    
-  default:
-    SET_STORAGE_CLASS(gcptr,SC_METADATA);
-    //LPTR last_ptr = base + (group->size / sizeof(LPTR)) - 1;
-    //*last_ptr = (long) metadata;
-    break;
+static inline
+void initialize_object_body(void *metadata, LPTR base, GPTR group) {
+  long md = (long) metadata;
+  if (metadata != RTnopointers) {
+    memset(base, 0, group->size - sizeof(GC_HEADER));
+  }
+  if (md > SC_METADATA) {
+    LPTR last_ptr = base + (group->size / sizeof(LPTR)) - 3;
+    *last_ptr = md;
   }
 }
 
@@ -349,25 +341,12 @@ void *RTallocate(void *metadata, int size) {
   SET_COLOR(new,marked_color);	// Must allocate black!
   WITH_LOCK(group->black_count_lock,
 	    group->black_count = group->black_count + 1;)
-
-  if ((((long) metadata) <= SC_POINTERS) || (((long) metadata) == SC_CUSTOM1)) {
-    SET_STORAGE_CLASS(new, (long) metadata); 
-  } else {
-    SET_STORAGE_CLASS(new, SC_METADATA);
-    LPTR last_ptr = base + (group->size / sizeof(LPTR)) - 1;
-    *last_ptr = (long) metadata;
-  }
-  
-  //initialize_object_metadata(metadata, new, group);
-
-  base = (LPTR) (new + 1);
+  initialize_object_metadata(metadata, new, group);
   // Unlock only after storage class initialization because
   // gc recyling garbage can read and write next ptr
   pthread_mutex_unlock(&(group->free_lock));
-  if (RTnopointers != metadata) {
-    memset(base, 0, group->size - sizeof(GC_HEADER));
-  }
-
+  base = (LPTR) (new + 1);
+  initialize_object_body(metadata, base, group);
   return(base);
 }
 

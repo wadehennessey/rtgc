@@ -410,11 +410,11 @@ void scan_object(GCPTR ptr, int total_size) {
   case SC_POINTERS:
     scan_memory_segment(low, high);
     break;
-  case SC_METADATA:
-    scan_memory_segment_with_metadata(low, high, 0);
-    break;
   case SC_CUSTOM1:
     (*custom_scanners[0])(low, high);
+    break;
+  case SC_METADATA:
+    scan_memory_segment_with_metadata(low, high, 0);
     break;
   default: Debugger(0);
   }
