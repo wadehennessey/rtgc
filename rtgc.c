@@ -129,9 +129,6 @@ void RTtrace_heap_pointer(void *ptr) {
 // Scan memory to trace *possible* pointers
 static
 void scan_memory_segment(BPTR low, BPTR high) {
-  // if GC_POINTER_ALIGNMENT is < 4, avoid scanning potential pointers that
-  // extend past the end of this object
-  high = high - sizeof(LPTR) + 1;
   for (BPTR next = low; next < high; next = next + GC_POINTER_ALIGNMENT) {
     BPTR ptr = *((BPTR *) next);
     if (IN_PARTITION(ptr)) {
@@ -148,8 +145,24 @@ void scan_memory_segment(BPTR low, BPTR high) {
 }
 
 static
-void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
-  Debugger("HEY! write me!\n");
+void scan_memory_segment_with_metadata(BPTR low, BPTR high) {
+  LPTR last_ptr = (LPTR) high - 1;
+  RT_METADATA *md = (RT_METADATA *) *last_ptr;
+  long size = *md;
+
+  for (BPTR next = low; next < high; next = next + GC_POINTER_ALIGNMENT) {
+    BPTR ptr = *((BPTR *) next);
+    if (IN_PARTITION(ptr)) {
+      PPTR page = pages + PTR_TO_PAGE_INDEX(ptr);
+      GPTR group = page->group;
+      if (group > EXTERNAL_PAGE) {
+	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group);
+	if (WHITEP(gcptr) && valid_interior_ptr(gcptr, ptr)) {
+	  RTmake_object_gray(gcptr);
+	}
+      }
+    }
+  }
 }
 
 // Public version
@@ -414,7 +427,7 @@ void scan_object(GCPTR ptr, int total_size) {
     (*custom_scanners[0])(low, high);
     break;
   case SC_METADATA:
-    scan_memory_segment_with_metadata(low, high, 0);
+    scan_memory_segment_with_metadata(low, high);
     break;
   default: Debugger(0);
   }
