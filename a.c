@@ -37,7 +37,7 @@ typedef struct node {
 RT_METADATA NODE_md[] = {sizeof(NODE),
 			 offsetof(NODE, word),
 			 offsetof(NODE, lesser),
-			 offsetof(NODE, greater)
+			 offsetof(NODE, greater),
 			 -1};
 
 NODE *roots[100];

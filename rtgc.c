@@ -149,16 +149,21 @@ void scan_memory_segment_with_metadata(BPTR low, BPTR high) {
   LPTR last_ptr = (LPTR) high - 1;
   RT_METADATA *md = (RT_METADATA *) *last_ptr;
   long size = *md;
+  long length = high - low - sizeof(RT_METADATA *);
+  long count = length / size;
 
-  for (BPTR next = low; next < high; next = next + GC_POINTER_ALIGNMENT) {
-    BPTR ptr = *((BPTR *) next);
-    if (IN_PARTITION(ptr)) {
-      PPTR page = pages + PTR_TO_PAGE_INDEX(ptr);
-      GPTR group = page->group;
-      if (group > EXTERNAL_PAGE) {
-	GCPTR gcptr = interior_to_gcptr_3(ptr, page, group);
-	if (WHITEP(gcptr) && valid_interior_ptr(gcptr, ptr)) {
-	  RTmake_object_gray(gcptr);
+  for (int i = 0; i < count; i++) {
+    BPTR offset = low + (i * size);
+    for (int j = 1; md[j] != -1; j++) {
+      BPTR ptr = *((BPTR *) (offset + md[j]));
+      if (IN_PARTITION(ptr)) {
+	PPTR page = pages + PTR_TO_PAGE_INDEX(ptr);
+	GPTR group = page->group;
+	if (group > EXTERNAL_PAGE) {
+	  GCPTR gcptr = interior_to_gcptr_3(ptr, page, group);
+	  if (WHITEP(gcptr) && valid_interior_ptr(gcptr, ptr)) {
+	    RTmake_object_gray(gcptr);
+	  }
 	}
       }
     }
