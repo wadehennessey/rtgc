@@ -237,6 +237,8 @@ void RTroom_print(long *green_count, long *alloc_count, long *hole_counts) {
   printf("Total hole + committed bytes = %d (max %d)\n", 
 	 (total_empty_pages * BYTES_PER_PAGE) + total_committed_bytes,
 	 total_partition_pages * BYTES_PER_PAGE);
+  printf("Static space allocated bytes = %d\n", 
+	 static_frontier_ptr - first_static_ptr);
   printf("----------------------------------------------------------------\n");
 }
 
