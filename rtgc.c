@@ -81,7 +81,7 @@ static inline GCPTR interior_to_gcptr_3(BPTR ptr, PPTR page, GPTR group) {
       gcptr = (GCPTR) ((long) ptr & (-1 << group->index));
     }
   } else {
-    printf("ERROR! Found IN_HEAP pointer with NULL group!\n");
+    Debugger("ERROR! Found IN_HEAP pointer with NULL group!\n");
   }
   return(gcptr);
 }
@@ -95,11 +95,11 @@ static inline GCPTR interior_to_gcptr(BPTR ptr) {
     if (group->size >= BYTES_PER_PAGE) {
       gcptr = page->base;
     } else {
-      // This only works because first_partition_ptr is BYTES_PER_Page aligned 
+      // This only works because first_partition_ptr is BYTES_PER_PAGE aligned 
       gcptr = (GCPTR) ((long) ptr & (-1 << group->index));
     }
   } else {
-    printf("ERROR! Found IN_HEAP pointer with NULL group!\n");
+    Debugger("ERROR! Found IN_HEAP pointer with NULL group!\n");
   }
   return(gcptr);
 }
@@ -200,7 +200,6 @@ int scan_write_vector() {
       }
     }
   }
-  //printf("mark_count is %d\n", mark_count);
   return(mark_count);
 }
 
@@ -227,7 +226,6 @@ int scan_write_vector() {
       }
     }
   }
-  //printf("mark_count is %d\n", mark_count);
   return(mark_count);
 }
 
@@ -562,7 +560,7 @@ void flip() {
 
 // The alloc counterpart to this function is init_pages_for_group.
 // We need to change garbage color to green now so conservative
-// scanning in the next gc cycle doesn't start making free objects 
+// scanning in a later gc cycle doesn't start making free objects 
 // that look white turn gray!
 static
 void recycle_group_garbage(GPTR group) {
@@ -598,9 +596,8 @@ void recycle_group_garbage(GPTR group) {
       group->free = group->white;
     }
 
-    // HEY! this was commented out
     if (group->black == NULL) {
-      printf("recycle black is null\n");
+      Debugger("recycle black is null\n");
       group->black = group->white;
     }
     
@@ -671,7 +668,7 @@ void init_realtime_gc() {
   // the gc_flip signal handler uses this to find the thread_index of 
   // the mutator thread it is running on
   if (0 != pthread_key_create(&thread_index_key, NULL)) {
-    printf("thread_index_key create failed!\n");
+    Debugger("thread_index_key create failed!\n");
   }
 
   printf("Running last commit before t1/t2 branch creation\n");
