@@ -1,8 +1,7 @@
 very useful to keep debuinfo up to date
 dnf --enablerepo=updates-debuginfo update
 
-zm-x gud-gdb to switch *dedicated* window
-
+m-x gud-gdb to switch *dedicated* window
 c-x c-a c-b to set breakpoint at point line. Who changed this and why?
 
 service sshd start
@@ -50,21 +49,8 @@ set non-stop on
 >break a.c:166 if (j == 1535)
 
 
-other profilers
-----------------
-perf ./a
-perf report
-
-add
 wmctrl -r "emacs" -e 1,-1,-1,770,1010
 
-
-Ideas
--------
-Could try copy on write stacks on flip? no memcpy that way
-would involve MAP_PRIVATE each stack to a file?
-
-gdb> set unwindonsignal on
 
 
 TODO:
@@ -83,9 +69,6 @@ gdb tui mode in xterm: c-x a
 
 too see event numbers and start at a specific event number:
 rr -M replay -g <event-number>
-
-first run take a long time
-run again jumps to event time immediately on future runs
 
 
 try gdb cmds:
@@ -135,7 +118,7 @@ in /etc/fstab add:
 /home/bigswapfile		swap		swap	defaults	0 0
 
 
-cleanup
+flip
 -------
 200ns for the "null" signal and return time. Includes double the "system" time.
 Mean 5000 "null" signal and returns per 1ms.
@@ -145,15 +128,6 @@ real	0m0.209s
 user	0m0.029s
 sys	0m0.389s
 
-
-use struct timespec for nanosecond timing on handler 
-
-support md
-fix clearing of md after install
-
-finish merge of init_metadata and init_body into RTallocate directly
-HEY! for SXpointers, must init to 0 all of object body, not just actual size
-don't init SXnopointers memory!
 ---------------------------------------------
 break Debugger
 break __assert
@@ -168,40 +142,13 @@ remove black_count_lock with count_lock for conditional debugging
 change group->free_last to just group->last?
 remove green count and total_object_count
 --------------
-Also, we should turn adjacent holes into one bigger whole as the last
-step in coalescer.
-
-// HEY! this is a total hack for wcl - fix this!
-static
-void scan_memory_segment_with_metadata(BPTR low, BPTR high, RT_METADATA *md) {
+Also, we should merge adjacent holes into one bigger hole as the last
+step in the coalescer.
 
 fix:remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
 fix: don't dup lock/unlock_all_locks. Make it non static in rtutil.
 fix: add .gdbinit to rtgc, make ~/.gdbinit a link to rtgc version
 fix: add .wclinit to wcl, make ~/.wclinit a link
 
-introduce "flip stack copy helper threads with almost no stack themselves"
-comment copy on write as another stack copy speed up - need to sync scan/copy
 
 
--------------------------------------------------------------------
-// play around with how we might use inline funcs instead of messy
-// #defines for some things
-
-inline int validp(GCPTR gcptr) {
-  return(gcptr == (GCPTR) 0xDEADBEEF);
-}
-
-// putting this in a .c file:
-// extern validp(GCPTR gcptr);
-// will cause a function called validp to be created in that file
-
-inline void set_link_info(GCPTR l, int mask, int bits) {
-  l = (GCPTR) (((long) l & ~(mask)) | bits);
-}
-
-inline void set_instance_storage_class(char *o, int RTclass) {
-  set_link_info(((GCPTR) ((char *) (o) - sizeof(GC_HEADER))), 
-		GC_STORAGE_INFO_MASK, RTclass);
-}
---------------------------------------------------------------------

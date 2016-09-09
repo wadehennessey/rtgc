@@ -1,6 +1,6 @@
 // (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
-// rtgc page coalescing code. 
+// rtgc page coalescing
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -62,8 +62,6 @@ static void verify_heap() {
   unlock_all_free_locks();
 }
 
-// new coalescer now that we don't have a giant implicit lock
-// and we don't want to maintain page_bytes
 static void coalesce_free_pages() {
   long next_page = 0;
   long hole = -1;
@@ -78,7 +76,6 @@ static void coalesce_free_pages() {
       }
     } else {
       if (-1 != hole) {
-	//printf("Adding hole start = %d page_count = %d\n", hole, page_count);
 	RTinit_empty_pages(hole, page_count, HEAP_SEGMENT);
 	hole = -1;
 	page_count = 0;
@@ -87,7 +84,6 @@ static void coalesce_free_pages() {
     next_page = next_page + 1;
   }
   if (-1 != hole) {
-    //printf("Adding hole start = %d page_count = %d\n", hole, contig_count);
     RTinit_empty_pages(hole, page_count, HEAP_SEGMENT);
   }
 }
@@ -305,10 +301,6 @@ void RTroom() {
 void coalesce_all_free_pages() {
   identify_free_pages();
   coalesce_free_pages();
-  //  verify_heap();
-  //  if ((gc_count % 1000) == 0) {
-  //     RTroom();
-  //  }
 }
 
 
