@@ -142,11 +142,8 @@ remove black_count_lock with count_lock for conditional debugging
 change group->free_last to just group->last?
 remove green count and total_object_count
 --------------
-Also, we should merge adjacent holes into one bigger hole as the last
-step in the coalescer.
-
 fix:remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
-fix: don't dup lock/unlock_all_locks. Make it non static in rtutil.
+fix: don't dup lock/unlock_all_locks. Make it non static in rtutil.c
 fix: add .gdbinit to rtgc, make ~/.gdbinit a link to rtgc version
 fix: add .wclinit to wcl, make ~/.wclinit a link
 

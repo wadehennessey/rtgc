@@ -19,8 +19,6 @@
 #include "mem-internals.h"
 #include "allocate.h"
 
-HOLE_PTR empty_pages;
-
 static inline int size_to_group_index(int size) {
   int s = size;
   int index = 0;
@@ -430,7 +428,6 @@ void RTinit_heap(size_t first_segment_bytes, size_t static_size) {
   memset(RTwrite_vector, 0, RTwrite_vector_length);
   //printf("using byte write barrier, ");
 #endif
-  //printf("RTwrite_vector_length is %ld\n", RTwrite_vector_length);
   if ((pages == 0) || (groups == 0) || (segments == 0) || 
       (threads == 0) || (global_roots == 0) || (RTwrite_vector == 0)) {
     out_of_memory("Heap Memory tables", 0);

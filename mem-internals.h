@@ -136,7 +136,7 @@ extern BPTR static_frontier_ptr;
 
 extern GROUP_INFO *groups;
 extern PAGE_INFO *pages;
-
+extern HOLE_PTR empty_pages;
 extern volatile long gc_count;
 
 extern SEGMENT *segments;

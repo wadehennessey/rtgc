@@ -195,17 +195,9 @@ void *start_word_count(void *arg) {
 }
 
 int main(int argc, char *argv[]) {
-  struct timespec res, start_time, end_time, elapsed;
-  if (0 == clock_getres(CLOCK_REALTIME, &res)) {
-    clock_gettime(CLOCK_REALTIME, &start_time);
-    clock_gettime(CLOCK_REALTIME, &end_time);
-    elapsed = RTtime_diff(start_time, end_time);
-    printf("Elapsed: %lld.%.9ld\n", elapsed.tv_sec, elapsed.tv_nsec);
-  }
-
   RTatomic_gc = 0;
   //RTinit_heap((1L << 36), 0);
-  RTinit_heap((1L << 25), 1L << 20);
+  RTinit_heap((1L << 21), 1L << 18);
   for (long i = 1; i <= 3; i++) {
     new_thread(&start_word_count, (void *) i);
   }

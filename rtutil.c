@@ -33,9 +33,6 @@ void out_of_memory(char *msg, int bytes_needed) {
   Debugger(0);
 }
 
-static int zero = 0;
-static int debug;
-
 void Debugger(char *msg) {
   if (0 != msg) {
     printf(msg);
@@ -43,7 +40,7 @@ void Debugger(char *msg) {
     printf("Hey! rtgc called the debugger - fix me!\n");
   }
   fflush(stdout);
-  debug = 1 / zero;
+  raise(SIGSTOP);
 }
 
 void copy_test(size_t len) {
@@ -195,6 +192,16 @@ void finalize_init() {
   finalize_head = 0;
   finalize_tail = 0;
 }
-  
+
+void timespec_test () {
+  struct timespec res, start_time, end_time, elapsed;
+  if (0 == clock_getres(CLOCK_REALTIME, &res)) {
+    clock_gettime(CLOCK_REALTIME, &start_time);
+    clock_gettime(CLOCK_REALTIME, &end_time);
+    elapsed = RTtime_diff(start_time, end_time);
+    printf("Elapsed: %lld.%.9ld\n", elapsed.tv_sec, elapsed.tv_nsec);
+  }
+}
+
  
 

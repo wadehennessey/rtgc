@@ -21,6 +21,7 @@
 
 GROUP_INFO *groups;
 PAGE_INFO *pages;
+HOLE_PTR empty_pages;
 
 int RTpage_power = PAGE_POWER;
 int RTpage_size = BYTES_PER_PAGE;  

@@ -519,8 +519,8 @@ void flip() {
     // group->white = (GREENP(black) ? NULL : black)
     if (group->black == group->free) {
       // Must have no retained objects, we have nothing
-      // availble to retain this cycle
-      group->white = 0;
+      // available to retain this cycle
+      group->white = NULL;
     } else {
       group->white = group->black;
     }
@@ -597,7 +597,7 @@ void recycle_group_garbage(GPTR group) {
     }
 
     if (group->black == NULL) {
-      Debugger("recycle black is null\n");
+      printf("***recycle black is null***\n");
       group->black = group->white;
     }
     

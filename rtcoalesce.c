@@ -297,16 +297,60 @@ void RTroom() {
   RTroom_print(green_count, alloc_count, hole_counts);
 }
 
+// Caller must hold empty_pages_lock when calling this.
+void delete_merged_holes(int delete_count) {
+  HOLE_PTR prev = NULL;
+  HOLE_PTR next = empty_pages;
+  while ((delete_count > 0) && (next != NULL)) {
+    if (next->page_count == 0) {
+      if (prev == NULL) {
+	empty_pages = next->next;
+	next = empty_pages;
+      } else {
+	next = next->next;
+	prev->next = next;
+      }
+      delete_count = delete_count - 1;
+    } else {
+      prev = next;
+      next = next->next;
+    }
+  }
+  assert(delete_count == 0);
+}
+
+void merge_adjacent_holes() {
+  int merge_count = 0;
+  pthread_mutex_lock(&empty_pages_lock);
+  HOLE_PTR next = empty_pages;
+  while (next != NULL) {
+    // Skip merged holes with 0 page_counts
+    if (next->page_count > 0) {
+      int start_page = PTR_TO_PAGE_INDEX(next);
+      int continue_merge;
+      do {
+	continue_merge = 0;
+	int end_page = start_page + next->page_count;
+	if (end_page < total_partition_pages) {
+	  if (pages[end_page].group == EMPTY_PAGE) {
+	    HOLE_PTR adjacent = (HOLE_PTR) PAGE_INDEX_TO_PTR(end_page);
+	    next->page_count = next->page_count + adjacent->page_count;
+	    adjacent->page_count = 0;
+	    merge_count = merge_count + 1;
+	    continue_merge = 1;
+	  }
+	}
+      } while (continue_merge == 1);
+    }
+    next = next->next;
+  }
+  delete_merged_holes(merge_count);
+  pthread_mutex_unlock(&empty_pages_lock);
+}
+
 
 void coalesce_all_free_pages() {
   identify_free_pages();
   coalesce_free_pages();
+  merge_adjacent_holes();
 }
-
-
-	
-	
-	
-	
-      
-    
