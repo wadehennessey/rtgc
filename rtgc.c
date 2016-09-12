@@ -597,7 +597,6 @@ void recycle_group_garbage(GPTR group) {
     }
 
     if (group->black == NULL) {
-      printf("***recycle black is null***\n");
       group->black = group->white;
     }
     
