@@ -443,6 +443,8 @@ void scan_object_with_group(GCPTR ptr, GPTR group) {
 	    SET_COLOR(ptr,marked_color);
 	    group->black_count = group->black_count + 1;
 	    group->black = ptr;);
+
+  group->black_scanned_count = group->black_scanned_count + 1;
 }
 
 // HEY! Fix this up now that it's not continuation based.
@@ -477,22 +479,6 @@ void scan_gray_set() {
   } while (rescan_all_groups == 1);
 }
 
-static
-void lock_all_free_locks() {
-  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    GPTR group = &groups[i];
-    pthread_mutex_lock(&(group->free_lock));
-  }
-}
-
-static
-void unlock_all_free_locks() {
-  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    GPTR group = &groups[i];
-    pthread_mutex_unlock(&(group->free_lock));
-  }
-}
-  
 static
 void flip() {
   assert(0 == enable_write_barrier);
@@ -529,7 +515,16 @@ void flip() {
 
     assert(group->black_count >= 0); 
     group->white_count = group->black_count;
+
+    assert(group->black_count == (group->black_scanned_count + 
+				  group->black_alloc_count));
+    
     group->black_count = 0;
+
+
+    group->black_scanned_count = 0;
+    group->black_alloc_count = 0;
+    
   }
 
   assert(0 == enable_write_barrier);
@@ -606,7 +601,6 @@ void recycle_group_garbage(GPTR group) {
     }
     SET_LINK_POINTER((group->white)->prev, group->free_last);
     group->free_last = last;
-    group->green_count = group->green_count + count;
   }
   group->white = NULL;
   group->white_count = 0; // no lock needed, white_count is gc only

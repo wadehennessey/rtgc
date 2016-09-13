@@ -129,23 +129,17 @@ user	0m0.029s
 sys	0m0.389s
 
 ---------------------------------------------
-break Debugger
-break __assert
 
 try gcc -mcmodel=large to avoid dlopen relocation problems in wcl
 
 
-split group->black_count into 2: 
-black_count == black_scanned_count + black_new_count
-remove black_count_lock with count_lock for conditional debugging 
-
-change group->free_last to just group->last?
-remove green count and total_object_count
+done - black_count == black_scanned_count + black_alloc_count
+remove black_count
+remove black_count_lock
 --------------
-fix:remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
-fix: don't dup lock/unlock_all_locks. Make it non static in rtutil.c
-fix: add .gdbinit to rtgc, make ~/.gdbinit a link to rtgc version
-fix: add .wclinit to wcl, make ~/.wclinit a link
+reorder scan_object_with_group - set color and black assign outside lock
+Add IF_COUNTING/DEBUG wrappers
 
-
-
+remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
+add .gdbinit to rtgc, make ~/.gdbinit a link to rtgc version
+add .wclinit to wcl, make ~/.wclinit a link

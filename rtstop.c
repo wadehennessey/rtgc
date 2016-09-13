@@ -149,8 +149,13 @@ void init_signals_for_rtgc() {
   sigaction(FLIP_SIGNAL, &signal_action, 0);
 }
 
+void lock_all_free_locks() {
+  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
+    GPTR group = &groups[i];
+    pthread_mutex_lock(&(group->free_lock));
+  }
+}
 
-static
 void unlock_all_free_locks() {
   for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
     GPTR group = &groups[i];

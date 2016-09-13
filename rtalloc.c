@@ -43,10 +43,12 @@ void init_group_info() {
     groups[index].white = NULL;
     groups[index].black = NULL;
     groups[index].gray = NULL;
-    groups[index].total_object_count = 0;
     groups[index].white_count = 0;
     groups[index].black_count = 0;
-    groups[index].green_count = 0;
+
+    groups[index].black_scanned_count = 0;
+    groups[index].black_alloc_count = 0;
+					 
     pthread_mutex_init(&(groups[index].black_count_lock), NULL);
     pthread_mutex_init(&(groups[index].free_lock), NULL);
     pthread_mutex_init(&(groups[index].black_and_last_lock), NULL);
@@ -245,8 +247,6 @@ void init_pages_for_group(GPTR group, int min_pages) {
 		SET_LINK_POINTER(free_last->next,base);
 	      }
 	      group->free_last = current;);
-    group->green_count = group->green_count + num_objects;
-    group->total_object_count = group->total_object_count + num_objects;
     // Only now can we initialize EMPTY page table entries.
     // Doing it before object GCHDRs are correctly setup and colored green
     // allows conservative pointers and exposed and uncleared
@@ -332,13 +332,16 @@ void *RTallocate(void *metadata, int size) {
   }
   new = group->free;
   group->free = GET_LINK_POINTER(new->next);
-  group->green_count = group->green_count - 1;
   // No need for an explicit flip lock here. During a flip the gc will
   // hold the green lock for every group, so no allocator can get here
   // when the marked_color is being changed.
   SET_COLOR(new,marked_color);	// Must allocate black!
+
   WITH_LOCK(group->black_count_lock,
 	    group->black_count = group->black_count + 1;)
+  
+  group->black_alloc_count = group->black_alloc_count + 1;
+    
   initialize_object_metadata(metadata, new, group);
   // Unlock only after storage class initialization because
   // gc recyling garbage can read and write next ptr

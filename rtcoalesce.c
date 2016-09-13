@@ -17,22 +17,6 @@
 #include "mem-internals.h"
 #include "allocate.h"
 
-static
-void lock_all_free_locks() {
-  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    GPTR group = &groups[i];
-    pthread_mutex_lock(&(group->free_lock));
-  }
-}
-
-static
-void unlock_all_free_locks() {
-  for (int i = MIN_GROUP_INDEX; i <= MAX_GROUP_INDEX; i++) {
-    GPTR group = &groups[i];
-    pthread_mutex_unlock(&(group->free_lock));
-  }
-}
-
 static void verify_heap() {
   lock_all_free_locks();
   int page = 0;
@@ -115,10 +99,6 @@ static void remove_object_from_free_list(GPTR group, GCPTR object) {
   if (next != NULL) {
     SET_LINK_POINTER(next->prev, prev);
   }
-
-  // These counts are covered by the free lock
-  group->green_count = group->green_count - 1;
-  group->total_object_count = group->total_object_count - 1;
 }
 
 static int all_green_page(int page, GPTR group) {

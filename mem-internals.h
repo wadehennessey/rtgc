@@ -50,10 +50,10 @@ typedef struct group_info {
   GCPTR black;			// only used in rtgc and rtalloc
   GCPTR white;			// only used in rtgc
 
-  int total_object_count;	// used in rtgc and rtalloc
   int white_count;		// only used in rtgc
   int black_count;		// used in rtgc and rtalloc
-  int green_count;		// used in rtgc and rtalloc
+  int black_scanned_count;	// used in rtgc
+  int black_alloc_count;        // used in rtgc and rtalloc
 
   pthread_mutex_t free_lock;	// used in rtgc and rtalloc
   pthread_mutex_t black_count_lock;	// used in rtgc and rtalloc
@@ -110,6 +110,8 @@ void scan_object(GCPTR ptr, int total_size);
 void RTinit_empty_pages(int first_page, int page_count, int type);
 void rtgc_loop();
 void init_signals_for_rtgc();
+void lock_all_free_locks();
+void unlock_all_free_locks();
 int stop_all_mutators_and_save_state();
 void RTroom();
 void init_realtime_gc(void);
