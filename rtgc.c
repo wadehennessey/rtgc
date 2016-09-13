@@ -439,11 +439,8 @@ void scan_object(GCPTR ptr, int total_size) {
 static
 void scan_object_with_group(GCPTR ptr, GPTR group) {
   scan_object(ptr, group->size);
-  WITH_LOCK(group->black_count_lock,
-	    SET_COLOR(ptr,marked_color);
-	    group->black_count = group->black_count + 1;
-	    group->black = ptr;);
-
+  SET_COLOR(ptr,marked_color);
+  group->black = ptr;
   group->black_scanned_count = group->black_scanned_count + 1;
 }
 
@@ -513,18 +510,11 @@ void flip() {
     group->black = group->free;
     group->gray = NULL;
 
-    assert(group->black_count >= 0); 
-    group->white_count = group->black_count;
-
-    assert(group->black_count == (group->black_scanned_count + 
-				  group->black_alloc_count));
-    
-    group->black_count = 0;
-
+    group->white_count = group->black_scanned_count + group->black_alloc_count;
+    assert(group->white_count >= 0);
 
     group->black_scanned_count = 0;
     group->black_alloc_count = 0;
-    
   }
 
   assert(0 == enable_write_barrier);

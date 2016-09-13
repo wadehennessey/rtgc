@@ -44,12 +44,8 @@ void init_group_info() {
     groups[index].black = NULL;
     groups[index].gray = NULL;
     groups[index].white_count = 0;
-    groups[index].black_count = 0;
-
     groups[index].black_scanned_count = 0;
     groups[index].black_alloc_count = 0;
-					 
-    pthread_mutex_init(&(groups[index].black_count_lock), NULL);
     pthread_mutex_init(&(groups[index].free_lock), NULL);
     pthread_mutex_init(&(groups[index].black_and_last_lock), NULL);
   }
@@ -336,10 +332,6 @@ void *RTallocate(void *metadata, int size) {
   // hold the green lock for every group, so no allocator can get here
   // when the marked_color is being changed.
   SET_COLOR(new,marked_color);	// Must allocate black!
-
-  WITH_LOCK(group->black_count_lock,
-	    group->black_count = group->black_count + 1;)
-  
   group->black_alloc_count = group->black_alloc_count + 1;
     
   initialize_object_metadata(metadata, new, group);

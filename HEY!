@@ -132,12 +132,8 @@ sys	0m0.389s
 
 try gcc -mcmodel=large to avoid dlopen relocation problems in wcl
 
-
-done - black_count == black_scanned_count + black_alloc_count
-remove black_count
-remove black_count_lock
+call free_last last? matches state diagrams and ppt
 --------------
-reorder scan_object_with_group - set color and black assign outside lock
 Add IF_COUNTING/DEBUG wrappers
 
 remove redundant > EXTERNAL test in interior_to_gcptr(and 3)

@@ -51,12 +51,10 @@ typedef struct group_info {
   GCPTR white;			// only used in rtgc
 
   int white_count;		// only used in rtgc
-  int black_count;		// used in rtgc and rtalloc
   int black_scanned_count;	// used in rtgc
   int black_alloc_count;        // used in rtgc and rtalloc
 
   pthread_mutex_t free_lock;	// used in rtgc and rtalloc
-  pthread_mutex_t black_count_lock;	// used in rtgc and rtalloc
   pthread_mutex_t black_and_last_lock;	// used in rtgc and rtalloc
 } GROUP_INFO;
 
