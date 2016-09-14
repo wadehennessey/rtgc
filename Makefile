@@ -4,13 +4,13 @@ a:	a.c
 	gcc -o a -Og -ggdb3 a.c -L./ -lrtgc -lpthread -lc -lm -ldl
 
 opt-a:	a.c
-	gcc -o a -O2 -ggdb3 a.c -L./ -lrtgc -lpthread -lc -lm -ldl
+	gcc -o a -O2 -ggdb3 -DNDEBUG a.c -L./ -lrtgc -lpthread -lc -lm -ldl
 
 lib:
 	gcc -shared -fPIC -o librtgc.so -ggdb3 rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c 
 
 opt-lib:
-	gcc -shared -fPIC -o librtgc.so -O2 -ggdb3 rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c 
+	gcc -shared -fPIC -o librtgc.so -O2 -ggdb3 -DNDEBUG rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c 
 
 all:
 	gcc -ggdb3 -o a a.c rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c  -lpthread

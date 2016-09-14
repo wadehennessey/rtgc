@@ -44,7 +44,7 @@ typedef struct group_info {
   int size;
   int index;
 
-  GCPTR free_last;		// used in rtgc and rtalloc
+  GCPTR last;			// used in rtgc and rtalloc
   GCPTR free;			// used in rtgc and rtalloc
   GCPTR gray;			// only used in rtgc
   GCPTR black;			// only used in rtgc and rtalloc

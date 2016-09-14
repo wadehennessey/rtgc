@@ -196,7 +196,6 @@ void *start_word_count(void *arg) {
 
 int main(int argc, char *argv[]) {
   RTatomic_gc = 0;
-  //RTinit_heap((1L << 36), 0);
   RTinit_heap((1L << 21), 1L << 18);
   for (long i = 1; i <= 3; i++) {
     new_thread(&start_word_count, (void *) i);

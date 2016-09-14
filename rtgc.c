@@ -46,7 +46,7 @@ void RTmake_object_gray(GCPTR current) {
     if (group->black == NULL) {
       assert(NULL == group->free);
       group->black = current;
-      group->free_last = current;
+      group->last = current;
       pthread_mutex_unlock(&(group->black_and_last_lock));
     } else {
       pthread_mutex_unlock(&(group->black_and_last_lock));
@@ -73,15 +73,11 @@ static inline int valid_interior_ptr(GCPTR gcptr, BPTR interior_ptr) {
 
 static inline GCPTR interior_to_gcptr_3(BPTR ptr, PPTR page, GPTR group) {
   GCPTR gcptr;
-  if (group > EXTERNAL_PAGE) {
-    if (group->size >= BYTES_PER_PAGE) {
-      gcptr = page->base;
-    } else {
-      // This only works because first_partition_ptr is BYTES_PER_PAGE aligned 
-      gcptr = (GCPTR) ((long) ptr & (-1 << group->index));
-    }
+  if (group->size >= BYTES_PER_PAGE) {
+    gcptr = page->base;
   } else {
-    Debugger("ERROR! Found IN_HEAP pointer with NULL group!\n");
+    // This only works because first_partition_ptr is BYTES_PER_PAGE aligned 
+    gcptr = (GCPTR) ((long) ptr & (-1 << group->index));
   }
   return(gcptr);
 }
@@ -491,11 +487,11 @@ void flip() {
       }
       SET_LINK_POINTER(free->prev,NULL);
     } else {
-      GCPTR free_last = group->free_last;
-      if (free_last != NULL) {
-	SET_LINK_POINTER(free_last->next,NULL); // end black set
+      GCPTR last = group->last;
+      if (last != NULL) {
+	SET_LINK_POINTER(last->next,NULL); // end black set
       }
-      group->free_last = NULL;
+      group->last = NULL;
     }
 
     // used to handle this with:
@@ -586,11 +582,11 @@ void recycle_group_garbage(GPTR group) {
     }
     
     
-    if (group->free_last != NULL) {
-      SET_LINK_POINTER((group->free_last)->next, group->white);
+    if (group->last != NULL) {
+      SET_LINK_POINTER((group->last)->next, group->white);
     }
-    SET_LINK_POINTER((group->white)->prev, group->free_last);
-    group->free_last = last;
+    SET_LINK_POINTER((group->white)->prev, group->last);
+    group->last = last;
   }
   group->white = NULL;
   group->white_count = 0; // no lock needed, white_count is gc only
@@ -657,6 +653,9 @@ void init_realtime_gc() {
   printf("Running last commit before t1/t2 branch creation\n");
   printf("Page size is %d\n", BYTES_PER_PAGE);
   printf((RTatomic_gc ? "***ATOMIC GC***\n" : "***REAL-TIME GC***\n"));
+#ifdef NDEBUG
+  printf("NDEBUG is defined\n");
+#endif
   total_global_roots = 0;
   gc_count = 0;
   pthread_mutex_init(&total_threads_lock, NULL);

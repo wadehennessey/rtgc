@@ -39,7 +39,7 @@ void init_group_info() {
     groups[index].size = size;
     groups[index].index = index;
     groups[index].free = NULL;
-    groups[index].free_last = NULL;
+    groups[index].last = NULL;
     groups[index].white = NULL;
     groups[index].black = NULL;
     groups[index].gray = NULL;
@@ -234,15 +234,15 @@ void init_pages_for_group(GPTR group, int min_pages) {
     SET_LINK_POINTER(current->next,NULL);
     assert(NULL == group->free);
     WITH_LOCK((group->black_and_last_lock),
-	      GCPTR free_last = group->free_last;
+	      GCPTR last = group->last;
 	      group->free = base;
-	      if (free_last == NULL) { 	// No gray, black, or green objects?
+	      if (last == NULL) { 	// No gray, black, or green objects?
 		group->black = base;
 	      } else {
-		SET_LINK_POINTER(base->prev, free_last);
-		SET_LINK_POINTER(free_last->next,base);
+		SET_LINK_POINTER(base->prev, last);
+		SET_LINK_POINTER(last->next,base);
 	      }
-	      group->free_last = current;);
+	      group->last = current;);
     // Only now can we initialize EMPTY page table entries.
     // Doing it before object GCHDRs are correctly setup and colored green
     // allows conservative pointers and exposed and uncleared

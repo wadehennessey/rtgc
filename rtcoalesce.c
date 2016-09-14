@@ -88,9 +88,9 @@ static void remove_object_from_free_list(GPTR group, GCPTR object) {
     group->black = next;       // safe to not lock
   }
 
-  if (object == group->free_last) {
+  if (object == group->last) {
     // we end up here a lot
-    group->free_last = ((next == NULL) ? prev : next);
+    group->last = ((next == NULL) ? prev : next);
   }
 
   if (prev != NULL) {

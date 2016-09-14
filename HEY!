@@ -132,10 +132,9 @@ sys	0m0.389s
 
 try gcc -mcmodel=large to avoid dlopen relocation problems in wcl
 
-call free_last last? matches state diagrams and ppt
---------------
-Add IF_COUNTING/DEBUG wrappers
+change wcl print level to once for lib, once for compiler. Make it easy to change back.
 
-remove redundant > EXTERNAL test in interior_to_gcptr(and 3)
+Add IF_COUNTING/DEBUG wrappers
+--------------
 add .gdbinit to rtgc, make ~/.gdbinit a link to rtgc version
 add .wclinit to wcl, make ~/.wclinit a link
