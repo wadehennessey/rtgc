@@ -138,6 +138,7 @@ NODE *build_word_tree(char *filename) {
   FILE *f = fopen(filename, "r");
   if (f == NULL) {
     printf("Cannot open file %s\n", filename);
+    return(NULL);
   } else {
     char *word;
     NODE *root;
@@ -187,7 +188,7 @@ void *start_word_count(void *arg) {
     RTwrite_barrier(&(roots[tid]), root);
     assert(9317 == walk_word_tree(roots[tid], 0));
     if (0 == (i % 25)) {
-      printf("[%d] %d word counts\n", tid, i);
+      printf("[%ld] %d word counts\n", tid, i);
     }
     i = i + 1;
   }

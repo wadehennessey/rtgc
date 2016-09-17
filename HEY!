@@ -135,6 +135,20 @@ try gcc -mcmodel=large to avoid dlopen relocation problems in wcl
 change wcl print level to once for lib, once for compiler. Make it easy to change back.
 
 Add IF_COUNTING/DEBUG wrappers
+
+switch *debug-library-config* to *delivery-library-config* when doing build
+to speed things up
 --------------
+
 add .gdbinit to rtgc, make ~/.gdbinit a link to rtgc version
 add .wclinit to wcl, make ~/.wclinit a link
+
+
+
+--------------------------------
+clang stuff
+
+run "clang -### -c a.c" to see full command line the driver generates, 
+then append "-ast-dump" to the end and run it.
+
+in build dir "make clang" will just rebuild clang
