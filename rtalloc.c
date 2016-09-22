@@ -268,7 +268,7 @@ GPTR allocation_group(long *metadata, int size) {
     case (long) RTnopointers:
     case (long) RTpointers:
     case (long) RTcustom1:
-      data_size = size;
+      // delete - dead variable: data_size = size;
       real_size = size + sizeof(GC_HEADER); 
       break;
     default:
@@ -356,7 +356,6 @@ void *RTstatic_allocate(void *metadata, int size) {
   if (static_frontier_ptr > last_static_ptr) {
     out_of_memory("Static", size);
   } else {
-    LPTR base = (LPTR) ptr;
     *ptr = (size << LINK_INFO_BITS);
     // need to set storage class and clear body
     //base = RTInitializeObject(metadata, base, real_size, real_size);

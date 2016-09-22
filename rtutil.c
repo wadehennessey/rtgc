@@ -89,8 +89,6 @@ int counter_increment(COUNTER *c) {
   }
   //printf("counter increment\n");
   fflush(stdout);
-  // read c->count again in case bug made it change
-  int retval = c->count;       
   pthread_mutex_unlock(&(c->lock));
   return(val);
 }

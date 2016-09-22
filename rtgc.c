@@ -97,6 +97,7 @@ static inline GCPTR interior_to_gcptr(BPTR ptr) {
   } else {
     Debugger("ERROR! Found IN_HEAP pointer with NULL group!\n");
   }
+  // FIX me - gcptr can be returned uninitailzed.
   return(gcptr);
 }
 
