@@ -405,11 +405,11 @@ void RTinit_heap(size_t first_segment_bytes, size_t static_size) {
   enable_write_barrier = 0;
 
   total_partition_pages = first_segment_bytes / BYTES_PER_PAGE;
-  groups = malloc(sizeof(GROUP_INFO) * (MAX_GROUP_INDEX + 1));
+  groups = RTbig_malloc(sizeof(GROUP_INFO) * (MAX_GROUP_INDEX + 1));
   pages = RTbig_malloc(sizeof(PAGE_INFO) * total_partition_pages);
-  segments = malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
-  threads = malloc(sizeof(THREAD_INFO) * MAX_THREADS);
-  global_roots = malloc(sizeof(char **) * MAX_GLOBAL_ROOTS);
+  segments = RTbig_malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
+  threads = RTbig_malloc(sizeof(THREAD_INFO) * MAX_THREADS);
+  global_roots = RTbig_malloc(sizeof(char **) * MAX_GLOBAL_ROOTS);
 #if USE_BIT_WRITE_BARRIER
   RTwrite_vector_length = first_segment_bytes / (MIN_GROUP_SIZE * BITS_PER_LONG);
   RTwrite_vector = RTbig_malloc(RTwrite_vector_length * sizeof(long));

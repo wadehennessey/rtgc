@@ -2,23 +2,23 @@
 
 CC = gcc
 
-a:	a.c
-	$(CC) -o a -Og -ggdb3 a.c -L./ -lrtgc -lpthread -lc -lm -ldl
+a:
+	$(CC) -o a -Og -g a.c -L./ -lrtgc
 
-opt-a:	a.c
-	$(CC) -o a -O2 -ggdb3 -DNDEBUG a.c -L./ -lrtgc -lpthread -lc -lm -ldl
+opt-a:	
+	$(CC) -o a -O2 -g -DNDEBUG a.c -L./ -lrtgc
 
 lib:
-	$(CC) -shared -fPIC -o librtgc.so -ggdb3 rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c 
+	$(CC) -shared -fPIC -o librtgc.so -g rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c -lpthread
 
 opt-lib:
-	$(CC) -shared -fPIC -o librtgc.so -O2 -ggdb3 -DNDEBUG rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c 
+	$(CC) -shared -fPIC -o librtgc.so -O2 -g -DNDEBUG rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c -lpthread 
 
 all:
-	$(CC) -ggdb3 -o a a.c rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c  -lpthread
+	$(CC) -g -o a a.c rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c  -lpthread
 
 debug:	
-	$(CC) -ggdb3 -o a a.c rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c -lpthread
+	$(CC) -g -o a a.c rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c -lpthread
 
 opt:
 	$(CC) -O2 -g -o a a.c rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c -lpthread
