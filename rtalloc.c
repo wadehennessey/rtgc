@@ -203,15 +203,9 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	printf("alloc out ran gc, sync collect\n");
 	int current_gc_count = gc_count;
 	while (gc_count < (current_gc_count + 2)) {
-	  // Should be able to remove this sched_yield now that 
-	  // gc_count is declared volatile
+	  // Should use a condition variable counter instead of polling here
 	  sched_yield();
 	}
-	/*
-	if (NULL == group->free) {
-	  out_of_memory("Heap", group->size);
-	}
-	*/
       }
       pthread_mutex_lock(&(group->free_lock));
     }
