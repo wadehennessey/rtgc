@@ -207,9 +207,11 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	  // gc_count is declared volatile
 	  sched_yield();
 	}
+	/*
 	if (NULL == group->free) {
 	  out_of_memory("Heap", group->size);
 	}
+	*/
       }
       pthread_mutex_lock(&(group->free_lock));
     }
