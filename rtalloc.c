@@ -33,8 +33,7 @@ static inline int size_to_group_index(int size) {
 
 static
 void init_group_info() {
-  int index;
-  for (index = MIN_GROUP_INDEX; index <= MAX_GROUP_INDEX; index = index + 1) {
+  for (int index = MIN_GROUP_INDEX; index <= MAX_GROUP_INDEX; index = index + 1) {
     int size = 1 << index;
     groups[index].size = size;
     groups[index].index = index;
@@ -170,10 +169,7 @@ GCPTR allocate_empty_pages(int page_count) {
   return(base);
 }
 
-// The gc counterpart to this function is recycle_group_garbage.
-// We could try to unify the small common part.
 // Whoever calls this function has to be holding the group->free_lock.
-// So far only RTallocate calls this.
 static
 void init_pages_for_group(GPTR group, int min_pages) {
   int pages_per_object = group->size / BYTES_PER_PAGE;
@@ -198,8 +194,6 @@ void init_pages_for_group(GPTR group, int min_pages) {
       } else {
 	// concurrent gc
 	// need to wait until gc count increases by 2
-	// need to make gc_count a COUNTER counter instead of a lone int
-
 	printf("alloc out ran gc, sync collect\n");
 	int current_gc_count = gc_count;
 	while (gc_count < (current_gc_count + 2)) {
@@ -212,7 +206,10 @@ void init_pages_for_group(GPTR group, int min_pages) {
     if (NULL == group->free) {
       base = allocate_empty_pages(page_count);
     } else {
-      // printf("full_gc added to empty free list, gc_count = %d\n", gc_count);
+      // Gc added to free list, so no need to allocate or init empty pages.
+      // Could just continue because base is still NULL, but being explicit
+      // here seems clearer.
+      return;
     }
   }
 
@@ -241,7 +238,7 @@ void init_pages_for_group(GPTR group, int min_pages) {
 	      group->last = current;);
     // Only now can we initialize EMPTY page table entries.
     // Doing it before object GCHDRs are correctly setup and colored green
-    // allows conservative pointers and exposed and uncleared
+    // allows conservative pointers and exposed uncleared
     // dead pointers on the stack to incorrectly make_gray 
     // random bits that look like white objects!
     if (base != NULL) {
