@@ -321,7 +321,7 @@ void *RTallocate(void *metadata, int size) {
   // hold the free_lock for every group, so no allocator can get here
   // when the marked_color is being changed.
   SET_COLOR(new,marked_color);	// Must allocate black!
-  group->black_alloc_count = group->black_alloc_count + 1;
+  DEBUG(group->black_alloc_count = group->black_alloc_count + 1);
     
   initialize_object_metadata(metadata, new, group);
   // Unlock only after storage class initialization because

@@ -23,4 +23,10 @@
 #define DETECT_INVALID_REFS 0
 #define USE_BIT_WRITE_BARRIER 1
 
+#ifdef NDEBUG
+#define DEBUG(x)
+#else
+#define DEBUG(x) x
+#endif
+
 

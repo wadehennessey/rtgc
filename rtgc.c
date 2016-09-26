@@ -63,7 +63,7 @@ void RTmake_object_gray(GCPTR current) {
   SET_COLOR(current, GRAY);
   group->gray = current;
   assert(group->white_count > 0); // no lock needed, white_count is gc only
-  group->white_count = group->white_count - 1;
+  DEBUG(group->white_count = group->white_count - 1);
 }
 
 static inline int valid_interior_ptr(GCPTR gcptr, BPTR interior_ptr) {
@@ -438,7 +438,7 @@ void scan_object_with_group(GCPTR ptr, GPTR group) {
   scan_object(ptr, group->size);
   SET_COLOR(ptr,marked_color);
   group->black = ptr;
-  group->black_scanned_count = group->black_scanned_count + 1;
+  DEBUG(group->black_scanned_count = group->black_scanned_count + 1);
 }
 
 // HEY! Fix this up now that it's not continuation based.
@@ -564,11 +564,10 @@ void recycle_group_garbage(GPTR group) {
     next = GET_LINK_POINTER(next->next);
     count = count + 1;
   }
-
-  if (count != group->white_count) { // no lock needed, white_count is gc only
-    printf("group->white_count is %d, actual count is %d\n", 
-	   group->white_count, count);
-    Debugger("group->white_count doesn't equal actual count\n");
+  if (count != group->white_count) { 
+    DEBUG(printf("group->white_count is %d, actual count is %d\n", 
+		 group->white_count, count));
+    DEBUG(Debugger("group->white_count doesn't equal actual count\n"));
   }
 
   if (last != NULL) {
