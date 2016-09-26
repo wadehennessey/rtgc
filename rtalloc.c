@@ -307,11 +307,7 @@ void initialize_object_body(void *metadata, LPTR base, GPTR group) {
 }
 
 void *RTallocate(void *metadata, int size) {
-  GCPTR new;
-  LPTR base;
-  GPTR group;
-
-  group = allocation_group(metadata,size);
+  GPTR group = allocation_group(metadata,size);
   pthread_mutex_lock(&(group->free_lock));
   if (group->free == NULL) {
     init_pages_for_group(group,1);
@@ -319,10 +315,10 @@ void *RTallocate(void *metadata, int size) {
       out_of_memory("Heap", group->size);
     }
   }
-  new = group->free;
+  GCPTR new = group->free;
   group->free = GET_LINK_POINTER(new->next);
   // No need for an explicit flip lock here. During a flip the gc will
-  // hold the green lock for every group, so no allocator can get here
+  // hold the free_lock for every group, so no allocator can get here
   // when the marked_color is being changed.
   SET_COLOR(new,marked_color);	// Must allocate black!
   group->black_alloc_count = group->black_alloc_count + 1;
@@ -331,7 +327,7 @@ void *RTallocate(void *metadata, int size) {
   // Unlock only after storage class initialization because
   // gc recyling garbage can read and write next ptr
   pthread_mutex_unlock(&(group->free_lock));
-  base = (LPTR) (new + 1);
+  LPTR base = (LPTR) (new + 1);
   initialize_object_body(metadata, base, group);
   return(base);
 }
@@ -340,7 +336,7 @@ void *RTstatic_allocate(void *metadata, int size) {
   size = ROUND_UPTO_LONG_ALIGNMENT(size);
   
   // Should we lock during flip and copy frontier_ptr at that time?
-  // Seems like it shouldn't be needed
+  // Seems like it shouldn't be needed.
   pthread_mutex_lock(&static_frontier_ptr_lock);
   // Static object headers are only 1 word long instead of 2 
   LPTR ptr = (LPTR) static_frontier_ptr;
@@ -350,8 +346,6 @@ void *RTstatic_allocate(void *metadata, int size) {
     out_of_memory("Static", size);
   } else {
     *ptr = (size << LINK_INFO_BITS);
-    // need to set storage class and clear body
-    //base = RTInitializeObject(metadata, base, real_size, real_size);
     if ((((long) metadata) <= SC_POINTERS) || (((long) metadata) == SC_CUSTOM1)) {
       SET_STORAGE_CLASS(((GCPTR) (ptr - 1)), (long) metadata); 
     } else {
@@ -444,23 +438,18 @@ void *rtalloc_start_thread(void *arg) {
   START_THREAD_ARGS *start_args = (START_THREAD_ARGS *) arg;
   void *(*real_start_func) (void *);
 
-  // unpack start args and then free arg
+  // unpack start args
   long thread_index = start_args->thread_index;
   real_start_func = start_args->real_start_func;
   char *real_args = start_args->real_args;
   free(arg);
-
-  // setup code runs first
-  pthread_t self;
-  pthread_attr_t attr;
-  void *stackaddr;
-  size_t stacksize;
   
   printf("Thread %d started, live stack top is 0x%lx\n", 
 	 thread_index, &thread_index);
-  self = pthread_self();
-  threads[thread_index].pthread = self;
-  pthread_getattr_np(self, &attr);
+  pthread_attr_t attr;
+  void *stackaddr;
+  size_t stacksize;
+  pthread_getattr_np(threads[thread_index].pthread, &attr);
   pthread_attr_getstack(&attr, &stackaddr, &stacksize);
   // We don't really need this info, but it might be nice for debugging
   // stackaddr is the LOWEST addressable byte of the stack
@@ -486,8 +475,6 @@ void *rtalloc_start_thread(void *arg) {
 }
 
 int new_thread(void *(*start_func) (void *), void *args) {
-  pthread_t thread;
-
   pthread_mutex_lock(&total_threads_lock);
   if (total_threads < MAX_THREADS) {
     int index = total_threads;
@@ -501,7 +488,7 @@ int new_thread(void *(*start_func) (void *), void *args) {
 
     // this indicates that thread setup isn't complete
     threads[index].saved_stack_base = 0;
-    if (0 != pthread_create(&thread, 
+    if (0 != pthread_create(&(threads[index].pthread),
 			    NULL, 
 			    rtalloc_start_thread,
 			    (void *) start_args)) {
