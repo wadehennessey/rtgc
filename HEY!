@@ -152,3 +152,39 @@ run "clang -### -c a.c" to see full command line the driver generates,
 then append "-ast-dump" to the end and run it.
 
 in build dir "make clang" will just rebuild clang
+
+
+AST Matcher
+-------------
+
+NOTE: clang-query only reads file passed to it *ONCE* at startup. File changes
+after file is read are *NOT* seen.
+
+/home/wade/build/bin/clang-query /tmp/w.c --
+> set output diag
+> match binaryOperator(hasOperatorName("="),hasRHS(expr(hasType(isInteger())))).bind("assign")
+
+> match binaryOperator(hasOperatorName("<"),hasRHS(integerLiteral())).bind("assign")
+
+
+**** match binaryOperator(hasOperatorName("="),hasRHS(expr(hasType(isAnyPointer()))))
+
+Rewriter progress - found assignment and inserted /* wb needed */
+----------
+export C_INCLUDE_PATH=/home/wade/build/lib/clang/4.0.0/include
+
+matchers_rewriter /tmp/w.c --
+
+IF you init in var decl, then you get a  DeclStmt with  no binary assign operator
+if you don't you get binop assign with a DeclRefExpr LHS
+so
+
+DO NOT match when LHS is a DeclRefExpr (i.e - local variable ref)
+
+|       |-BinaryOperator 0x563ae102b388 <line:147:5, col:23> 'char *' '='
+|       | |-DeclRefExpr 0x563ae102b250 <col:5> 'char *' lvalue Var 0x563ae102b150 'word' 'char *'
+|       | `-CallExpr 0x563ae102b340 <col:12, col:23> 'char *'
+|       |   |-ImplicitCastExpr 0x563ae102b328 <col:12> 'char *(*)(FILE *)' <FunctionToPointerDecay>
+|       |   | `-DeclRefExpr 0x563ae102b278 <col:12> 'char *(FILE *)' Function 0x563ae1025da0 'read_word' 'char *(FILE *)'
+|       |   `-ImplicitCastExpr 0x563ae102b370 <col:22> 'FILE *' <LValueToRValue>
+|       |     `-DeclRefExpr 0x563ae102b2a0 <col:22> 'FILE *' lvalue Var 0x563ae102abc0 'f' 'FILE *'

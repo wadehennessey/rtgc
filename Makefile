@@ -2,8 +2,9 @@
 
 CC = gcc
 
+
 a:
-	$(CC) -o a -Og -g a.c -L./ -lrtgc
+	$(CC) -o a -g a.c -L./ -lrtgc
 
 opt-a:	
 	$(CC) -o a -O2 -g -DNDEBUG a.c -L./ -lrtgc

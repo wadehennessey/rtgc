@@ -444,7 +444,7 @@ void *rtalloc_start_thread(void *arg) {
   char *real_args = start_args->real_args;
   free(arg);
   
-  printf("Thread %d started, live stack top is 0x%lx\n", 
+  printf("Thread %d started, live stack top is %p\n", 
 	 thread_index, &thread_index);
   pthread_attr_t attr;
   void *stackaddr;

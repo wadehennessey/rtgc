@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <clang-c/CXCompilationDatabase.h>
 #include <clang-c/Index.h>
 #include <clang-c/BuildSystem.h>
@@ -10,15 +11,42 @@
 #include <clang-c/Documentation.h>
 #include <clang-c/Platform.h>
 
+// YOW! What a hack, but 
+int isAssignment(CXCursor cursor, CXTranslationUnit tu) {
+  int result = 0;
+  CXToken *tokens;
+  unsigned numTokens;
+  CXSourceRange range = clang_getCursorExtent(cursor);
+  clang_tokenize(tu, range, &tokens, &numTokens);
+  for(unsigned i = 0; i <numTokens; i++) {
+    CXString s = clang_getTokenSpelling(tu, tokens[i]);
+    const char* str = clang_getCString(s);
+    printf("%s ", str);
+    if(strcmp(str,"=") == 0 ) {
+      result = 1;
+    }
+    clang_disposeString(s);
+  }
+  clang_disposeTokens(tu, tokens, numTokens);
+  printf("\n");
+  return(result);
+}
 
 enum CXChildVisitResult functionVisitor(CXCursor cursor, 
-				   CXCursor parent,
-				   CXClientData client_data) {
+					CXCursor parent,
+					CXClientData tu) {
   enum CXCursorKind kind = clang_getCursorKind(cursor);
-  if (kind == CXCursor_BinaryOperator) {
+  if ((kind == CXCursor_BinaryOperator) &&
+      (isAssignment(cursor, tu))) {
     CXSourceRange extent = clang_getCursorExtent(cursor);
     CXSourceLocation start_location = clang_getRangeStart(extent);
     CXSourceLocation end_location = clang_getRangeEnd(extent);
+
+    unsigned int startLine = 0, startColumn = 0;
+    unsigned int endLine   = 0, endColumn   = 0;
+
+    clang_getSpellingLocation(start_location, 0, &startLine, &startColumn, 0);
+    clang_getSpellingLocation(end_location, 0, &endLine, &endColumn, 0);
     printf("wb needed from %d to %d\n", 
 	   start_location.int_data, end_location.int_data);
   }
@@ -27,7 +55,7 @@ enum CXChildVisitResult functionVisitor(CXCursor cursor,
 
 void walk_ast(CXTranslationUnit tu) {
   CXCursor root_cursor = clang_getTranslationUnitCursor(tu);
-  clang_visitChildren(root_cursor, functionVisitor, NULL);
+  clang_visitChildren(root_cursor, functionVisitor, tu);
 }
 
 // translation unit consists of a single source file plut the contents of any

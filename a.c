@@ -1,7 +1,5 @@
 // (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
 
-#define _GNU_SOURCE
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
