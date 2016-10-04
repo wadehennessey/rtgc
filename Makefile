@@ -2,7 +2,6 @@
 
 CC = gcc
 
-
 a:
 	$(CC) -o a -g a.c -L./ -lrtgc
 
