@@ -12,6 +12,6 @@ wb-libclang:
 	$(CC) -o wb-libclang -g wb-libclang.c -lclang
 
 clean:  
-	rm -f wb
+	rm -f wb wb-libclang
 
 

@@ -39,7 +39,15 @@ public:
 
   virtual void run(const MatchFinder::MatchResult &Result) {
     const BinaryOperator *Assign = Result.Nodes.getNodeAs<BinaryOperator>("assign");
-    Rewrite.InsertText(Assign->getLocStart(), "/* wb needed */ ", true, true);
+    //Rewrite.InsertText(Assign->getLocStart(), "/* wb needed */ ", true, true);
+    Rewrite.InsertText(//Assign->getLHS()->getExprLoc(),
+		       Assign->getLocStart(),
+		       "RTwrite_barrier(&( ",
+		       true);
+    Rewrite.ReplaceText(Assign->getOperatorLoc(), 
+			Assign->getOpcodeStr().size(),
+			"),");
+    Rewrite.InsertTextAfterToken(Assign->getRHS()->getLocEnd(), ")");
   }
   
 private:
