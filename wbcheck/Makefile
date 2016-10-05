@@ -4,7 +4,7 @@ CC = clang
 
 all:	wb
 
-wb:
+wb:	wb.cpp
 	g++ -fno-rtti -O0 -g `/home/wade/build//bin/llvm-config --cxxflags` -I/home/wade/llvm//tools/clang/include -I/home/wade/build//tools/clang/include wb.cpp \
 	-Wl,--start-group -lclangAST -lclangASTMatchers -lclangAnalysis -lclangBasic -lclangDriver -lclangEdit -lclangFrontend -lclangFrontendTool -lclangLex -lclangParse -lclangSema -lclangEdit -lclangRewrite -lclangRewriteFrontend -lclangStaticAnalyzerFrontend -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangSerialization -lclangToolingCore -lclangTooling -lclangFormat -Wl,--end-group `/home/wade/build//bin/llvm-config --ldflags --libs --system-libs` -o wb
 

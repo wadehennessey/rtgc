@@ -39,12 +39,12 @@ public:
 
   virtual void run(const MatchFinder::MatchResult &Result) {
     const BinaryOperator *Assign = Result.Nodes.getNodeAs<BinaryOperator>("assign");
-    //Rewrite.InsertText(Assign->getLocStart(), "/* wb needed */ ", true, true);
-    Rewrite.InsertText(//Assign->getLHS()->getExprLoc(),
-		       Assign->getLocStart(),
-		       "RTwrite_barrier(&( ",
+    //Rewrite.InsertText(Assign->getLocStart(), "RTwrite_barrier(&( ", true, true);
+    Rewrite.InsertText(Assign->getLHS()->getLocStart(), 
+		       "RTwrite_barrier(&( ", 
+		       true, 
 		       true);
-    Rewrite.ReplaceText(Assign->getOperatorLoc(), 
+    Rewrite.ReplaceText((Assign->getOperatorLoc()), 
 			Assign->getOpcodeStr().size(),
 			"),");
     Rewrite.InsertTextAfterToken(Assign->getRHS()->getLocEnd(), ")");
@@ -54,6 +54,31 @@ private:
   Rewriter &Rewrite;
 };
 
+class MemcpyHandler : public MatchFinder::MatchCallback {
+public:
+  MemcpyHandler(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+
+  virtual void run(const MatchFinder::MatchResult &Result) {
+    const CallExpr *Memcpy = Result.Nodes.getNodeAs<CallExpr>("memcpy");
+    Rewrite.InsertText(Memcpy->getLocStart(), "RT", true, true);
+  }
+  
+private:
+  Rewriter &Rewrite;
+};
+
+class MemsetHandler : public MatchFinder::MatchCallback {
+public:
+  MemsetHandler(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+
+  virtual void run(const MatchFinder::MatchResult &Result) {
+    const CallExpr *Memset = Result.Nodes.getNodeAs<CallExpr>("memset");
+    Rewrite.InsertText(Memset->getLocStart(), "RT", true, true);
+  }
+  
+private:
+  Rewriter &Rewrite;
+};
 
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser. It registers a couple of matchers and runs them on
@@ -61,7 +86,9 @@ private:
 class MyASTConsumer : public ASTConsumer {
 public:
   MyASTConsumer(Rewriter &R) : HandlerForFor(R), 
-			       HandlerForAssign(R) {
+			       HandlerForAssign(R),
+                               HandlerForMemcpy(R),
+			       HandlerForMemset(R) {
     // Add a complex matcher for finding 'for' loops with an initializer set
     // to 0, < comparison in the codition and an increment. For example:
     //
@@ -86,6 +113,12 @@ public:
 		       // skip local variable assignments
 		       unless(hasLHS(declRefExpr()))).bind("assign"), 
 	&HandlerForAssign);
+    Matcher.addMatcher(
+        callExpr(callee(functionDecl(hasName("memcpy")))).bind("memcpy"),
+        &HandlerForMemcpy);
+    Matcher.addMatcher(
+        callExpr(callee(functionDecl(hasName("memset")))).bind("memset"),
+        &HandlerForMemset);
   }
 
   void HandleTranslationUnit(ASTContext &Context) override {
@@ -96,6 +129,8 @@ public:
 private:
   IncrementForLoopHandler HandlerForFor;
   AssignHandler HandlerForAssign;
+  MemcpyHandler HandlerForMemcpy;
+  MemsetHandler HandlerForMemset;
   MatchFinder Matcher;
 };
 

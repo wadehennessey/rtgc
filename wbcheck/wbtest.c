@@ -1,9 +1,22 @@
 // clang-check wbtest.c --ast-dump --
+#include <string.h>
 
 typedef struct cons {
   void *car;
   struct cons *cdr;
 } CONS;
+
+void s1(CONS *lhs, CONS *rhs) {
+  *lhs = *rhs;
+}
+
+void mem1(CONS *lhs, CONS *rhs) {
+  memset(lhs, 0, sizeof(CONS));
+}
+
+void mem2(CONS *lhs, CONS *rhs) {
+  memcpy(lhs, rhs, sizeof(CONS));
+}
 
 void b1(CONS *c) {
   c->car = 0;
