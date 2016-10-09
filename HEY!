@@ -161,15 +161,31 @@ after file is read are *NOT* seen.
 
 /home/wade/build/bin/clang-query /tmp/w.c --
 > set output diag
-> match binaryOperator(hasOperatorName("="),hasRHS(expr(hasType(isInteger())))).bind("assign")
+> match binaryOperator(hasOperatorName("="),hasRHS(expr(hasType(isStruct()))))
 
-to handle memset/memcpy:
-> match callExpr(callee(functionDecl(hasName("memset"))))
 ----------
 export C_INCLUDE_PATH=/home/wade/build/lib/clang/4.0.0/include
+***********************************************************
+we're looking for recordDecls (class, struct, union)
+or recordType?
+
+clang-query> match binaryOperator(hasOperatorName("="),hasLHS(unaryOperator(hasOperatorName("*"), hasUnaryOperand(ignoringImpCasts(declRefExpr(to(varDecl(hasAutomaticStorageDuration()))))))))
+
+Match #1:
+
+/home/wade/rtgc/wbcheck/wbtest.c:10:3: note: "root" binds here
+  *lhs = *rhs;
+  ^~~~~~~~~~~
+1 match.
+clang-query> 
 
 
 
+clang-query> 
+0 matches.
+clang-query>
+
+***********************************************************
 void s1(CONS *lhs, CONS *rhs) {
   *lhs = *rhs;
 }
@@ -187,34 +203,3 @@ void s1(CONS *lhs, CONS *rhs) {
 |         `-ImplicitCastExpr 0x55b71f3159d0 <col:11> 'CONS *' <LValueToRValue>
 |           `-DeclRefExpr 0x55b71f3159a8 <col:11> 'CONS *' lvalue ParmVar 0x55b71f2c9de8 'rhs' 'CONS *'
 
-mem1
-
-|-FunctionDecl 0x5620f5266758 <line:13:1, line:15:1> line:13:6 mem1 'void (CONS *, CONS *)'
-| |-ParmVarDecl 0x5620f5266658 <col:11, col:17> col:17 used lhs 'CONS *'
-| |-ParmVarDecl 0x5620f52666c8 <col:22, col:28> col:28 rhs 'CONS *'
-| `-CompoundStmt 0x5620f5266980 <col:33, line:15:1>
-|   `-CallExpr 0x5620f5266910 <line:14:3, col:30> 'void *'
-|     |-ImplicitCastExpr 0x5620f52668f8 <col:3> 'void *(*)(void *, int, unsigned long)' <FunctionToPointerDecay>
-|     | `-DeclRefExpr 0x5620f5266810 <col:3> 'void *(void *, int, unsigned long)' Function 0x5620f52587d0 'memset' 'void *(void *, int, unsigned long)'
-|     |-ImplicitCastExpr 0x5620f5266968 <col:10> 'void *' <BitCast>
-|     | `-ImplicitCastExpr 0x5620f5266950 <col:10> 'CONS *' <LValueToRValue>
-|     |   `-DeclRefExpr 0x5620f5266838 <col:10> 'CONS *' lvalue ParmVar 0x5620f5266658 'lhs' 'CONS *'
-|     |-IntegerLiteral 0x5620f5266860 <col:15> 'int' 0
-|     `-UnaryExprOrTypeTraitExpr 0x5620f5266890 <col:18, col:29> 'unsigned long' sizeof 'CONS':'struct cons'
-
-mem2
-
-|-FunctionDecl 0x5620f5266ab0 <line:17:1, line:19:1> line:17:6 mem2 'void (CONS *, CONS *)'
-| |-ParmVarDecl 0x5620f52669b0 <col:11, col:17> col:17 used lhs 'CONS *'
-| |-ParmVarDecl 0x5620f5266a20 <col:22, col:28> col:28 used rhs 'CONS *'
-| `-CompoundStmt 0x5620f5266d20 <col:33, line:19:1>
-|   `-CallExpr 0x5620f5266c80 <line:18:3, col:32> 'void *'
-|     |-ImplicitCastExpr 0x5620f5266c68 <col:3> 'void *(*)(void *, const void *, unsigned long)' <FunctionToPointerDecay>
-|     | `-DeclRefExpr 0x5620f5266b68 <col:3> 'void *(void *, const void *, unsigned long)' Function 0x5620f5257898 'memcpy' 'void *(void *, const void *, unsigned long)'
-|     |-ImplicitCastExpr 0x5620f5266cd8 <col:10> 'void *' <BitCast>
-|     | `-ImplicitCastExpr 0x5620f5266cc0 <col:10> 'CONS *' <LValueToRValue>
-|     |   `-DeclRefExpr 0x5620f5266b90 <col:10> 'CONS *' lvalue ParmVar 0x5620f52669b0 'lhs' 'CONS *'
-|     |-ImplicitCastExpr 0x5620f5266d08 <col:15> 'const void *' <BitCast>
-|     | `-ImplicitCastExpr 0x5620f5266cf0 <col:15> 'CONS *' <LValueToRValue>
-|     |   `-DeclRefExpr 0x5620f5266bb8 <col:15> 'CONS *' lvalue ParmVar 0x5620f5266a20 'rhs' 'CONS *'
-|     `-UnaryExprOrTypeTraitExpr 0x5620f5266bf0 <col:20, col:31> 'unsigned long' sizeof 'CONS':'struct cons'

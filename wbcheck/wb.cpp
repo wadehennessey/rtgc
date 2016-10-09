@@ -109,9 +109,9 @@ public:
         &HandlerForFor);
     Matcher.addMatcher(
 	binaryOperator(hasOperatorName("="), 
-		       hasRHS(expr(hasType(isAnyPointer()))),
-		       // skip local variable assignments
-		       unless(hasLHS(declRefExpr()))).bind("assign"), 
+	       hasRHS(expr(hasType(isAnyPointer()))),
+	       // skip local variable assignments
+	       unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration())))))).bind("assign"), 
 	&HandlerForAssign);
     Matcher.addMatcher(
         callExpr(callee(functionDecl(hasName("memcpy")))).bind("memcpy"),

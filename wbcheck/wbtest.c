@@ -1,6 +1,8 @@
 // clang-check wbtest.c --ast-dump --
 #include <string.h>
 
+char *global_var;
+
 typedef struct cons {
   void *car;
   struct cons *cdr;
@@ -24,6 +26,10 @@ void b1(CONS *c) {
 
 void b2(long *p[], long *x) {
   p[7] = x;
+}
+
+void b3(char *x) {
+  global_var = x;
 }
 
 void nb1(CONS *c) {
