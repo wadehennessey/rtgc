@@ -89,16 +89,16 @@ public:
   virtual void run(const MatchFinder::MatchResult &Result) {
     const BinaryOperator *Assign = 
       Result.Nodes.getNodeAs<BinaryOperator>("assign");
-
     SourceManager &sm = Rewrite.getSourceMgr();
     LangOptions lopt;
     SourceLocation b(Assign->getLHS()->getLocStart());
-    SourceLocation _e(Assign->getLHS()->getLocEnd());
-    SourceLocation e(Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
-
+    SourceLocation e(Lexer::getLocForEndOfToken(Assign->getLHS()->getLocEnd(),
+						0,
+						sm,
+						lopt));
     std::string lhs_text  = 
       std::string(sm.getCharacterData(b),
-		  sm.getCharacterData(e)-sm.getCharacterData(b));
+		  sm.getCharacterData(e) - sm.getCharacterData(b));
 
     Rewrite.InsertText(Assign->getLHS()->getLocStart(), 
 		       "RTrecord_write_barrier(&( ", 
