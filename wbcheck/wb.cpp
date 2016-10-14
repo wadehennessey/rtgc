@@ -1,4 +1,4 @@
-// Run: ./wb wbtest --
+// Run: ./wb filename.c --
 
 #include <string>
 
@@ -39,7 +39,6 @@ public:
 
   virtual void run(const MatchFinder::MatchResult &Result) {
     const BinaryOperator *Assign = Result.Nodes.getNodeAs<BinaryOperator>("assign");
-    //Rewrite.InsertText(Assign->getLocStart(), "RTwrite_barrier(&( ", true, true);
     Rewrite.InsertText(Assign->getLHS()->getLocStart(), 
 		       "RTwrite_barrier(&( ", 
 		       true, 
@@ -80,33 +79,38 @@ private:
   Rewriter &Rewrite;
 };
 
+// Should we be calling BinaryOperator::isCompundAssignmentOp() on all
+// assignment ops to end up doing this rewrite?
+class RecordAssignHandler : public MatchFinder::MatchCallback {
+public:
+  RecordAssignHandler(Rewriter &Rewrite) : Rewrite(Rewrite) {}
+
+  virtual void run(const MatchFinder::MatchResult &Result) {
+    const BinaryOperator *Assign = Result.Nodes.getNodeAs<BinaryOperator>("assign");
+    Rewrite.InsertText(Assign->getLHS()->getLocStart(), 
+		       "RTrecord_write_barrier(&( ", 
+		       true, 
+		       true);
+    Rewrite.ReplaceText((Assign->getOperatorLoc()), 
+			Assign->getOpcodeStr().size(),
+			"),");
+    Rewrite.InsertTextAfterToken(Assign->getRHS()->getLocEnd(), ")");
+  }
+  
+private:
+  Rewriter &Rewrite;
+};
+
+
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser. It registers a couple of matchers and runs them on
 // the AST.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : HandlerForFor(R), 
-			       HandlerForAssign(R),
+  MyASTConsumer(Rewriter &R) : HandlerForAssign(R),
                                HandlerForMemcpy(R),
-			       HandlerForMemset(R) {
-    // Add a complex matcher for finding 'for' loops with an initializer set
-    // to 0, < comparison in the codition and an increment. For example:
-    //
-    //  for (int i = 0; i < N; ++i)
-    Matcher.addMatcher(
-        forStmt(hasLoopInit(declStmt(hasSingleDecl(
-                    varDecl(hasInitializer(integerLiteral(equals(0))))
-                        .bind("initVarName")))),
-                hasIncrement(unaryOperator(
-                    hasOperatorName("++"),
-                    hasUnaryOperand(declRefExpr(to(
-                        varDecl(hasType(isInteger())).bind("incVarName")))))),
-                hasCondition(binaryOperator(
-                    hasOperatorName("<"),
-                    hasLHS(ignoringParenImpCasts(declRefExpr(to(
-                        varDecl(hasType(isInteger())).bind("condVarName"))))),
-                    hasRHS(expr(hasType(isInteger())))))).bind("forLoop"),
-        &HandlerForFor);
+			       HandlerForMemset(R),
+                               HandlerForRecordAssign(R) {
     Matcher.addMatcher(
 	binaryOperator(hasOperatorName("="), 
 	       hasRHS(expr(hasType(isAnyPointer()))),
@@ -119,6 +123,11 @@ public:
     Matcher.addMatcher(
         callExpr(callee(functionDecl(hasName("memset")))).bind("memset"),
         &HandlerForMemset);
+    // Match struct, class, and union assignments
+    Matcher.addMatcher(
+        binaryOperator(hasOperatorName("="), 
+		       hasType(qualType(hasCanonicalType(recordType()))), 	                         unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration())))))).bind("assign"),
+	&HandlerForRecordAssign);
   }
 
   void HandleTranslationUnit(ASTContext &Context) override {
@@ -127,10 +136,10 @@ public:
   }
 
 private:
-  IncrementForLoopHandler HandlerForFor;
   AssignHandler HandlerForAssign;
   MemcpyHandler HandlerForMemcpy;
   MemsetHandler HandlerForMemset;
+  RecordAssignHandler HandlerForRecordAssign;
   MatchFinder Matcher;
 };
 

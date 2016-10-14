@@ -12,6 +12,12 @@ void s1(CONS *lhs, CONS *rhs) {
   *lhs = *rhs;
 }
 
+CONS s2(CONS *rhs) {
+  CONS foo = *rhs;
+  foo = *rhs;
+  return(foo);
+}
+
 void mem1(CONS *lhs, CONS *rhs) {
   memset(lhs, 0, sizeof(CONS));
 }

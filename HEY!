@@ -169,21 +169,22 @@ export C_INCLUDE_PATH=/home/wade/build/lib/clang/4.0.0/include
 we're looking for recordDecls (class, struct, union)
 or recordType?
 
-clang-query> match binaryOperator(hasOperatorName("="),hasLHS(unaryOperator(hasOperatorName("*"), hasUnaryOperand(ignoringImpCasts(declRefExpr(to(varDecl(hasAutomaticStorageDuration()))))))))
+match binaryOperator(hasOperatorName("="), hasRHS(expr(hasType(recordType()))))
+0 matches - why?
 
-Match #1:
+match binaryOperator(hasOperatorName("="), hasRHS(expr(hasType(asString("struct cons")))))
+match binaryOperator(hasOperatorName("="), hasRHS(expr(hasType(asString("CONS")))))
 
-/home/wade/rtgc/wbcheck/wbtest.c:10:3: note: "root" binds here
-  *lhs = *rhs;
-  ^~~~~~~~~~~
-1 match.
-clang-query> 
+match binaryOperator(hasOperatorName("="), hasType(qualType(hasCanonicalType(recordType()))))
 
+match binaryOperator(hasOperatorName("="), hasType(qualType(hasCanonicalType(recordType()))), 	       unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration()))))))
 
-
-clang-query> 
-0 matches.
-clang-query>
+        /*
+    Matcher.addMatcher(
+        binaryOperator(hasOperatorName("="), 
+		       hasType(qualType(hasCanonicalType(recordType()))), 	                         unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration())))))).bind("assign"),
+	&HandlerForRecord);
+    */
 
 ***********************************************************
 void s1(CONS *lhs, CONS *rhs) {
