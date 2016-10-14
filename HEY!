@@ -161,46 +161,8 @@ after file is read are *NOT* seen.
 
 /home/wade/build/bin/clang-query /tmp/w.c --
 > set output diag
-> match binaryOperator(hasOperatorName("="),hasRHS(expr(hasType(isStruct()))))
 
 ----------
 export C_INCLUDE_PATH=/home/wade/build/lib/clang/4.0.0/include
-***********************************************************
-we're looking for recordDecls (class, struct, union)
-or recordType?
 
-match binaryOperator(hasOperatorName("="), hasRHS(expr(hasType(recordType()))))
-0 matches - why?
-
-match binaryOperator(hasOperatorName("="), hasRHS(expr(hasType(asString("struct cons")))))
-match binaryOperator(hasOperatorName("="), hasRHS(expr(hasType(asString("CONS")))))
-
-match binaryOperator(hasOperatorName("="), hasType(qualType(hasCanonicalType(recordType()))))
-
-match binaryOperator(hasOperatorName("="), hasType(qualType(hasCanonicalType(recordType()))), 	       unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration()))))))
-
-        /*
-    Matcher.addMatcher(
-        binaryOperator(hasOperatorName("="), 
-		       hasType(qualType(hasCanonicalType(recordType()))), 	                         unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration())))))).bind("assign"),
-	&HandlerForRecord);
-    */
-
-***********************************************************
-void s1(CONS *lhs, CONS *rhs) {
-  *lhs = *rhs;
-}
-
-|-FunctionDecl 0x55b71f315850 <line:8:1, line:10:1> line:8:6 s1 'void (CONS *, CONS *)'
-| |-ParmVarDecl 0x55b71f2c9d78 <col:9, col:15> col:15 used lhs 'CONS *'
-| |-ParmVarDecl 0x55b71f2c9de8 <col:20, col:26> col:26 used rhs 'CONS *'
-| `-CompoundStmt 0x55b71f315a48 <col:31, line:10:1>
-|   `-BinaryOperator 0x55b71f315a20 <line:9:3, col:11> 'CONS':'struct cons' '='
-|     |-UnaryOperator 0x55b71f315988 <col:3, col:4> 'CONS':'struct cons' lvalue prefix '*'
-|     | `-ImplicitCastExpr 0x55b71f315970 <col:4> 'CONS *' <LValueToRValue>
-|     |   `-DeclRefExpr 0x55b71f315948 <col:4> 'CONS *' lvalue ParmVar 0x55b71f2c9d78 'lhs' 'CONS *'
-|     `-ImplicitCastExpr 0x55b71f315a08 <col:10, col:11> 'CONS':'struct cons' <LValueToRValue>
-|       `-UnaryOperator 0x55b71f3159e8 <col:10, col:11> 'CONS':'struct cons' lvalue prefix '*'
-|         `-ImplicitCastExpr 0x55b71f3159d0 <col:11> 'CONS *' <LValueToRValue>
-|           `-DeclRefExpr 0x55b71f3159a8 <col:11> 'CONS *' lvalue ParmVar 0x55b71f2c9de8 'rhs' 'CONS *'
 

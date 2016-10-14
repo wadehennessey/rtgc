@@ -11,6 +11,7 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+#include "clang/Lex/Lexer.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace clang;
@@ -86,7 +87,19 @@ public:
   RecordAssignHandler(Rewriter &Rewrite) : Rewrite(Rewrite) {}
 
   virtual void run(const MatchFinder::MatchResult &Result) {
-    const BinaryOperator *Assign = Result.Nodes.getNodeAs<BinaryOperator>("assign");
+    const BinaryOperator *Assign = 
+      Result.Nodes.getNodeAs<BinaryOperator>("assign");
+
+    SourceManager &sm = Rewrite.getSourceMgr();
+    LangOptions lopt;
+    SourceLocation b(Assign->getLHS()->getLocStart());
+    SourceLocation _e(Assign->getLHS()->getLocEnd());
+    SourceLocation e(Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
+
+    std::string lhs_text  = 
+      std::string(sm.getCharacterData(b),
+		  sm.getCharacterData(e)-sm.getCharacterData(b));
+
     Rewrite.InsertText(Assign->getLHS()->getLocStart(), 
 		       "RTrecord_write_barrier(&( ", 
 		       true, 
@@ -94,7 +107,8 @@ public:
     Rewrite.ReplaceText((Assign->getOperatorLoc()), 
 			Assign->getOpcodeStr().size(),
 			"),");
-    Rewrite.InsertTextAfterToken(Assign->getRHS()->getLocEnd(), ")");
+    Rewrite.InsertTextAfterToken(Assign->getRHS()->getLocEnd(), 
+				 " , sizeof(" + lhs_text + "))");
   }
   
 private:

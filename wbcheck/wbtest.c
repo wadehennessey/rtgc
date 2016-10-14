@@ -8,14 +8,26 @@ typedef struct cons {
   struct cons *cdr;
 } CONS;
 
-void s1(CONS *lhs, CONS *rhs) {
+typedef union header {
+  struct one {
+    union header *ptr;
+    void *ptr2;
+  };
+  void *ptr1;
+} HEADER;
+
+void s1(struct cons *lhs, CONS *rhs) {
   *lhs = *rhs;
 }
 
-CONS s2(CONS *rhs) {
+CONS s2(struct cons *rhs) {
   CONS foo = *rhs;
   foo = *rhs;
   return(foo);
+}
+
+void u1(union header *lhs, HEADER*rhs) {
+  *lhs = *rhs;
 }
 
 void mem1(CONS *lhs, CONS *rhs) {
