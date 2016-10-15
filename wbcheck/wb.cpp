@@ -13,6 +13,7 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Lex/Lexer.h"
 #include "llvm/Support/raw_ostream.h"
+#include <iostream>
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -80,6 +81,26 @@ private:
   Rewriter &Rewrite;
 };
 
+std::string warn(Rewriter &Rewrite, 
+		 const BinaryOperator *Assign,
+		 std::string warning) {
+  SourceManager &sm = Rewrite.getSourceMgr();
+  LangOptions lopt;
+  SourceLocation b(Assign->getLHS()->getLocStart());
+  SourceLocation e(Lexer::getLocForEndOfToken(Assign->getLHS()->getLocEnd(),
+					      0,
+					      sm,
+					      lopt));
+  std::string lhs_text  = 
+    std::string(sm.getCharacterData(b),
+		sm.getCharacterData(e) - sm.getCharacterData(b));
+
+  unsigned int line = sm.getPresumedLineNumber(b, 0);
+  unsigned int col  = sm.getPresumedColumnNumber(b, 0);
+  std::cout << "line:" << line << ",col:" << col  << warning  << std::endl; 
+  return(lhs_text);
+}
+
 // Should we be calling BinaryOperator::isCompundAssignmentOp() on all
 // assignment ops to end up doing this rewrite?
 class RecordAssignHandler : public MatchFinder::MatchCallback {
@@ -89,17 +110,11 @@ public:
   virtual void run(const MatchFinder::MatchResult &Result) {
     const BinaryOperator *Assign = 
       Result.Nodes.getNodeAs<BinaryOperator>("assign");
-    SourceManager &sm = Rewrite.getSourceMgr();
-    LangOptions lopt;
-    SourceLocation b(Assign->getLHS()->getLocStart());
-    SourceLocation e(Lexer::getLocForEndOfToken(Assign->getLHS()->getLocEnd(),
-						0,
-						sm,
-						lopt));
-    std::string lhs_text  = 
-      std::string(sm.getCharacterData(b),
-		  sm.getCharacterData(e) - sm.getCharacterData(b));
+    std::string lhs_text = warn(Rewrite, 
+				Assign, 
+				" - RecordAssign without write barrier");
 
+    
     Rewrite.InsertText(Assign->getLHS()->getLocStart(), 
 		       "RTrecord_write_barrier(&( ", 
 		       true, 
@@ -163,7 +178,7 @@ public:
   MyFrontendAction() {}
   void EndSourceFileAction() override {
     TheRewriter.getEditBuffer(TheRewriter.getSourceMgr().getMainFileID())
-        .write(llvm::outs());
+      .write(llvm::outs());
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,

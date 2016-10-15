@@ -9,10 +9,10 @@ typedef struct cons {
 } CONS;
 
 typedef union header {
-  struct one {
+  struct {
     union header *ptr;
     void *ptr2;
-  };
+  } one;
   void *ptr1;
 } HEADER;
 
