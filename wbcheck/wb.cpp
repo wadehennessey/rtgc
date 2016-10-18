@@ -22,18 +22,31 @@ using namespace clang::tooling;
 
 static llvm::cl::OptionCategory MatcherSampleCategory("Matcher Sample");
 
-class IncrementForLoopHandler : public MatchFinder::MatchCallback {
-public:
-  IncrementForLoopHandler(Rewriter &Rewrite) : Rewrite(Rewrite) {}
-
-  virtual void run(const MatchFinder::MatchResult &Result) {
-    const VarDecl *IncVar = Result.Nodes.getNodeAs<VarDecl>("incVarName");
-    Rewrite.InsertText(IncVar->getLocStart(), "/* increment */", true, true);
-  }
+int binop_strings(Rewriter &Rewrite,
+		  const BinaryOperator *Assign,
+		  std::string *lhs_text, 
+		  std::string *rhs_text) {
+  LangOptions lopt;
+  SourceManager &sm = Rewrite.getSourceMgr();
+  SourceLocation lhs_b(Assign->getLHS()->getLocStart());
+  SourceLocation lhs_e(Lexer::getLocForEndOfToken(Assign->getLHS()->getLocEnd(),
+					      0,
+					      sm,
+					      lopt));
+  SourceLocation rhs_b(Assign->getRHS()->getLocStart());
+  SourceLocation rhs_e(Lexer::getLocForEndOfToken(Assign->getRHS()->getLocEnd(),
+						  0,
+						  sm,
+						  lopt));
   
-private:
-  Rewriter &Rewrite;
-};
+  *lhs_text =  std::string(sm.getCharacterData(lhs_b),
+		   sm.getCharacterData(lhs_e) - 
+		   sm.getCharacterData(lhs_b));
+  *rhs_text =  std::string(sm.getCharacterData(rhs_b),
+			   sm.getCharacterData(rhs_e) - 
+			   sm.getCharacterData(rhs_b));
+  return(sm.getCharacterData(rhs_e) - sm.getCharacterData(lhs_b));
+}
 
 class AssignHandler : public MatchFinder::MatchCallback {
 public:
@@ -41,14 +54,11 @@ public:
 
   virtual void run(const MatchFinder::MatchResult &Result) {
     const BinaryOperator *Assign = Result.Nodes.getNodeAs<BinaryOperator>("assign");
-    Rewrite.InsertText(Assign->getLHS()->getLocStart(), 
-		       "RTwrite_barrier(&( ", 
-		       true, 
-		       true);
-    Rewrite.ReplaceText((Assign->getOperatorLoc()), 
-			Assign->getOpcodeStr().size(),
-			"),");
-    Rewrite.InsertTextAfterToken(Assign->getRHS()->getLocEnd(), ")");
+    std::string lhs_text, rhs_text;
+    int assign_length = binop_strings(Rewrite, Assign, &lhs_text, &rhs_text);
+    Rewrite.ReplaceText(Assign->getLHS()->getLocStart(),
+			assign_length,
+			"write_barrier(&(" + lhs_text + "), " + rhs_text + ")");
   }
   
 private:
@@ -81,24 +91,19 @@ private:
   Rewriter &Rewrite;
 };
 
-std::string warn(Rewriter &Rewrite, 
+void warn(Rewriter &Rewrite, 
 		 const BinaryOperator *Assign,
 		 std::string warning) {
   SourceManager &sm = Rewrite.getSourceMgr();
   LangOptions lopt;
   SourceLocation b(Assign->getLHS()->getLocStart());
-  SourceLocation e(Lexer::getLocForEndOfToken(Assign->getLHS()->getLocEnd(),
-					      0,
-					      sm,
-					      lopt));
-  std::string lhs_text  = 
-    std::string(sm.getCharacterData(b),
-		sm.getCharacterData(e) - sm.getCharacterData(b));
 
   unsigned int line = sm.getPresumedLineNumber(b, 0);
   unsigned int col  = sm.getPresumedColumnNumber(b, 0);
+  StringRef filename = sm.getBufferName(b, 0);
+
+  std::cout << filename.data()  << " ";
   std::cout << "line:" << line << ",col:" << col  << warning  << std::endl; 
-  return(lhs_text);
 }
 
 // Should we be calling BinaryOperator::isCompundAssignmentOp() on all
@@ -110,20 +115,16 @@ public:
   virtual void run(const MatchFinder::MatchResult &Result) {
     const BinaryOperator *Assign = 
       Result.Nodes.getNodeAs<BinaryOperator>("assign");
-    std::string lhs_text = warn(Rewrite, 
-				Assign, 
-				" - RecordAssign without write barrier");
+    warn(Rewrite, Assign, " - RecordAssign without write barrier");
 
-    
-    Rewrite.InsertText(Assign->getLHS()->getLocStart(), 
-		       "RTrecord_write_barrier(&( ", 
-		       true, 
-		       true);
-    Rewrite.ReplaceText((Assign->getOperatorLoc()), 
-			Assign->getOpcodeStr().size(),
-			"),");
-    Rewrite.InsertTextAfterToken(Assign->getRHS()->getLocEnd(), 
-				 " , sizeof(" + lhs_text + "))");
+    std::string lhs_text, rhs_text;
+    int assign_length = binop_strings(Rewrite, Assign, &lhs_text, &rhs_text);
+    Rewrite.ReplaceText(Assign->getLHS()->getLocStart(),
+			assign_length,
+			"RTrecord_write_barrier(&(" + 
+			lhs_text + "), &("
+			+ rhs_text + "), " + 
+			"sizeof(" + lhs_text + "))");
   }
   
 private:

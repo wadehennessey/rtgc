@@ -56,11 +56,7 @@ void nb1(CONS *c) {
   b1(x);
 }
 
-long nb2(long x) {
-  return(x + 7);
-}
-
-void nb3(long p[], long x) {
+void nb2(long p[], long x) {
   p[7] = x;
 }
 
