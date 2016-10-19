@@ -294,13 +294,17 @@ void memory_segment_write_barrier(BPTR low, BPTR high) {
   }
 }
 
-void *ptrcpy(void *p1, void *p2, int num_bytes) {
+void *RTmemcpy(void *p1, void *p2, int num_bytes) {
   memory_segment_write_barrier(p1, (BPTR) p1 + num_bytes);
   memcpy(p1, p2, num_bytes);
   return(p1);
 }
 
-void *ptrset(void *p1, int data, int num_bytes) {
+void *RTrecordcpy(void *p1, void *p2, int num_bytes) {
+  RTmemcpy(p1, p2, num_bytes);
+}
+
+void *RTmemset(void *p1, int data, int num_bytes) {
   memory_segment_write_barrier(p1, (BPTR) p1 + num_bytes);
   memset(p1, data, num_bytes);
   return(p1);

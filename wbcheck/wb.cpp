@@ -126,7 +126,7 @@ public:
     int assign_length = binop_strings(Rewrite, Assign, &lhs_text, &rhs_text);
     Rewrite.ReplaceText(Assign->getLHS()->getLocStart(),
 			assign_length,
-			"RTrecord_write_barrier(&(" + 
+			"RTrecordcpy(&(" + 
 			lhs_text + "), &("
 			+ rhs_text + "), " + 
 			"sizeof(" + lhs_text + "))");
