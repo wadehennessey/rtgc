@@ -48,6 +48,21 @@ int binop_strings(Rewriter &Rewrite,
   return(sm.getCharacterData(rhs_e) - sm.getCharacterData(lhs_b));
 }
 
+void warn(Rewriter &Rewrite, 
+		 const BinaryOperator *Assign,
+		 std::string warning) {
+  SourceManager &sm = Rewrite.getSourceMgr();
+  LangOptions lopt;
+  SourceLocation b(Assign->getLHS()->getLocStart());
+
+  unsigned int line = sm.getPresumedLineNumber(b, 0);
+  unsigned int col  = sm.getPresumedColumnNumber(b, 0);
+  StringRef filename = sm.getBufferName(b, 0);
+
+  std::cout << filename.data()  << " ";
+  std::cout << "line:" << line << ",col:" << col  << warning  << std::endl; 
+}
+
 class AssignHandler : public MatchFinder::MatchCallback {
 public:
   AssignHandler(Rewriter &Rewrite) : Rewrite(Rewrite) {}
@@ -59,7 +74,7 @@ public:
     std::string rewrite;
     if (Assign->isCompoundAssignmentOp(Assign->getOpcode())) {
       std::string op = Assign->getOpcodeStr(Assign->getOpcode()).data();
-      rewrite = "*** " + op + " with LHS of type pointer***\n";
+      rewrite = "*** " + op + " with LHS of type pointer***";
     } else {
       rewrite = "write_barrier(&(" + lhs_text + "), " + rhs_text + ")";
     }
@@ -98,23 +113,6 @@ private:
   Rewriter &Rewrite;
 };
 
-void warn(Rewriter &Rewrite, 
-		 const BinaryOperator *Assign,
-		 std::string warning) {
-  SourceManager &sm = Rewrite.getSourceMgr();
-  LangOptions lopt;
-  SourceLocation b(Assign->getLHS()->getLocStart());
-
-  unsigned int line = sm.getPresumedLineNumber(b, 0);
-  unsigned int col  = sm.getPresumedColumnNumber(b, 0);
-  StringRef filename = sm.getBufferName(b, 0);
-
-  std::cout << filename.data()  << " ";
-  std::cout << "line:" << line << ",col:" << col  << warning  << std::endl; 
-}
-
-// Should we be calling BinaryOperator::isCompundAssignmentOp() on all
-// assignment ops to end up doing this rewrite?
 class RecordAssignHandler : public MatchFinder::MatchCallback {
 public:
   RecordAssignHandler(Rewriter &Rewrite) : Rewrite(Rewrite) {}
@@ -138,7 +136,6 @@ private:
   Rewriter &Rewrite;
 };
 
-
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser. It registers a couple of matchers and runs them on
 // the AST.
@@ -148,6 +145,9 @@ public:
                                HandlerForMemcpy(R),
 			       HandlerForMemset(R),
                                HandlerForRecordAssign(R) {
+
+    // This should be by far the most common match for basic pointer writes we
+    // we need to intercept.
     Matcher.addMatcher(
 	binaryOperator(hasOperatorName("="), 
 		       hasLHS(expr(hasType(isAnyPointer()))),
@@ -155,18 +155,21 @@ public:
 		       unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration())))))).bind("assign"), 
 	&HandlerForAssign);
 
+    // Should be very unusual to find a match for this.
     Matcher.addMatcher(
 	binaryOperator(anyOf(hasOperatorName("+="),
 			     hasOperatorName("-=")),
 		       hasLHS(expr(hasType(isAnyPointer())))).bind("assign"), 
         &HandlerForAssign);
-		      
+
     Matcher.addMatcher(
         callExpr(callee(functionDecl(hasName("memcpy")))).bind("memcpy"),
         &HandlerForMemcpy);
+
     Matcher.addMatcher(
         callExpr(callee(functionDecl(hasName("memset")))).bind("memset"),
         &HandlerForMemset);
+
     // Match struct, class, and union assignments
     Matcher.addMatcher(
         binaryOperator(hasOperatorName("="), 

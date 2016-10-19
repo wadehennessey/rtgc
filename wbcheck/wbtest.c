@@ -61,7 +61,8 @@ void nb2(long p[], long x) {
 }
 
 void compound_ptr_assign(long *p[], long *x) {
-  p[7] += 0;
+  p[7] += 8;
+  p[7] -= p[6];
 }
 
 
