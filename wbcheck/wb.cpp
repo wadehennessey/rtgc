@@ -1,6 +1,7 @@
 // Run: ./wb filename.c --
 
 #include <string>
+#include <iostream>
 
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
@@ -12,15 +13,14 @@
 #include "clang/Tooling/Tooling.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Lex/Lexer.h"
-#include "llvm/Support/raw_ostream.h"
-#include <iostream>
+//#include "llvm/Support/raw_ostream.h"
 
 using namespace clang;
 using namespace clang::ast_matchers;
 using namespace clang::driver;
 using namespace clang::tooling;
 
-static llvm::cl::OptionCategory MatcherSampleCategory("Matcher Sample");
+static llvm::cl::OptionCategory MatcherSampleCategory("warn");
 
 int binop_strings(Rewriter &Rewrite,
 		  const BinaryOperator *Assign,
@@ -56,9 +56,16 @@ public:
     const BinaryOperator *Assign = Result.Nodes.getNodeAs<BinaryOperator>("assign");
     std::string lhs_text, rhs_text;
     int assign_length = binop_strings(Rewrite, Assign, &lhs_text, &rhs_text);
-    Rewrite.ReplaceText(Assign->getLHS()->getLocStart(),
-			assign_length,
-			"write_barrier(&(" + lhs_text + "), " + rhs_text + ")");
+    std::string rewrite;
+    if (Assign->isCompoundAssignmentOp(Assign->getOpcode())) {
+      std::string op = Assign->getOpcodeStr(Assign->getOpcode()).data();
+      rewrite = "*** " + op + " with LHS of type pointer***\n";
+    } else {
+      rewrite = "write_barrier(&(" + lhs_text + "), " + rhs_text + ")";
+    }
+    Rewrite.ReplaceText(Assign->getLHS()->getLocStart(), 
+			assign_length, 
+			rewrite);
   }
   
 private:
@@ -143,10 +150,17 @@ public:
                                HandlerForRecordAssign(R) {
     Matcher.addMatcher(
 	binaryOperator(hasOperatorName("="), 
-	       hasRHS(expr(hasType(isAnyPointer()))),
-	       // skip local variable assignments
-	       unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration())))))).bind("assign"), 
+		       hasLHS(expr(hasType(isAnyPointer()))),
+		       // skip local variable assignments
+		       unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration())))))).bind("assign"), 
 	&HandlerForAssign);
+
+    Matcher.addMatcher(
+	binaryOperator(anyOf(hasOperatorName("+="),
+			     hasOperatorName("-=")),
+		       hasLHS(expr(hasType(isAnyPointer())))).bind("assign"), 
+        &HandlerForAssign);
+		      
     Matcher.addMatcher(
         callExpr(callee(functionDecl(hasName("memcpy")))).bind("memcpy"),
         &HandlerForMemcpy);
