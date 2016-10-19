@@ -282,9 +282,6 @@ void *RTsafe_setfInit(void * lhs_address, void * rhs) {
 void memory_segment_write_barrier(BPTR low, BPTR high) {
   Debugger("HEY! I haven't been tested!\n");
   if (enable_write_barrier) {
-    // if GC_POINTER_ALIGNMENT is < 4, avoid scanning potential pointers that
-    // extend past the end of this object
-    high = high - sizeof(LPTR) + 1;
     for (BPTR next = low; next < high; next = next + GC_POINTER_ALIGNMENT) {
       BPTR object = *((BPTR *) next);
       if (IN_HEAP(object)) {
