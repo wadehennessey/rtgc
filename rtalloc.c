@@ -512,9 +512,3 @@ int RTpthread_create(pthread_t *thread, const pthread_attr_t *attr,
     out_of_memory("Too many threads", MAX_THREADS);
   }
 }
-
-// For backward compat - should get rid of this
-int new_thread(void *(*start_func) (void *), void *args) {
-  pthread_t thread;
-  return(RTpthread_create(&thread, NULL, start_func, args));
-}
