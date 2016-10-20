@@ -91,9 +91,9 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
 
   gettimeofday(&start_tv, 0);
   locked_long_inc(&entered_handler_count);
-  // we cannot be in the middle of an allocation at this point because
+  // We cannot be in the middle of an allocation at this point because
   // the gc holds all the group free_locks
-  if (0 == (thread_index =  (long) pthread_getspecific(thread_index_key))) {
+  if (0 == (thread_index = (long) pthread_getspecific(thread_index_key))) {
     printf("pthread_getspecific failed!\n");
   } else {
     //printf("Pausing thread %d on signal %d\n", thread_index, signum);
@@ -188,8 +188,6 @@ int stop_all_mutators_and_save_state() {
     sched_yield();
   }
   
-  // BIG change for swap and resume alloc! This used to be in rtgc.c in
-  // what looked like an unsafe place. It always worked though..
   enable_write_barrier = 1;
   SWAP(marked_color,unmarked_color);
   unlock_all_free_locks();

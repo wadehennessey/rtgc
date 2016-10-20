@@ -509,16 +509,3 @@ int new_thread(void *(*start_func) (void *), void *args) {
     out_of_memory("Too many threads", MAX_THREADS);
   }
 }
-
-    
-
-	
-      
-      
-
-  
-       
-       
-
-
-
