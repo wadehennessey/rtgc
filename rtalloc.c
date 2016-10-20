@@ -474,7 +474,8 @@ void *rtalloc_start_thread(void *arg) {
   }
 }
 
-int new_thread(void *(*start_func) (void *), void *args) {
+int RTpthread_create(pthread_t *thread, const pthread_attr_t *attr,
+		     void *(*start_func) (void *), void *args) {
   pthread_mutex_lock(&total_threads_lock);
   if (total_threads < MAX_THREADS) {
     int index = total_threads;
@@ -486,14 +487,16 @@ int new_thread(void *(*start_func) (void *), void *args) {
     start_args->real_start_func = start_func;
     start_args->real_args = args;
 
+    int return_val;
     // this indicates that thread setup isn't complete
     threads[index].saved_stack_base = 0;
-    if (0 != pthread_create(&(threads[index].pthread),
-			    NULL, 
-			    rtalloc_start_thread,
-			    (void *) start_args)) {
-      Debugger("pthread_create failed!\n");
+    if (0 != (return_val = pthread_create(&(threads[index].pthread),
+					  attr, 
+					  rtalloc_start_thread,
+					  (void *) start_args))) {
+      return(return_val);
     } else {
+      *thread = threads[index].pthread;
       // HEY! should do something smarter than busy wait
       // rtalloc_start_thread to complete thread init
       while (0 == threads[index].saved_stack_base) {
@@ -502,10 +505,16 @@ int new_thread(void *(*start_func) (void *), void *args) {
 	// declaring saved_stack_base volatile doesn't seem to help
 	sched_yield();
       }
-      return(index);
+      return(return_val);
     }
   } else {
     pthread_mutex_lock(&total_threads_lock);
     out_of_memory("Too many threads", MAX_THREADS);
   }
+}
+
+// For backward compat - should get rid of this
+int new_thread(void *(*start_func) (void *), void *args) {
+  pthread_t thread;
+  return(RTpthread_create(&thread, NULL, start_func, args));
 }

@@ -32,6 +32,9 @@ void RTinit_heap(size_t first_segment_bytes, size_t static_size);
 
 int new_thread(void *(*start_func) (void *), void *args);
 
+int RTpthread_create(pthread_t *thread, const pthread_attr_t *attr,
+		     void *(*start_func) (void *), void *args);
+
 int rtgc_count(void);
 
 void RTfull_gc();

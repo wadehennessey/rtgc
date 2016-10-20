@@ -2,7 +2,7 @@
 
 CC = gcc
 
-a:
+a:	a.c
 	$(CC) -o a -g a.c -L./ -lrtgc
 
 opt-a:	

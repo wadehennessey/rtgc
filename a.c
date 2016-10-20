@@ -197,7 +197,8 @@ int main(int argc, char *argv[]) {
   RTatomic_gc = 0;
   RTinit_heap((1L << 21), 1L << 18);
   for (long i = 1; i <= 3; i++) {
-    new_thread(&start_word_count, (void *) i);
+    pthread_t thread;
+    RTpthread_create(&thread, NULL, &start_word_count, (void *) i);
   }
   rtgc_loop();
 }
