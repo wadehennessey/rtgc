@@ -195,11 +195,13 @@ void *start_word_count(void *arg) {
 
 int main(int argc, char *argv[]) {
   RTatomic_gc = 0;
-  RTinit_heap((1L << 21), 1L << 18);
+  // When using RTatomic_gc = 1 we need about 4x them minimum heap size we need
+  // when using RTatomic_gc = 0, otherwise we'll get "out of memory Heap"
+  // errors.
+  RTinit_heap((1L << 23), 1L << 18);
   for (long i = 1; i <= 3; i++) {
     pthread_t thread;
     RTpthread_create(&thread, NULL, &start_word_count, (void *) i);
   }
   rtgc_loop();
 }
-

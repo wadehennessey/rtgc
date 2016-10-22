@@ -37,8 +37,8 @@ New method uses sig_atomic_t flags and locked increment instructions.
 */
 
 // Integers safe to read and set in signal handler
-// Should we use this instead? static volatile sig_atomic_t
-// volatile is ESSENTIAL, or -O2 optimizaions break things
+// static volatile sig_atomic_t volatile is ESSENTIAL, 
+// or -O2 optimizaions break things
 static volatile long entered_handler_count = 0;
 static volatile long copied_stack_count = 0;
 
@@ -88,7 +88,8 @@ void print_registers(gregset_t *gregs) {
 void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
   int thread_index;
   struct timeval start_tv, end_tv, pause_tv;
-
+  long current_gc_count = gc_count;
+    
   gettimeofday(&start_tv, 0);
   locked_long_inc(&entered_handler_count);
   // We cannot be in the middle of an allocation at this point because
@@ -129,6 +130,12 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
     if timercmp(&pause_tv, &(threads[thread_index].max_pause_tv), >) {
     	threads[thread_index].max_pause_tv = pause_tv;
       }
+  }
+
+  if (1 == RTatomic_gc) {
+    while (gc_count == (current_gc_count + 2)) {
+      sched_yield();
+    }
   }
 }
 

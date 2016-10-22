@@ -617,8 +617,6 @@ void full_gc() {
 
   enable_write_barrier = 0;
   recycle_all_garbage();
-  // moved this into stop_all_mutators_and_save_state.
-  // enable_write_barrier = 1;
 
   gc_count = gc_count + 1;
 }

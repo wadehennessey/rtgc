@@ -187,15 +187,17 @@ void init_pages_for_group(GPTR group, int min_pages) {
       // atomic and concurrent gc can't flip without
       // unlocking all group free locks
       pthread_mutex_unlock(&(group->free_lock));
+      long current_gc_count = gc_count;
       if (RTatomic_gc) {
 	// atomic gc
 	run_gc = 1;
-	while (1 == run_gc);
+	while (gc_count < (current_gc_count + 2)) {
+	  sched_yield();
+	}
       } else {
 	// concurrent gc
 	// need to wait until gc count increases by 2
 	printf("alloc out ran gc, sync collect\n");
-	int current_gc_count = gc_count;
 	while (gc_count < (current_gc_count + 2)) {
 	  // Should use a condition variable counter instead of polling here
 	  sched_yield();
@@ -512,3 +514,4 @@ int RTpthread_create(pthread_t *thread, const pthread_attr_t *attr,
     out_of_memory("Too many threads", MAX_THREADS);
   }
 }
+
