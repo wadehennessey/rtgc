@@ -173,7 +173,8 @@ public:
     // Match struct, class, and union assignments
     Matcher.addMatcher(
         binaryOperator(hasOperatorName("="), 
-		       hasType(qualType(hasCanonicalType(recordType()))), 	                         unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration())))))).bind("assign"),
+		       hasType(qualType(hasCanonicalType(recordType()))),
+		       unless(hasLHS(declRefExpr(to(varDecl(hasAutomaticStorageDuration())))))).bind("assign"),
 	&HandlerForRecordAssign);
   }
 
