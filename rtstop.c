@@ -186,6 +186,7 @@ int stop_all_mutators_and_save_state() {
       if (ESRCH == err) {
 	// HEY! fix this to remove pthread from threads
 	printf("Not a valid thread handle\n");
+	total_threads_to_halt = total_threads_to_halt - 1;
       }	else {
 	printf("pthread_kill failed with err %d!\n", err);
 	Debugger("pthread_kill failed!");

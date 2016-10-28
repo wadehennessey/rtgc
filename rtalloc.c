@@ -436,6 +436,15 @@ void RTinit_heap(size_t first_segment_bytes, size_t static_size) {
   init_realtime_gc();
 }
 
+static void
+thread_cleanup_handler(void *arg) {
+  long thread_index = (long) arg;
+  printf("Called clean-up handler for thread %d\n", thread_index);
+  pthread_mutex_lock(&total_threads_lock);
+  // cleanup code goes here
+  pthread_mutex_unlock(&total_threads_lock);
+}
+
 void *rtalloc_start_thread(void *arg) {
   START_THREAD_ARGS *start_args = (START_THREAD_ARGS *) arg;
   void *(*real_start_func) (void *);
@@ -471,8 +480,11 @@ void *rtalloc_start_thread(void *arg) {
     // initializing saved_stack_base tells new_thread
     // that stack setup is done and it can return
     threads[thread_index].saved_stack_base = RTbig_malloc(stacksize);
+
+    pthread_cleanup_push(&thread_cleanup_handler, (void *) thread_index);
     // after setup, invoke the real start func with the real args
     (real_start_func)(real_args);
+    pthread_cleanup_pop(1);
   }
 }
 

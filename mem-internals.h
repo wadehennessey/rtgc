@@ -81,6 +81,12 @@ typedef struct page_info {
 
 typedef PAGE_INFO *PPTR;
 
+typedef struct start_thread_args {
+  int thread_index;
+  void *(*real_start_func) (void *);
+  char *real_args;
+} START_THREAD_ARGS;
+
 typedef struct thread_info {
   pthread_t pthread;
   gregset_t registers;		// NREG is 23 on x86_64
@@ -90,13 +96,9 @@ typedef struct thread_info {
   char *saved_stack_base;    // This is the LOWEST addressable byte
   int saved_stack_size;
   struct timeval max_pause_tv, total_pause_tv;
-} THREAD_INFO;
-
-typedef struct start_thread_args {
-  int thread_index;
   void *(*real_start_func) (void *);
   char *real_args;
-} START_THREAD_ARGS;
+} THREAD_INFO;
 
 typedef struct counter {
   int count;
