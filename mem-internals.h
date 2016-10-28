@@ -142,6 +142,8 @@ extern SEGMENT *segments;
 extern int total_segments;
 
 extern THREAD_INFO *threads;
+extern THREAD_INFO *live_threads;
+extern THREAD_INFO *free_threads;
 extern int total_threads;
 
 extern long total_partition_pages;

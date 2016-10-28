@@ -379,6 +379,16 @@ void init_gc_thread() {
   total_threads = 1;
 }
 
+void init_mutator_threads() {
+  int last_thread_index = MAX_THREADS - 1;
+  for (int i = 1; i < last_thread_index; i++) {
+    threads[i].next = threads + i + 1;
+  }
+  threads[last_thread_index].next = NULL;
+  free_threads = threads + 1;	// skip gc thread 0
+  live_threads = NULL;
+}
+
 void register_global_root(void *root) {
   pthread_mutex_lock(&global_roots_lock);
   if (total_global_roots == MAX_GLOBAL_ROOTS) {
@@ -419,6 +429,7 @@ void RTinit_heap(size_t first_segment_bytes, size_t static_size) {
   init_page_info();
   empty_pages = NULL;
   init_gc_thread();
+  init_mutator_threads();
   total_segments = 0;
   
   if ((static_size > 0) &&
@@ -436,8 +447,22 @@ void RTinit_heap(size_t first_segment_bytes, size_t static_size) {
   init_realtime_gc();
 }
 
-static void
-thread_cleanup_handler(void *arg) {
+static THREAD_INFO *alloc_thread() {
+  if (NULL == free_threads) {
+    Debugger("Out of threads");
+  } else {
+    THREAD_INFO *thread = free_threads;
+    thread->next = (THREAD_INFO *) -1;
+    free_threads = free_threads->next;
+  }
+}
+
+static void free_thread(THREAD_INFO *thread) {
+  thread->next = free_threads;
+  free_threads->next = thread;
+}
+
+static void thread_cleanup_handler(void *arg) {
   long thread_index = (long) arg;
   printf("Called clean-up handler for thread %d\n", thread_index);
   pthread_mutex_lock(&total_threads_lock);

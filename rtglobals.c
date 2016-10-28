@@ -29,6 +29,8 @@ SEGMENT *segments;
 int total_segments;
 
 THREAD_INFO *threads;
+THREAD_INFO *live_threads;
+THREAD_INFO *free_threads;
 int total_threads;
 
 char **global_roots;
