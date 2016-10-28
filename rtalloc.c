@@ -446,15 +446,7 @@ thread_cleanup_handler(void *arg) {
 }
 
 void *rtalloc_start_thread(void *arg) {
-  START_THREAD_ARGS *start_args = (START_THREAD_ARGS *) arg;
-  void *(*real_start_func) (void *);
-
-  // unpack start args
-  long thread_index = start_args->thread_index;
-  real_start_func = start_args->real_start_func;
-  char *real_args = start_args->real_args;
-  free(arg);
-  
+  long thread_index = (long) arg;  
   printf("Thread %d started, live stack top is %p\n", 
 	 thread_index, &thread_index);
   pthread_attr_t attr;
@@ -477,13 +469,13 @@ void *rtalloc_start_thread(void *arg) {
   if (0 != pthread_setspecific(thread_index_key, (void *) thread_index)) {
     printf("pthread_setspecific failed!\n"); 
   } else {
-    // initializing saved_stack_base tells new_thread
+    // initializing saved_stack_base tells RTpthread_create
     // that stack setup is done and it can return
     threads[thread_index].saved_stack_base = RTbig_malloc(stacksize);
 
     pthread_cleanup_push(&thread_cleanup_handler, (void *) thread_index);
-    // after setup, invoke the real start func with the real args
-    (real_start_func)(real_args);
+    // Now we can call the real start function
+    (threads[thread_index].start_func)(threads[thread_index].args);
     pthread_cleanup_pop(1);
   }
 }
@@ -492,22 +484,19 @@ int RTpthread_create(pthread_t *thread, const pthread_attr_t *attr,
 		     void *(*start_func) (void *), void *args) {
   pthread_mutex_lock(&total_threads_lock);
   if (total_threads < MAX_THREADS) {
-    int index = total_threads;
+    long index = total_threads;
     total_threads = total_threads + 1;
     pthread_mutex_unlock(&total_threads_lock);
-
-    START_THREAD_ARGS *start_args = malloc(sizeof(START_THREAD_ARGS));
-    start_args->thread_index = index;
-    start_args->real_start_func = start_func;
-    start_args->real_args = args;
-
-    int return_val;
+    threads[index].start_func = start_func;
+    threads[index].args = args;
+    
     // this indicates that thread setup isn't complete
     threads[index].saved_stack_base = 0;
+    int return_val;
     if (0 != (return_val = pthread_create(&(threads[index].pthread),
 					  attr, 
 					  rtalloc_start_thread,
-					  (void *) start_args))) {
+					  (void *) index))) {
       return(return_val);
     } else {
       *thread = threads[index].pthread;
