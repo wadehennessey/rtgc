@@ -10,6 +10,7 @@
 #include <semaphore.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <errno.h>
 #include <assert.h>
 #include <pthread.h>
 #include "info-bits.h"

@@ -12,6 +12,7 @@
 #include <semaphore.h>
 #include <signal.h>
 #include <pthread.h>
+#include <errno.h>
 #include "info-bits.h"
 #include "mem-config.h"
 #include "mem-internals.h"
@@ -182,8 +183,13 @@ int stop_all_mutators_and_save_state() {
     threads[thread].saved_stack_size = 0;
     int err = pthread_kill(threads[thread].pthread, FLIP_SIGNAL);
     if (0 != err) {
-      printf("pthread_kill failed with err %d!\n", err);
-      Debugger("pthread_kill failed!");
+      if (ESRCH == err) {
+	// HEY! fix this to remove pthread from threads
+	printf("Not a valid thread handle\n");
+      }	else {
+	printf("pthread_kill failed with err %d!\n", err);
+	Debugger("pthread_kill failed!");
+      }
     }
   }
 

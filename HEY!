@@ -165,4 +165,7 @@ after file is read are *NOT* seen.
 ----------
 export C_INCLUDE_PATH=/home/wade/build/lib/clang/4.0.0/include
 
+-----------
+Try LIBRARY_PATH env variable to allow removal or librtgc.so from wcl tree
+
 
