@@ -177,21 +177,21 @@ int stop_all_mutators_and_save_state() {
   entered_handler_count = 0;
   copied_stack_count = 0;
   pthread_mutex_lock(&total_threads_lock);
-  int total_threads_to_halt = total_threads - 1; // omit gc thread
-  for (int i = 0; i < total_threads_to_halt; i++) {
-    int thread = i + 1;		// skip 0 - gc thread
-    threads[thread].saved_stack_size = 0;
-    int err = pthread_kill(threads[thread].pthread, FLIP_SIGNAL);
+  int total_threads_to_halt = 0;
+  THREAD_INFO *thread = live_threads;
+  while (thread != NULL) {
+    total_threads_to_halt = total_threads_to_halt + 1;
+    thread->saved_stack_size = 0;
+    int err = pthread_kill(thread->pthread, FLIP_SIGNAL);
     if (0 != err) {
       if (ESRCH == err) {
-	// HEY! fix this to remove pthread from threads
-	printf("Not a valid thread handle\n");
-	total_threads_to_halt = total_threads_to_halt - 1;
+	// Try to free thread here? Should have been done on thread exit
+	Debugger("Not a valid thread handle\n");
       }	else {
-	printf("pthread_kill failed with err %d!\n", err);
 	Debugger("pthread_kill failed!");
       }
     }
+    thread = thread->next;
   }
 
   if (0 != RTno_write_barrier_state_ptr) {

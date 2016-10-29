@@ -376,7 +376,7 @@ void init_gc_thread() {
   threads[0].stack_bottom = (char *) &stacksize;
   threads[0].saved_stack_base = 0;
   threads[0].saved_stack_size = 0;
-  total_threads = 1;
+  total_threads = 0;
 }
 
 void init_mutator_threads() {
@@ -451,9 +451,16 @@ static THREAD_INFO *alloc_thread() {
   if (NULL == free_threads) {
     Debugger("Out of threads");
   } else {
+    pthread_mutex_lock(&total_threads_lock);
     THREAD_INFO *thread = free_threads;
-    thread->next = (THREAD_INFO *) -1;
+    // Remove thread from free_threads
     free_threads = free_threads->next;
+    // Add thread to live_threads;
+    thread->next = live_threads;
+    live_threads = thread;
+    total_threads = total_threads + 1;
+    pthread_mutex_unlock(&total_threads_lock);
+    return(thread);
   }
 }
 
@@ -471,84 +478,78 @@ static void free_thread(THREAD_INFO *thread) {
   // Add thread to the head of free_threads list
   target_thread->next = free_threads;
   free_threads->next = target_thread;
+  total_threads = total_threads - 1;
 }
 
 static void thread_cleanup_handler(void *arg) {
-  long thread_index = (long) arg;
-  printf("Called clean-up handler for thread %d\n", thread_index);
+  THREAD_INFO *thread =  arg;
+  printf("Called clean-up handler for thread_index %p\n", thread - threads);
   pthread_mutex_lock(&total_threads_lock);
-  free_thread(threads + thread_index);
+  free_thread(thread);
   pthread_mutex_unlock(&total_threads_lock);
 }
 
-void *rtalloc_start_thread(void *arg) {
-  long thread_index = (long) arg;  
-  printf("Thread %d started, live stack top is %p\n", 
-	 thread_index, &thread_index);
+void *rtalloc_start_thread(void *thread_arg) {
+  THREAD_INFO *thread = thread_arg;
+  printf("Thread %d started\n", thread - threads);
   pthread_attr_t attr;
   void *stackaddr;
   size_t stacksize;
-  pthread_getattr_np(threads[thread_index].pthread, &attr);
+  pthread_getattr_np(thread->pthread, &attr);
   pthread_attr_getstack(&attr, &stackaddr, &stacksize);
   // We don't really need this info, but it might be nice for debugging
   // stackaddr is the LOWEST addressable byte of the stack
   // The stack pointer starts at stackaddr + stacksize!
   // printf("Stackaddr is %p\n", stackaddr);
   // printf("Stacksize is %x\n", stacksize);
-  threads[thread_index].stack_base = stackaddr;
-  threads[thread_index].stack_size = stacksize;
-  threads[thread_index].stack_bottom = (char *)  &stacksize;
-  timerclear(&(threads[thread_index].max_pause_tv));
-  timerclear(&(threads[thread_index].total_pause_tv));
+  thread->stack_base = stackaddr;
+  thread->stack_size = stacksize;
+  thread->stack_bottom = (char *)  &stacksize;
+  timerclear(&(thread->max_pause_tv));
+  timerclear(&(thread->total_pause_tv));
   fflush(stdout);
 
-  if (0 != pthread_setspecific(thread_index_key, (void *) thread_index)) {
+  // HEY! fix this, added hack to convert thread into thread_index
+  if (0 != pthread_setspecific(thread_index_key, (void *) (thread - threads))) {
+
     printf("pthread_setspecific failed!\n"); 
   } else {
     // initializing saved_stack_base tells RTpthread_create
     // that stack setup is done and it can return
-    threads[thread_index].saved_stack_base = RTbig_malloc(stacksize);
+    thread->saved_stack_base = RTbig_malloc(stacksize);
 
-    pthread_cleanup_push(&thread_cleanup_handler, (void *) thread_index);
+    pthread_cleanup_push(&thread_cleanup_handler, thread);
     // Now we can call the real start function
-    (threads[thread_index].start_func)(threads[thread_index].args);
+    (thread->start_func)(thread->args);
     pthread_cleanup_pop(1);
   }
 }
 
 int RTpthread_create(pthread_t *thread, const pthread_attr_t *attr,
 		     void *(*start_func) (void *), void *args) {
-  pthread_mutex_lock(&total_threads_lock);
-  if (total_threads < MAX_THREADS) {
-    long index = total_threads;
-    total_threads = total_threads + 1;
-    pthread_mutex_unlock(&total_threads_lock);
-    threads[index].start_func = start_func;
-    threads[index].args = args;
+  THREAD_INFO *new_thread = alloc_thread();
+  new_thread->start_func = start_func;
+  new_thread->args = args;
     
-    // this indicates that thread setup isn't complete
-    threads[index].saved_stack_base = 0;
-    int return_val;
-    if (0 != (return_val = pthread_create(&(threads[index].pthread),
-					  attr, 
-					  rtalloc_start_thread,
-					  (void *) index))) {
-      return(return_val);
-    } else {
-      *thread = threads[index].pthread;
-      // HEY! should do something smarter than busy wait
-      // rtalloc_start_thread to complete thread init
-      while (0 == threads[index].saved_stack_base) {
-	// YOW! without this explicit sched_yield(), we hang in this
-	// loop when compiled with -O1 and-O2
-	// declaring saved_stack_base volatile doesn't seem to help
-	sched_yield();
-      }
-      return(return_val);
-    }
+  // this indicates that thread setup isn't complete
+  new_thread->saved_stack_base = 0;
+  int return_val;
+  if (0 != (return_val = pthread_create(&(new_thread->pthread),
+					attr, 
+					rtalloc_start_thread,
+					new_thread))) {
+    return(return_val);
   } else {
-    pthread_mutex_lock(&total_threads_lock);
-    out_of_memory("Too many threads", MAX_THREADS);
+    *thread = new_thread->pthread;
+    // HEY! should do something smarter than busy wait
+    // rtalloc_start_thread to complete thread init
+    while (0 == new_thread->saved_stack_base) {
+      // YOW! without this explicit sched_yield(), we hang in this
+      // loop when compiled with -O1 and-O2
+      // declaring saved_stack_base volatile doesn't seem to help
+      sched_yield();
+    }
+    return(return_val);
   }
 }
 

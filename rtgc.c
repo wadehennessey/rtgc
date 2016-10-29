@@ -335,8 +335,8 @@ static
 void scan_threads() {
   // HEY! need to pass along number of threads scanned
   // Acquire total_threads lock here? Maybe earlier in flip.
-  for (int next_thread = 1; next_thread < total_threads; next_thread++) {
-    scan_thread(next_thread);
+  for (int next_thread = 0; next_thread < total_threads; next_thread++) {
+    scan_thread(next_thread + 1);
   }
   if (0 != saved_no_write_barrier_state) {
     BPTR low =  (BPTR) &saved_no_write_barrier_state;;
