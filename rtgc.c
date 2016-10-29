@@ -643,10 +643,10 @@ int rtgc_count(void) {
 }
 
 void init_realtime_gc() {
-  // the gc_flip signal handler uses this to find the thread_index of 
-  // the mutator thread it is running on
-  if (0 != pthread_key_create(&thread_index_key, NULL)) {
-    Debugger("thread_index_key create failed!\n");
+  // The gc_flip signal_handler uses this to find the thread corresponding to
+  // the mutator pthread it is running on
+  if (0 != pthread_key_create(&thread_key, NULL)) {
+    Debugger("thread_key create failed!\n");
   }
 
   printf("Running last commit before t1/t2 branch creation\n");

@@ -151,7 +151,7 @@ extern int unmarked_color;
 extern int marked_color;
 extern int enable_write_barrier;
 
-extern pthread_key_t thread_index_key;
+extern pthread_key_t thread_key;
 extern char **global_roots;
 extern int total_global_roots;
 extern pthread_mutex_t total_threads_lock;

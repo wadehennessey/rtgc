@@ -369,8 +369,6 @@ void init_gc_thread() {
   pthread_t self = pthread_self();
   pthread_getattr_np(self, &attr);
   pthread_attr_getstack(&attr, &stackaddr, &stacksize);
-  //printf("Main Stackaddr is %p\n", stackaddr);
-  //printf("Main Stacksize is 0x%x\n", stacksize);
   threads[0].stack_base = stackaddr + stacksize;
   threads[0].stack_size = stacksize;
   threads[0].stack_bottom = (char *) &stacksize;
@@ -509,9 +507,7 @@ void *rtalloc_start_thread(void *thread_arg) {
   timerclear(&(thread->total_pause_tv));
   fflush(stdout);
 
-  // HEY! fix this, added hack to convert thread into thread_index
-  if (0 != pthread_setspecific(thread_index_key, (void *) (thread - threads))) {
-
+  if (0 != pthread_setspecific(thread_key, (void *) thread)) {
     printf("pthread_setspecific failed!\n"); 
   } else {
     // initializing saved_stack_base tells RTpthread_create

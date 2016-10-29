@@ -87,49 +87,42 @@ void print_registers(gregset_t *gregs) {
   context     -> ...ea40
  */
 void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
-  int thread_index;
+  THREAD_INFO *thread;
   struct timeval start_tv, end_tv, pause_tv;
   long current_gc_count = gc_count;
-    
-  gettimeofday(&start_tv, 0);
-  locked_long_inc(&entered_handler_count);
+
   // We cannot be in the middle of an allocation at this point because
   // the gc holds all the group free_locks
-  if (0 == (thread_index = (long) pthread_getspecific(thread_index_key))) {
+  gettimeofday(&start_tv, 0);
+  locked_long_inc(&entered_handler_count);
+  if (0 == (thread = pthread_getspecific(thread_key))) {
     printf("pthread_getspecific failed!\n");
   } else {
-    //printf("Pausing thread %d on signal %d\n", thread_index, signum);
-
-    // Copy registers - NREGS is 23 on x86_64
     ucontext_t *ucontext = (ucontext_t *) context;
     mcontext_t *mcontext = &(ucontext->uc_mcontext);
     gregset_t *gregs = &(mcontext->gregs);
-    memcpy(&(threads[thread_index].registers), gregs, sizeof(gregset_t));
+    memcpy(&(thread->registers), gregs, sizeof(gregset_t));
 
     // real interrupted stack pointer is saved in the RSP register
     char *stack_top = (char *) (*gregs)[REG_RSP];
-    //printf("Saved stack bottom is %p\n", threads[thread_index].stack_bottom);
-    //printf("Interrupted stack_top is %p\n", stack_top);
-    long live_stack_size = threads[thread_index].stack_bottom - 
-                           stack_top;
-    //printf("live stack size is 0x%lx\n", live_stack_size);
+    long live_stack_size = thread->stack_bottom - stack_top;
 
     // Be careful here, must copy from lowest to highest address
     // in both real stack and saved stack
-    memcpy(threads[thread_index].saved_stack_base,
+    memcpy(thread->saved_stack_base,
 	   stack_top,
 	   live_stack_size);
-    threads[thread_index].saved_stack_size = live_stack_size;
+    thread->saved_stack_size = live_stack_size;
 
     locked_long_inc(&copied_stack_count);
 
     gettimeofday(&end_tv, 0);
     timersub(&end_tv, &start_tv, &pause_tv);
-    timeradd(&(threads[thread_index].total_pause_tv),
+    timeradd(&(thread->total_pause_tv),
 	     &pause_tv,
-	     &(threads[thread_index].total_pause_tv));
-    if timercmp(&pause_tv, &(threads[thread_index].max_pause_tv), >) {
-    	threads[thread_index].max_pause_tv = pause_tv;
+	     &(thread->total_pause_tv));
+    if timercmp(&pause_tv, &(thread->max_pause_tv), >) {
+    	thread->max_pause_tv = pause_tv;
       }
   }
 
