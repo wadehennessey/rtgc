@@ -73,19 +73,6 @@ void print_registers(gregset_t *gregs) {
   printf("REG_CR2 %llx\n", (*gregs)[REG_CR2]);
 }
 
-/*
-  
-  end live    ->
-  start frame -> 
-                
-  end siginfo -> ...ebf0
-
-  siginfo     -> ...eb70
-
-  end context -> ...ede8
-
-  context     -> ...ea40
- */
 void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
   THREAD_INFO *thread;
   struct timeval start_tv, end_tv, pause_tv;
@@ -178,7 +165,9 @@ int stop_all_mutators_and_save_state() {
     int err = pthread_kill(thread->pthread, FLIP_SIGNAL);
     if (0 != err) {
       if (ESRCH == err) {
-	// Try to free thread here? Should have been done on thread exit
+	// Try to call free_thread here? Probably not.
+	// This should have been done correctly on pthread exit, no
+	// matter how it occurred.
 	Debugger("Not a valid thread handle\n");
       }	else {
 	Debugger("pthread_kill failed!");
