@@ -360,23 +360,8 @@ void *RTstatic_allocate(void *metadata, int size) {
   }
 }
 
-// Thread 0 is considered the main stack that started this process.
-// The gc itself runs on Thread 0.
-void init_gc_thread() {
-  pthread_attr_t attr;
-  void *stackaddr;
-  size_t stacksize;
-  pthread_t self = pthread_self();
-  pthread_getattr_np(self, &attr);
-  pthread_attr_getstack(&attr, &stackaddr, &stacksize);
-  threads[0].stack_base = stackaddr + stacksize;
-  threads[0].stack_size = stacksize;
-  threads[0].stack_bottom = (char *) &stacksize;
-  threads[0].saved_stack_base = 0;
-  threads[0].saved_stack_size = 0;
-  total_threads = 0;
-}
-
+// The gc itself runs on the intial process thread. We don't keep
+// track of that here, we just need to keep track of mutator threads here.
 void init_mutator_threads() {
   int last_thread_index = MAX_THREADS - 1;
   for (int i = 1; i < last_thread_index; i++) {
@@ -426,7 +411,6 @@ void RTinit_heap(size_t first_segment_bytes, size_t static_size) {
 
   init_page_info();
   empty_pages = NULL;
-  init_gc_thread();
   init_mutator_threads();
   total_segments = 0;
   
