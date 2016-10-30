@@ -520,7 +520,9 @@ void *rtalloc_start_thread(void *thread_arg) {
   } else {
     // initializing saved_stack_base tells RTpthread_create
     // that stack setup is done and it can return
-    thread->saved_stack_base = RTbig_malloc(stacksize);
+
+    // thread->saved_stack_base = RTbig_malloc(stacksize);
+    thread->started = 1;
 
     pthread_cleanup_push(&thread_cleanup_handler, thread);
     // Now we can call the real start function
@@ -536,7 +538,7 @@ int RTpthread_create(pthread_t *pthread, const pthread_attr_t *attr,
   new_thread->args = args;
     
   // this indicates that thread setup isn't complete
-  new_thread->saved_stack_base = 0;
+  new_thread->started = 0;
   int return_val;
   if (0 != (return_val = pthread_create(&(new_thread->pthread),
 					attr, 
@@ -547,12 +549,14 @@ int RTpthread_create(pthread_t *pthread, const pthread_attr_t *attr,
     *pthread = new_thread->pthread;
     // HEY! should do something smarter than busy wait
     // rtalloc_start_thread to complete thread init
-    while (0 == new_thread->saved_stack_base) {
+
+    while (0 == new_thread->started) {
       // YOW! without this explicit sched_yield(), we hang in this
       // loop when compiled with -O1 and-O2
       // declaring saved_stack_base volatile doesn't seem to help
       sched_yield();
     }
+    
     return(return_val);
   }
 }

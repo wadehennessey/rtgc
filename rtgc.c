@@ -310,6 +310,7 @@ void *RTmemset(void *p1, int data, int num_bytes) {
   return(p1);
 }
 
+/*
 static
 void scan_thread_registers(int thread) {
   // HEY! just scan saved regs that need it, not all 23 of them
@@ -330,9 +331,11 @@ void scan_thread(int thread) {
   scan_thread_registers(thread);
   scan_thread_saved_stack(thread);
 }
+*/
 
 // switch to this
 void scan_saved_thread_state(int i) {
+  // HEY! just scan saved regs that need it, not all 23 of them
   BPTR registers = (BPTR) saved_threads[i].registers;
   scan_memory_segment(registers, registers + (23 * sizeof(long)));
 
@@ -346,15 +349,17 @@ static
 void scan_threads() {
   // HEY! need to pass along number of threads scanned
   // Acquire total_threads lock here? Maybe earlier in flip.
+
+  /*
   for (int next_thread = 0; next_thread < total_threads; next_thread++) {
     scan_thread(next_thread);
   }
-  /* switcht to this:
+  */
 
   for (int i = 0; i < total_saved_threads; i++) {
     scan_saved_thread_state(i);
   }  
-  */
+
 
   
   if (0 != saved_no_write_barrier_state) {
