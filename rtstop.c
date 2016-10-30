@@ -157,7 +157,7 @@ int stop_all_mutators_and_save_state() {
   // stop the world and copy all stack and register state in each live thread
   entered_handler_count = 0;
   copied_stack_count = 0;
-  pthread_mutex_lock(&total_threads_lock);
+  pthread_mutex_lock(&threads_lock);
   int total_threads_to_halt = 0;
   THREAD_INFO *thread = live_threads;
   while (thread != NULL) {
@@ -198,7 +198,7 @@ int stop_all_mutators_and_save_state() {
   // all stacks and registers should be copied at this point
   assert(total_threads_to_halt == copied_stack_count);
   // Allow creation of new threads now
-  pthread_mutex_unlock(&total_threads_lock);
+  pthread_mutex_unlock(&threads_lock);
 
   // We could return this and pass it around, but what's the point.
   // Its unique global info used once per gc cycle

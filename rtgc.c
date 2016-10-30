@@ -657,7 +657,7 @@ void init_realtime_gc() {
 #endif
   total_global_roots = 0;
   gc_count = 0;
-  pthread_mutex_init(&total_threads_lock, NULL);
+  pthread_mutex_init(&threads_lock, NULL);
   pthread_mutex_init(&global_roots_lock, NULL);
   pthread_mutex_init(&empty_pages_lock, NULL);
   pthread_mutex_init(&static_frontier_ptr_lock, NULL);

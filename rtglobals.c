@@ -62,7 +62,7 @@ volatile long gc_count;
 
 pthread_key_t thread_key;
 
-pthread_mutex_t total_threads_lock;
+pthread_mutex_t threads_lock;
 pthread_mutex_t global_roots_lock;
 pthread_mutex_t empty_pages_lock;
 // Use locked add instruction instead of a mutex?

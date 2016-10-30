@@ -163,7 +163,7 @@ extern int enable_write_barrier;
 extern pthread_key_t thread_key;
 extern char **global_roots;
 extern int total_global_roots;
-extern pthread_mutex_t total_threads_lock;
+extern pthread_mutex_t threads_lock;
 extern pthread_mutex_t empty_pages_lock;
 extern pthread_mutex_t global_roots_lock;
 extern pthread_mutex_t static_frontier_ptr_lock;

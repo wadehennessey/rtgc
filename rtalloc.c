@@ -457,7 +457,7 @@ static THREAD_INFO *alloc_thread() {
   if (NULL == free_threads) {
     Debugger("Out of threads");
   } else {
-    pthread_mutex_lock(&total_threads_lock);
+    pthread_mutex_lock(&threads_lock);
     THREAD_INFO *thread = free_threads;
     // Remove thread from free_threads
     free_threads = free_threads->next;
@@ -465,7 +465,7 @@ static THREAD_INFO *alloc_thread() {
     thread->next = live_threads;
     live_threads = thread;
     total_threads = total_threads + 1;
-    pthread_mutex_unlock(&total_threads_lock);
+    pthread_mutex_unlock(&threads_lock);
     return(thread);
   }
 }
@@ -490,9 +490,9 @@ static void free_thread(THREAD_INFO *thread) {
 static void thread_cleanup_handler(void *arg) {
   THREAD_INFO *thread =  arg;
   printf("Called cleanup handler for thread %p\n", thread - threads);
-  pthread_mutex_lock(&total_threads_lock);
+  pthread_mutex_lock(&threads_lock);
   free_thread(thread);
-  pthread_mutex_unlock(&total_threads_lock);
+  pthread_mutex_unlock(&threads_lock);
 }
 
 void *rtalloc_start_thread(void *thread_arg) {
