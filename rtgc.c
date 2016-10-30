@@ -333,12 +333,15 @@ void scan_thread(int thread) {
 }
 */
 
-// switch to this
-void scan_saved_thread_state(int i) {
+static
+void scan_saved_registers(int i) {
   // HEY! just scan saved regs that need it, not all 23 of them
   BPTR registers = (BPTR) saved_threads[i].registers;
   scan_memory_segment(registers, registers + (23 * sizeof(long)));
+}
 
+static
+void scan_saved_stack(int i) {
   BPTR top = (BPTR) saved_threads[i].saved_stack_base;
   BPTR bottom = top + saved_threads[i].saved_stack_size;
   BPTR ptr_aligned_top = (BPTR) ((long) top & ~(GC_POINTER_ALIGNMENT - 1));
@@ -346,22 +349,18 @@ void scan_saved_thread_state(int i) {
 }
 
 static
+void scan_saved_thread_state(int i) {
+  scan_saved_registers(i);
+  scan_saved_stack(i);
+}
+
+static
 void scan_threads() {
-  // HEY! need to pass along number of threads scanned
-  // Acquire total_threads lock here? Maybe earlier in flip.
-
-  /*
-  for (int next_thread = 0; next_thread < total_threads; next_thread++) {
-    scan_thread(next_thread);
-  }
-  */
-
   for (int i = 0; i < total_saved_threads; i++) {
     scan_saved_thread_state(i);
   }  
 
-
-  
+  // move this to it's own function
   if (0 != saved_no_write_barrier_state) {
     BPTR low =  (BPTR) &saved_no_write_barrier_state;;
     BPTR high = ((BPTR) low + sizeof(long));

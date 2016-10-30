@@ -93,21 +93,14 @@ typedef struct thread_info {
   int stack_size;
   char *stack_bottom;	 // HIGHEST address seen when thread started
 
-  // del these
-  //gregset_t registers;		// NREG is 23 on x86_64
-  char *saved_stack_base;	// This is the LOWEST addressable byte
-  //int saved_stack_size;
-  
-  // Switch to using this and del the 3 above
-  int saved_thread_index;
-  int started;
-  
+  int saved_thread_index;     // copied stack and register states
+
   struct timeval max_pause_tv, total_pause_tv;
   struct thread_info *next;
-
-  // The next two fields are only used at thread startup time
+  // These fields are only used at thread startup time
   void *(*start_func) (void *);
   char *args;
+  int started;
 } THREAD_INFO;
 
 typedef struct counter {

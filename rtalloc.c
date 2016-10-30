@@ -518,13 +518,15 @@ void *rtalloc_start_thread(void *thread_arg) {
   if (0 != pthread_setspecific(thread_key, (void *) thread)) {
     printf("pthread_setspecific failed!\n"); 
   } else {
-    // initializing saved_stack_base tells RTpthread_create
-    // that stack setup is done and it can return
-
-    // thread->saved_stack_base = RTbig_malloc(stacksize);
+    // Tell RTpthread_create thread is ready for gc
     thread->started = 1;
 
     pthread_cleanup_push(&thread_cleanup_handler, thread);
+
+    // HEY!
+    // 1. get rid of started field - no waiting in RTpthread_create
+    // 2. add therad to live list here
+
     // Now we can call the real start function
     (thread->start_func)(thread->args);
     pthread_cleanup_pop(1);
@@ -537,7 +539,7 @@ int RTpthread_create(pthread_t *pthread, const pthread_attr_t *attr,
   new_thread->start_func = start_func;
   new_thread->args = args;
     
-  // this indicates that thread setup isn't complete
+  // Indicate thread setup isn't complete and isn't ready for gc
   new_thread->started = 0;
   int return_val;
   if (0 != (return_val = pthread_create(&(new_thread->pthread),
@@ -549,7 +551,6 @@ int RTpthread_create(pthread_t *pthread, const pthread_attr_t *attr,
     *pthread = new_thread->pthread;
     // HEY! should do something smarter than busy wait
     // rtalloc_start_thread to complete thread init
-
     while (0 == new_thread->started) {
       // YOW! without this explicit sched_yield(), we hang in this
       // loop when compiled with -O1 and-O2

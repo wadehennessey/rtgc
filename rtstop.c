@@ -85,32 +85,16 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
   if (0 == (thread = pthread_getspecific(thread_key))) {
     printf("pthread_getspecific failed!\n");
   } else {
-
     ucontext_t *ucontext = (ucontext_t *) context;
     mcontext_t *mcontext = &(ucontext->uc_mcontext);
     gregset_t *gregs = &(mcontext->gregs);
-
-    //memcpy(&(thread->registers), gregs, sizeof(gregset_t));
-
-
-    // switch to this
     memcpy(&(saved_threads[thread->saved_thread_index].registers),
 	     gregs,
 	     sizeof(gregset_t));
 
-    
     // real interrupted stack pointer is saved in the RSP register
     char *stack_top = (char *) (*gregs)[REG_RSP];
     long live_stack_size = thread->stack_bottom - stack_top;
-
-    /*
-    memcpy(thread->saved_stack_base,
-	   stack_top,
-	   live_stack_size);
-    thread->saved_stack_size = live_stack_size;
-    */
-    
-    // switch to this
 
     // Be careful here, must copy from lowest to highest address
     // in both real stack and saved stack
@@ -118,8 +102,6 @@ void gc_flip_action_func(int signum, siginfo_t *siginfo, void *context) {
 	   stack_top,
 	   live_stack_size);
     saved_threads[thread->saved_thread_index].saved_stack_size = live_stack_size;
-
-    
     locked_long_inc(&copied_stack_count);
 
     gettimeofday(&end_tv, 0);
@@ -183,8 +165,6 @@ int stop_all_mutators_and_save_state() {
     saved_threads[total_threads_to_halt].saved_stack_size = 0;
       
     total_threads_to_halt = total_threads_to_halt + 1;
-    // delete this
-    //thread->saved_stack_size = 0;
     int err = pthread_kill(thread->pthread, FLIP_SIGNAL);
     if (0 != err) {
       if (ESRCH == err) {
