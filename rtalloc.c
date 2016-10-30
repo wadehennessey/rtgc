@@ -364,11 +364,11 @@ void *RTstatic_allocate(void *metadata, int size) {
 // track of that here, we just need to keep track of mutator threads here.
 void init_mutator_threads() {
   int last_thread_index = MAX_THREADS - 1;
-  for (int i = 1; i < last_thread_index; i++) {
+  for (int i = 0; i < last_thread_index; i++) {
     threads[i].next = threads + i + 1;
   }
   threads[last_thread_index].next = NULL;
-  free_threads = threads + 1;	// skip gc thread 0
+  free_threads = threads;
   live_threads = NULL;
 }
 
@@ -383,14 +383,37 @@ void register_global_root(void *root) {
   pthread_mutex_unlock(&global_roots_lock);
 }
 
+static
+size_t default_stack_size() {
+  pthread_attr_t attr;
+  void *stackaddr;
+  size_t stacksize;
+
+  pthread_t thread = pthread_self();
+  pthread_getattr_np(thread, &attr);
+  pthread_attr_getstack(&attr, &stackaddr, &stacksize);
+  return(stacksize);
+}
+
+static
+void init_saved_threads() {
+  size_t stack_size = default_stack_size();
+  for (int i = 0; i < MAX_THREADS; i++) {
+    saved_threads[i].saved_stack_base = RTbig_malloc(stack_size);
+  }
+}
+
 void RTinit_heap(size_t first_segment_bytes, size_t static_size) {
   enable_write_barrier = 0;
 
+  printf("Default stacksize is %d\n", default_stack_size());
+    
   total_partition_pages = first_segment_bytes / BYTES_PER_PAGE;
   groups = RTbig_malloc(sizeof(GROUP_INFO) * (MAX_GROUP_INDEX + 1));
   pages = RTbig_malloc(sizeof(PAGE_INFO) * total_partition_pages);
   segments = RTbig_malloc(sizeof(SEGMENT) * MAX_SEGMENTS);
   threads = RTbig_malloc(sizeof(THREAD_INFO) * MAX_THREADS);
+  saved_threads = RTbig_malloc(sizeof(THREAD_STATE) * MAX_THREADS);
   global_roots = RTbig_malloc(sizeof(char **) * MAX_GLOBAL_ROOTS);
 #if USE_BIT_WRITE_BARRIER
   RTwrite_vector_length = first_segment_bytes / (MIN_GROUP_SIZE * BITS_PER_LONG);
@@ -425,6 +448,7 @@ void RTinit_heap(size_t first_segment_bytes, size_t static_size) {
   
   marked_color = GENERATION0;
   unmarked_color = GENERATION1;
+  init_saved_threads();
   init_group_info();
   init_realtime_gc();
 }
@@ -465,7 +489,7 @@ static void free_thread(THREAD_INFO *thread) {
 
 static void thread_cleanup_handler(void *arg) {
   THREAD_INFO *thread =  arg;
-  printf("Called clean-up handler for thread_index %p\n", thread - threads);
+  printf("Called cleanup handler for thread %p\n", thread - threads);
   pthread_mutex_lock(&total_threads_lock);
   free_thread(thread);
   pthread_mutex_unlock(&total_threads_lock);
@@ -490,7 +514,7 @@ void *rtalloc_start_thread(void *thread_arg) {
   timerclear(&(thread->max_pause_tv));
   timerclear(&(thread->total_pause_tv));
   fflush(stdout);
-
+  
   if (0 != pthread_setspecific(thread_key, (void *) thread)) {
     printf("pthread_setspecific failed!\n"); 
   } else {
@@ -505,7 +529,7 @@ void *rtalloc_start_thread(void *thread_arg) {
   }
 }
 
-int RTpthread_create(pthread_t *thread, const pthread_attr_t *attr,
+int RTpthread_create(pthread_t *pthread, const pthread_attr_t *attr,
 		     void *(*start_func) (void *), void *args) {
   THREAD_INFO *new_thread = alloc_thread();
   new_thread->start_func = start_func;
@@ -520,7 +544,7 @@ int RTpthread_create(pthread_t *thread, const pthread_attr_t *attr,
 					new_thread))) {
     return(return_val);
   } else {
-    *thread = new_thread->pthread;
+    *pthread = new_thread->pthread;
     // HEY! should do something smarter than busy wait
     // rtalloc_start_thread to complete thread init
     while (0 == new_thread->saved_stack_base) {
@@ -532,4 +556,3 @@ int RTpthread_create(pthread_t *thread, const pthread_attr_t *attr,
     return(return_val);
   }
 }
-

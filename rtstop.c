@@ -160,6 +160,9 @@ int stop_all_mutators_and_save_state() {
   int total_threads_to_halt = 0;
   THREAD_INFO *thread = live_threads;
   while (thread != NULL) {
+    thread->saved_thread_index = total_threads_to_halt;
+    saved_threads[total_threads_to_halt].saved_stack_size = 0;
+      
     total_threads_to_halt = total_threads_to_halt + 1;
     thread->saved_stack_size = 0;
     int err = pthread_kill(thread->pthread, FLIP_SIGNAL);
@@ -196,5 +199,9 @@ int stop_all_mutators_and_save_state() {
   assert(total_threads_to_halt == copied_stack_count);
   // Allow creation of new threads now
   pthread_mutex_unlock(&total_threads_lock);
+
+  // We could return this and pass it around, but what's the point.
+  // Its unique global info used once per gc cycle
+  total_saved_threads = total_threads_to_halt;
 }
 

@@ -331,13 +331,32 @@ void scan_thread(int thread) {
   scan_thread_saved_stack(thread);
 }
 
+// switch to this
+void scan_saved_thread_state(int i) {
+  BPTR registers = (BPTR) saved_threads[i].registers;
+  scan_memory_segment(registers, registers + (23 * sizeof(long)));
+
+  BPTR top = (BPTR) saved_threads[i].saved_stack_base;
+  BPTR bottom = top + saved_threads[i].saved_stack_size;
+  BPTR ptr_aligned_top = (BPTR) ((long) top & ~(GC_POINTER_ALIGNMENT - 1));
+  scan_memory_segment(ptr_aligned_top, bottom);
+}
+
 static
 void scan_threads() {
   // HEY! need to pass along number of threads scanned
   // Acquire total_threads lock here? Maybe earlier in flip.
   for (int next_thread = 0; next_thread < total_threads; next_thread++) {
-    scan_thread(next_thread + 1);
+    scan_thread(next_thread);
   }
+  /* switcht to this:
+
+  for (int i = 0; i < total_saved_threads; i++) {
+    scan_saved_thread_state(i);
+  }  
+  */
+
+  
   if (0 != saved_no_write_barrier_state) {
     BPTR low =  (BPTR) &saved_no_write_barrier_state;;
     BPTR high = ((BPTR) low + sizeof(long));
@@ -515,30 +534,7 @@ void flip() {
     group->black_alloc_count = 0;
   }
 
-  assert(0 == enable_write_barrier);
-  // We do this in rtstop.c now. Should we move it back here? It shouldn't
-  // matter because we hold all free locks in each place
-  //enable_write_barrier = 1;
-  //SWAP(marked_color,unmarked_color);
-
-  struct timeval start_tv, end_tv, flip_tv;
-  gettimeofday(&start_tv, 0);
   stop_all_mutators_and_save_state();
-  gettimeofday(&end_tv, 0);
-
-  timersub(&end_tv, &start_tv, &flip_tv);
-  timeradd(&total_flip_tv, &flip_tv, &total_flip_tv);
-  if timercmp(&flip_tv, &max_flip_tv, >) {
-      max_flip_tv = flip_tv;
-      /*      printf("max_flip_tv is %d.%06d, avg is %f, saved stack is %d bytes\n", 
-	     max_flip_tv.tv_sec, 
-	     max_flip_tv.tv_usec,
-	     ((total_flip_tv.tv_sec * 1.0) + 
-	      (total_flip_tv.tv_usec / 1000000.0))
-	     / (gc_count + 1), 
-	     threads[1].saved_stack_size);
-      */
-  }
 }
 
 // The alloc counterpart to this function is init_pages_for_group.

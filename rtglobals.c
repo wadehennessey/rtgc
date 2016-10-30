@@ -33,6 +33,9 @@ THREAD_INFO *live_threads;
 THREAD_INFO *free_threads;
 int total_threads = 0;
 
+THREAD_STATE *saved_threads;
+int total_saved_threads = 0;
+
 char **global_roots;
 int total_global_roots;
 

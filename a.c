@@ -192,7 +192,7 @@ void *start_word_count(void *arg) {
     i = i + 1;
   }
 }
-
+ 
 int main(int argc, char *argv[]) {
   RTatomic_gc = 0;
   // When using RTatomic_gc = 1 we need about 4x them minimum heap size we need

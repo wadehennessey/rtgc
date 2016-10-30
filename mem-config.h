@@ -6,7 +6,7 @@
 #define MAX_HEAP_SEGMENTS 1
 #define MAX_STATIC_SEGMENTS 1
 #define MAX_SEGMENTS MAX_HEAP_SEGMENTS + MAX_STATIC_SEGMENTS
-#define MAX_THREADS 100
+#define MAX_THREADS 20
 #define MAX_GLOBAL_ROOTS 1000
 
 // The heap is divided into multiple segments

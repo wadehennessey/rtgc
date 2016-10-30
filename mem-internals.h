@@ -81,14 +81,25 @@ typedef struct page_info {
 
 typedef PAGE_INFO *PPTR;
 
+typedef struct thread_state {
+  gregset_t registers;		// NREG is 23 on x86_64
+  char *saved_stack_base;	// This is the LOWEST addressable byte
+  int saved_stack_size;
+} THREAD_STATE;
+  
 typedef struct thread_info {
   pthread_t pthread;
-  gregset_t registers;		// NREG is 23 on x86_64
   long long *stack_base; // This is the LOWEST addressable byte of the stack
   int stack_size;
-  char *stack_bottom; 	// HIGHEST address seen when thread started
-  char *saved_stack_base;    // This is the LOWEST addressable byte
+  char *stack_bottom;	 // HIGHEST address seen when thread started
+
+  gregset_t registers;		// NREG is 23 on x86_64
+  char *saved_stack_base;	// This is the LOWEST addressable byte
   int saved_stack_size;
+
+  // Switch to using this and del the 3 above
+  int saved_thread_index;
+  
   struct timeval max_pause_tv, total_pause_tv;
   struct thread_info *next;
 
@@ -145,6 +156,9 @@ extern THREAD_INFO *threads;
 extern THREAD_INFO *live_threads;
 extern THREAD_INFO *free_threads;
 extern int total_threads;
+
+extern THREAD_STATE *saved_threads;
+extern int total_saved_threads;
 
 extern long total_partition_pages;
 extern int unmarked_color;
