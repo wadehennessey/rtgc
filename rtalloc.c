@@ -471,25 +471,31 @@ static THREAD_INFO *alloc_thread() {
 }
 
 static void free_thread(THREAD_INFO *thread) {
-  THREAD_INFO *target_thread = live_threads;
-  THREAD_INFO *prev_thread = NULL;
-
   // Find this thread in live_threads list
-  while (target_thread != thread) {
-    prev_thread = target_thread;
-    target_thread = target_thread->next;
+
+  if (thread == live_threads) {
+    // Remove thread from live_threads list
+    live_threads = live_threads->next;
+  } else {
+    // Find thread in live list
+    THREAD_INFO *target_thread = live_threads;
+    THREAD_INFO *prev_thread = NULL;
+    while (target_thread != thread) {
+      prev_thread = target_thread;
+      target_thread = target_thread->next;
+    }
+    // Remove thread from live_threads list
+    prev_thread->next = target_thread->next;
   }
-  // Remove thread from live_threads list
-  prev_thread = target_thread->next;
   // Add thread to the head of free_threads list
-  target_thread->next = free_threads;
-  free_threads->next = target_thread;
+  thread->next = free_threads;
+  free_threads->next = thread;
   total_threads = total_threads - 1;
 }
 
 static void thread_cleanup_handler(void *arg) {
   THREAD_INFO *thread =  arg;
-  printf("Called cleanup handler for thread %p\n", thread - threads);
+  printf("Called cleanup handler for pthread %p\n", thread->pthread);
   pthread_mutex_lock(&threads_lock);
   free_thread(thread);
   pthread_mutex_unlock(&threads_lock);
