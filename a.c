@@ -177,16 +177,24 @@ int walk_word_tree(NODE *n, int verbose) {
 void *start_word_count(void *arg) {
   int i = 0;
 
-  long tid = (long) arg;
+  pthread_t thread = pthread_self();
   while (i < 5000000) {
     char top;
     NODE *root = build_word_tree("redhead.txt");
     assert(9317 == walk_word_tree(root, 0));
     if (0 == (i % 25)) {
-      printf("[%ld] %d word counts\n", tid, i);
+      printf("[%p] %d word counts\n", thread, i);
     }
     i = i + 1;
   }
+}
+
+void *make_threads(void *arg) {
+   pthread_t thread;
+   for (long i = 0; i < 3; i++) {
+     pthread_t thread;
+     RTpthread_create(&thread, NULL, &start_word_count, (void *) i);
+   }
 }
 
 int main(int argc, char *argv[]) {
@@ -195,9 +203,7 @@ int main(int argc, char *argv[]) {
   // when using RTatomic_gc = 0, otherwise we'll get "out of memory Heap"
   // errors.
   RTinit_heap((1L << 23), 1L << 18);
-  for (long i = 0; i < 3; i++) {
-    pthread_t thread;
-    RTpthread_create(&thread, NULL, &start_word_count, (void *) i);
-  }
+  pthread_t thread;
+  RTpthread_create(&thread, NULL, &make_threads, 0);
   rtgc_loop();
 }

@@ -100,7 +100,6 @@ typedef struct thread_info {
   // These fields are only used at thread startup time
   void *(*start_func) (void *);
   char *args;
-  int started;
 } THREAD_INFO;
 
 typedef struct counter {

@@ -461,18 +461,23 @@ static THREAD_INFO *alloc_thread() {
     THREAD_INFO *thread = free_threads;
     // Remove thread from free_threads
     free_threads = free_threads->next;
-    // Add thread to live_threads;
-    thread->next = live_threads;
-    live_threads = thread;
-    total_threads = total_threads + 1;
     pthread_mutex_unlock(&threads_lock);
     return(thread);
   }
 }
 
-static void free_thread(THREAD_INFO *thread) {
-  // Find this thread in live_threads list
+static void make_thread_live(THREAD_INFO *thread) {
+  pthread_mutex_lock(&threads_lock);
+  // Add thread to live_threads;
+  thread->next = live_threads;
+  live_threads = thread;
+  total_threads = total_threads + 1;
+  pthread_mutex_unlock(&threads_lock);
+}
 
+static void free_thread(THREAD_INFO *thread) {
+  pthread_mutex_lock(&threads_lock);
+  // Find this thread in live_threads list
   if (thread == live_threads) {
     // Remove thread from live_threads list
     live_threads = live_threads->next;
@@ -491,19 +496,18 @@ static void free_thread(THREAD_INFO *thread) {
   thread->next = free_threads;
   free_threads->next = thread;
   total_threads = total_threads - 1;
+  pthread_mutex_unlock(&threads_lock);
 }
 
 static void thread_cleanup_handler(void *arg) {
   THREAD_INFO *thread =  arg;
   printf("Called cleanup handler for pthread %p\n", thread->pthread);
-  pthread_mutex_lock(&threads_lock);
   free_thread(thread);
-  pthread_mutex_unlock(&threads_lock);
 }
 
 void *rtalloc_start_thread(void *thread_arg) {
   THREAD_INFO *thread = thread_arg;
-  printf("Thread %d started\n", thread - threads);
+  printf("Thread %p started\n", thread->pthread);
   pthread_attr_t attr;
   void *stackaddr;
   size_t stacksize;
@@ -524,15 +528,9 @@ void *rtalloc_start_thread(void *thread_arg) {
   if (0 != pthread_setspecific(thread_key, (void *) thread)) {
     printf("pthread_setspecific failed!\n"); 
   } else {
-    // Tell RTpthread_create thread is ready for gc
-    thread->started = 1;
-
     pthread_cleanup_push(&thread_cleanup_handler, thread);
-
-    // HEY!
-    // 1. get rid of started field - no waiting in RTpthread_create
-    // 2. add therad to live list here
-
+    // Only now is this thread ready to be considered "live" by the gc
+    make_thread_live(thread);
     // Now we can call the real start function
     (thread->start_func)(thread->args);
     pthread_cleanup_pop(1);
@@ -544,9 +542,7 @@ int RTpthread_create(pthread_t *pthread, const pthread_attr_t *attr,
   THREAD_INFO *new_thread = alloc_thread();
   new_thread->start_func = start_func;
   new_thread->args = args;
-    
-  // Indicate thread setup isn't complete and isn't ready for gc
-  new_thread->started = 0;
+
   int return_val;
   if (0 != (return_val = pthread_create(&(new_thread->pthread),
 					attr, 
@@ -555,15 +551,6 @@ int RTpthread_create(pthread_t *pthread, const pthread_attr_t *attr,
     return(return_val);
   } else {
     *pthread = new_thread->pthread;
-    // HEY! should do something smarter than busy wait
-    // rtalloc_start_thread to complete thread init
-    while (0 == new_thread->started) {
-      // YOW! without this explicit sched_yield(), we hang in this
-      // loop when compiled with -O1 and-O2
-      // declaring saved_stack_base volatile doesn't seem to help
-      sched_yield();
-    }
-    
     return(return_val);
   }
 }

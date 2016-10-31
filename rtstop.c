@@ -201,7 +201,8 @@ int stop_all_mutators_and_save_state() {
   pthread_mutex_unlock(&threads_lock);
 
   // We could return this and pass it around, but what's the point.
-  // Its unique global info used once per gc cycle
+  // Its unique global info used once per gc cycle which saved_threads
+  // have state to scan.
   total_saved_threads = total_threads_to_halt;
 }
 
