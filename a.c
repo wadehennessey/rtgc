@@ -39,8 +39,6 @@ RT_METADATA NODE_md[] = {sizeof(NODE),
 			 offsetof(NODE, greater),
 			 -1};
 
-NODE *roots[100];
-
 NODE *new_node(char *word, NODE *lesser, NODE *greater) {
   //NODE *node = (NODE *) RTallocate(RTpointers, sizeof(NODE));
   NODE *node = (NODE *) RTallocate(NODE_md, 1);
@@ -180,12 +178,10 @@ void *start_word_count(void *arg) {
   int i = 0;
 
   long tid = (long) arg;
-  register_global_root(&(roots[tid]));
   while (i < 5000000) {
     char top;
     NODE *root = build_word_tree("redhead.txt");
-    RTwrite_barrier(&(roots[tid]), root);
-    assert(9317 == walk_word_tree(roots[tid], 0));
+    assert(9317 == walk_word_tree(root, 0));
     if (0 == (i % 25)) {
       printf("[%ld] %d word counts\n", tid, i);
     }
@@ -199,7 +195,7 @@ int main(int argc, char *argv[]) {
   // when using RTatomic_gc = 0, otherwise we'll get "out of memory Heap"
   // errors.
   RTinit_heap((1L << 23), 1L << 18);
-  for (long i = 0; i < 1; i++) {
+  for (long i = 0; i < 3; i++) {
     pthread_t thread;
     RTpthread_create(&thread, NULL, &start_word_count, (void *) i);
   }
