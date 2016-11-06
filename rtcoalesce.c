@@ -314,6 +314,11 @@ void merge_adjacent_holes() {
 	if (end_page < total_partition_pages) {
 	  if (pages[end_page].group == EMPTY_PAGE) {
 	    HOLE_PTR adjacent = (HOLE_PTR) PAGE_INDEX_TO_PTR(end_page);
+
+	    // try to find bug where next->next points *inside* the
+	    // hole that next points to.
+	    assert(!((next->next > next) && (next->next < adjacent)));
+	    
 	    next->page_count = next->page_count + adjacent->page_count;
 	    adjacent->page_count = 0;
 	    merge_count = merge_count + 1;
