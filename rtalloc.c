@@ -287,24 +287,28 @@ GPTR allocation_group(long *metadata, int size) {
 }
 
 static inline
-void initialize_object_metadata(void *metadata, GCPTR gcptr, GPTR group) {
+int initialize_object_metadata(void *metadata, GCPTR gcptr, GPTR group) {
   long md = (long) metadata;
+  int body_size = group->size - sizeof(GC_HEADER);
   if (md < SC_METADATA) {
     SET_STORAGE_CLASS(gcptr, md);
   } else {
+    LPTR base = (LPTR) (gcptr + 1);
+    LPTR last_ptr = base + (group->size / sizeof(LPTR)) - 3;
+    // Must init md pointer inside of free lock. If we try to init it with
+    // the object body init outside the free lock, the gc might see an
+    // uninitialized md pointer.
+    *last_ptr = md;
     SET_STORAGE_CLASS(gcptr, SC_METADATA);
+    body_size = body_size - sizeof(LPTR);
   }
+  return(body_size);
 }
 
 static inline
-void initialize_object_body(void *metadata, LPTR base, GPTR group) {
-  long md = (long) metadata;
+LPTR initialize_object_body(void *metadata, LPTR base, int body_size) {
   if (metadata != RTnopointers) {
-    memset(base, 0, group->size - sizeof(GC_HEADER));
-  }
-  if (md > SC_METADATA) {
-    LPTR last_ptr = base + (group->size / sizeof(LPTR)) - 3;
-    *last_ptr = md;
+    memset(base, 0, body_size);
   }
 }
 
@@ -325,12 +329,12 @@ void *RTallocate(void *metadata, int size) {
   SET_COLOR(new,marked_color);	// Must allocate black!
   DEBUG(group->black_alloc_count = group->black_alloc_count + 1);
     
-  initialize_object_metadata(metadata, new, group);
-  // Unlock only after storage class initialization because
-  // gc recyling garbage can read and write next ptr
+  int body_size = initialize_object_metadata(metadata, new, group);
+  // Unlock only after storage class and md initialization because
+  // gc recyling garbage can read and write next ptr and md.
   pthread_mutex_unlock(&(group->free_lock));
   LPTR base = (LPTR) (new + 1);
-  initialize_object_body(metadata, base, group);
+  initialize_object_body(metadata, base, body_size);
   return(base);
 }
 
