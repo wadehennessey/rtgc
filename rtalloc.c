@@ -535,6 +535,7 @@ void *rtalloc_start_thread(void *thread_arg) {
     pthread_cleanup_push(&thread_cleanup_handler, thread);
     // Only now is this thread ready to be considered "live" by the gc
     make_thread_live(thread);
+    thread->started = 1;
     // Now we can call the real start function
     (thread->start_func)(thread->args);
     pthread_cleanup_pop(1);
@@ -546,6 +547,7 @@ int RTpthread_create(pthread_t *pthread, const pthread_attr_t *attr,
   THREAD_INFO *new_thread = alloc_thread();
   new_thread->start_func = start_func;
   new_thread->args = args;
+  new_thread->started = 0;
 
   int return_val;
   if (0 != (return_val = pthread_create(&(new_thread->pthread),
@@ -555,6 +557,7 @@ int RTpthread_create(pthread_t *pthread, const pthread_attr_t *attr,
     return(return_val);
   } else {
     *pthread = new_thread->pthread;
+    while (1 != new_thread->started);
     return(return_val);
   }
 }

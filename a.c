@@ -175,10 +175,11 @@ int walk_word_tree(NODE *n, int verbose) {
 }
 
 void *start_word_count(void *arg) {
-  int i = 0;
+  long count = (long) arg;
+  long i = 0;
 
   pthread_t thread = pthread_self();
-  while (i < 5000000) {
+  while (i < count) {
     char top;
     NODE *root = build_word_tree("redhead.txt");
     assert(9317 == walk_word_tree(root, 0));
@@ -189,6 +190,8 @@ void *start_word_count(void *arg) {
   }
 }
 
+
+/*
 void *make_threads(void *arg) {
    pthread_t thread;
    for (long i = 0; i < 3; i++) {
@@ -196,6 +199,32 @@ void *make_threads(void *arg) {
      RTpthread_create(&thread, NULL, &start_word_count, (void *) i);
    }
 }
+*/
+
+void *make_threads(void *arg) {
+  long counts_per_thread = 100;
+  long total_threads_created = 0;
+  while (1) {
+    // should make total_threads a condition variable
+    while (total_threads < 4) {
+      pthread_t thread;
+      RTpthread_create(&thread, 
+		       NULL, 
+		       &start_word_count,
+		       (void *) counts_per_thread);
+      total_threads_created = total_threads_created + 1;
+      if (0 == (total_threads_created % 25)) {
+	printf("**************** %d threads created (%d total word counts)\n",
+	       total_threads_created, 
+	       total_threads_created * counts_per_thread);
+      }
+    }
+    sched_yield();
+  }
+}
+
+
+
 
 int main(int argc, char *argv[]) {
   RTatomic_gc = 0;

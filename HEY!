@@ -70,15 +70,17 @@ gdb tui mode in xterm: c-x a
 too see event numbers and start at a specific event number:
 rr -M replay -g <event-number>
 
+rr dump
+rr dump /home/wade/.local/share/rr/a-0/ 39000000
 
 try gdb cmds:
 -------------
 checkpoint
-info checkpoints - not implemented
+info checkpoints
 restart <cp-id>
 delete <cp-id>
-
-gdb "when" command shows current event-number
+watch -l <location>
+when - command shows current event-number
 
 try rr -c and -e options to increase thread interleave
 
@@ -89,8 +91,8 @@ rr record -c 2500 ./a
 rr record -c 5 ./a
 
 # to see record options
-rr record -h
-rr replay -h
+rr help record
+rr help replay
 
 From rr/src/Scheduler.h
 -c default:  enum { DEFAULT_MAX_TICKS = 250000 };    // 50ms time slice
@@ -167,5 +169,3 @@ export C_INCLUDE_PATH=/home/wade/build/lib/clang/4.0.0/include
 
 -----------
 Try LIBRARY_PATH env variable to allow removal or librtgc.so from wcl tree
-
-

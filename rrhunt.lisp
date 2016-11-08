@@ -5,7 +5,7 @@
   (dotimes (run 10000)
     (run-program "/usr/bin/rm" `("-rf" "/home/wade/.local/share/rr"))
     (let ((*proc* (run-program "/usr/bin/rr"
-			       `("record" "-c" "5" "/home/wade/wcl/bin/wcl") 
+			       `("record" "-c" "250" "/home/wade/rtgc/a") 
 			       :output t :wait nil)))
       (print *proc*)
       (terpri)
