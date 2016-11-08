@@ -20,18 +20,12 @@
 
 // http://www.textfiles.com/etext/AUTHORS/DOYLE/ for text files
 
-// tmp stub to avoid linking problems
-void *wcl_get_closure_env(void *ptr) {
-  return(0);
-}
-
 typedef struct node {
   char *word;
   int count;
   struct node *lesser;
   struct node *greater;
 } NODE;
-
 
 RT_METADATA NODE_md[] = {sizeof(NODE),
 			 offsetof(NODE, word),
@@ -190,7 +184,6 @@ void *start_word_count(void *arg) {
   }
 }
 
-
 /*
 void *make_threads(void *arg) {
    pthread_t thread;
@@ -222,9 +215,6 @@ void *make_threads(void *arg) {
     sched_yield();
   }
 }
-
-
-
 
 int main(int argc, char *argv[]) {
   RTatomic_gc = 0;
