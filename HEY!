@@ -1,4 +1,4 @@
-very useful to keep debuinfo up to date
+very useful to keep debuginfo up to date
 dnf --enablerepo=updates-debuginfo update
 
 m-x gud-gdb to switch *dedicated* window
@@ -25,18 +25,6 @@ use #define _GNU_SOURCE for weird compile problems not seeing decls
 
 gdb> info signals
 use next instead of continue to switch to diff thread break points
-
-Semaphores
-------------
-in alloc when out of memory:
-sem_post(&gc_semaphore);
-sem_wait(&gc_semaphore);	
-
-in rtgc_loop:
-sem_wait(&gc_semaphore);
-full_gc();
-sem_post(&gc_semaphore);
-------------
 
 # these go in .gdbinit
 handle SIGUSR1 nostop

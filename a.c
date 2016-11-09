@@ -43,17 +43,10 @@ NODE *new_node(char *word, NODE *lesser, NODE *greater) {
   return node;
 }
 
-int smallword_count = 0;
-int bigword_count = 0;
 char *new_word(char *buffer, int i) {
   char *word = RTallocate(RTnopointers, (i + 1));
   buffer[i] = '\0';
   strcpy(word, buffer);
-  if ((i + 1) > 8) {
-    bigword_count = bigword_count + 1;
-  } else {
-    smallword_count = smallword_count + 1;
-  }
   return(word);
 }
 
@@ -201,15 +194,20 @@ void *make_threads(void *arg) {
     // should make total_threads a condition variable
     while (total_threads < 4) {
       pthread_t thread;
-      RTpthread_create(&thread, 
-		       NULL, 
-		       &start_word_count,
-		       (void *) counts_per_thread);
-      total_threads_created = total_threads_created + 1;
-      if (0 == (total_threads_created % 25)) {
-	printf("**************** %d threads created (%d total word counts)\n",
-	       total_threads_created, 
-	       total_threads_created * counts_per_thread);
+      int err;
+      if (0!= (err = RTpthread_create(&thread, 
+				      NULL, 
+				      &start_word_count,
+				      (void *) counts_per_thread))) {
+	printf("Thread create failure, err = %d\n", err);
+	Debugger("Thread create failure");
+      } else {
+	total_threads_created = total_threads_created + 1;
+	if (0 == (total_threads_created % 25)) {
+	  printf("**************** %d threads created (%d total word counts)\n",
+		 total_threads_created, 
+		 total_threads_created * counts_per_thread);
+	}
       }
     }
     sched_yield();
