@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <time.h>
+#include <unistd.h>
 #include <sys/mman.h>
 #include <sys/time.h>
 #include <semaphore.h>
@@ -201,5 +202,43 @@ void timespec_test () {
   }
 }
 
+void eat_line(FILE *f) {
+  char c;
+  do {
+    c = fgetc(f);
+  } while (c != '\n');
+}
+
+// read_maps_file(argv[0]);
+// need to register general path prefixes to match
+// and then have this call register_global_root_section for each prefix match
+void read_maps_file(char *executable_path) {
+  pid_t pid = getpid();
+  char maps_path[128];
+
+  sprintf(maps_path, "/proc/%d/maps", pid);
+  FILE *maps = fopen(maps_path, "r");
+  long low, high;
+  int i1, i2;
+  char perms[5], fd[6], path[1024];
+  int count = 0;
+  while (EOF != count) {
+    count = fscanf(maps,
+		   "%lx-%lx %s %x %s %x", 
+		   &low, &high, &perms, &i1, &fd, &i2);
+    if (EOF != count) {
+      //printf("%lx-%lx %s %08x %s %x\n", low, high, perms, i1, fd, i2);
+      if (0 == i2) {
+	eat_line(maps);
+      } else {
+	count = fscanf(maps, " %s", &path);
+	if ((0 == strcmp(&(perms[0]), "rw-p")) &&
+	    (0 == strcmp(&(path[0]), executable_path))) {
+	  printf("roots start at %x, length %x\n", low, high - low);
+	}
+      }
+    }
+  } 
+}
  
 
