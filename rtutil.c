@@ -219,16 +219,16 @@ void read_maps_file(char *executable_path) {
   sprintf(maps_path, "/proc/%d/maps", pid);
   FILE *maps = fopen(maps_path, "r");
   long low, high;
-  int i1, i2;
-  char perms[5], fd[6], path[1024];
+  int offset, inode;
+  char perms[5], dev[6], path[1024];
   int count = 0;
   while (EOF != count) {
     count = fscanf(maps,
 		   "%lx-%lx %s %x %s %x", 
-		   &low, &high, &perms, &i1, &fd, &i2);
+		   &low, &high, &perms, &offset, &dev, &inode);
     if (EOF != count) {
-      //printf("%lx-%lx %s %08x %s %x\n", low, high, perms, i1, fd, i2);
-      if (0 == i2) {
+      //printf("%lx-%lx %s %08x %s %x\n", low, high, perms, offset, dev, inode);
+      if (0 == inode) {
 	eat_line(maps);
       } else {
 	count = fscanf(maps, " %s", &path);

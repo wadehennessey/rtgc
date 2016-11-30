@@ -38,7 +38,7 @@ typedef unsigned char * BPTR;
 
 #define MIN(x,y) ((x < y) ? x : y)
 #define MAX(x,y) ((x > y) ? x : y)
-#define SWAP(x,y) {int tmp; tmp = x; x = y; y = tmp;}
+#define SWAP(x,y) {int tmp = x; x = y; y = tmp;}
 
 typedef struct group_info {
   int size;

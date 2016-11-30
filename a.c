@@ -188,7 +188,7 @@ void *make_threads(void *arg) {
 */
 
 void *make_threads(void *arg) {
-  long counts_per_thread = 100;
+  long counts_per_thread = 5000;
   long total_threads_created = 0;
   while (1) {
     // should make total_threads a condition variable
