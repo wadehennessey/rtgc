@@ -41,31 +41,26 @@ struct timespec RTtime_diff(struct timespec start, struct timespec end) {
 
 void *busy_loop(void *arg) {
   const int count = 6005;
-  long buffer[count];
+  struct timespec buffer[count];
   long overflow = 0;
-  struct timespec res, prev, next;
+  struct timespec res;
   if (0 == clock_getres(CLOCK_REALTIME, &res)) {
-    //printf("clock resolution is %ld ns\n", res.tv_nsec);
+    fprintf(stderr, "clock resolution is %ld ns\n", res.tv_nsec);
   }
   // warm up buffer cache if needed
-  memset(buffer, 0, count * sizeof(long));
+  memset(buffer, 0, count * sizeof(struct timespec));
 
   while(0 == flag);		// spin waiting for sender to start
-  clock_gettime(CLOCK_REALTIME, &prev);
   for (int i = 0; i < count; i++) {
-    clock_gettime(CLOCK_REALTIME, &next);
-    struct timespec diff = RTtime_diff(prev, next);
-    prev = next;
-    if (i < count) {
-      buffer[i] = diff.tv_nsec;
-    } else {
-      overflow = overflow + 1;
-    }
+    clock_gettime(CLOCK_REALTIME, buffer + i);
   }
-  for (int i = 5; i < count; i++) {
-    printf("%ld,\n", buffer[i]);
+  //flag = 0;
+  
+  for (int i = 5; i < (count - 1); i++) {
+    struct timespec diff = RTtime_diff(buffer[i], buffer[i + 1]);
+    printf("%ld,\n", diff.tv_nsec);
   }
-  //printf("overflow of %ld\n", overflow);
+  fprintf(stderr, "overflow of %ld\n", overflow);
 }
 
 void send_loop(pthread_t thread) {
@@ -77,6 +72,8 @@ void send_loop(pthread_t thread) {
       error(0, err, "pthread_kill failed");
     }
   }
+  void **retval;
+  pthread_join(thread, retval);
   fprintf(stderr, "exiting send loop, counter is %ld\n", counter);
 }
 
