@@ -23,6 +23,9 @@ debug:
 opt:
 	$(CC) -O2 -g -o a a.c rtglobals.c rtalloc.c rtgc.c rtstop.c rtutil.c atomic-booleans.s rtcoalesce.c -lpthread
 
+sigtime:sigtime.c
+	$(CC) -o sigtime -g sigtime.c -lpthread
+
 install:
 	cp allocate.h /usr/local/include
 	cp librtgc.so /usr/local/lib64
