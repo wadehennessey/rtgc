@@ -104,7 +104,7 @@ void counter_wait_threshold(COUNTER *c, int threshold) {
 }
 
 // useful with clock_gettime
-struct timespec RTtime_diff(struct timespec start, struct timespec end) {
+struct timespec RTtime_diff(struct timespec end, struct timespec start) {
   struct timespec diff;
   if ((end.tv_nsec - start.tv_nsec) < 0) {
     diff.tv_sec = end.tv_sec - start.tv_sec - 1;
