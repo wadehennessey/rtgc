@@ -1,4 +1,8 @@
-// sudo cpupower frequency-set -g performance
+// (C) Copyright 2015 - 2017 by Wade L. Hennessey. All rights reserved.
+
+// As root:
+// cpupower frequency-set -g performance
+// cpupower frequency-info
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -77,16 +81,20 @@ void *ns_busy_loop(void *arg) {
 
 void send_loop(pthread_t thread) {
   int err;
+  counter = 0;
   flag = 1;
   for (int i = 0; i < 50; i++) {
-    for (int t = 0; t < 5000; t++);
-    
+    //for (int t = 0; t < 5000; t++);
+
+    long next_count = counter + 1;
     if (0 != (err = pthread_kill(thread, SIGUSR1))) {
       error(0, err, "pthread_kill failed");
     }
+    while (counter < next_count);
+
   }
   void **retval;
-  pthread_join(thread, retval);
+  //pthread_join(thread, retval);
   fprintf(stderr, "exiting send loop, counter is %ld\n", counter);
 }
 

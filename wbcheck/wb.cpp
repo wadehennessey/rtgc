@@ -1,3 +1,5 @@
+// (C) Copyright 2015 - 2017 by Wade L. Hennessey. All rights reserved.
+//
 // Run: ./wb filename.c --
 
 #include <string>

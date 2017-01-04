@@ -1,6 +1,4 @@
-// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
-
-// State shared by rtalloc, rtgc, and vizmem goes here
+// (C) Copyright 2015 - 2017 by Wade L. Hennessey. All rights reserved.
 
 #define _USE_GNU
 #define _GNU_SOURCE

@@ -1,3 +1,4 @@
+# Copyright 2015 - 2017 by Wade L. Hennessey. All rights reserved.
 	.text
 	
 	.align	8

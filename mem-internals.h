@@ -1,4 +1,4 @@
-// (C) Copyright 2015 - 2016 by Wade L. Hennessey. All rights reserved.
+// (C) Copyright 2015 - 2017 by Wade L. Hennessey. All rights reserved.
 
 #define EMPTY_PAGE     ((GPTR) 0)
 #define FREE_PAGE      ((GPTR) 1)
