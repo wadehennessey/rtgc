@@ -325,29 +325,6 @@ void *RTmemset(void *p1, int data, int num_bytes) {
   return(p1);
 }
 
-/*
-static
-void scan_thread_registers(int thread) {
-  // HEY! just scan saved regs that need it, not all 23 of them
-  BPTR registers = (BPTR) threads[thread].registers;
-  scan_memory_segment(registers, registers + (23 * sizeof(long)));
-}
-
-static
-void scan_thread_saved_stack(int thread) {
-  BPTR top = (BPTR) threads[thread].saved_stack_base;
-  BPTR bottom = top + threads[thread].saved_stack_size;
-  BPTR ptr_aligned_top = (BPTR) ((long) top & ~(GC_POINTER_ALIGNMENT - 1));
-  scan_memory_segment(ptr_aligned_top, bottom);
-}
-
-static
-void scan_thread(int thread) {
-  scan_thread_registers(thread);
-  scan_thread_saved_stack(thread);
-}
-*/
-
 static
 void scan_saved_registers(int i) {
   // HEY! just scan saved regs that need it, not all 23 of them
